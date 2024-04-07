@@ -11,6 +11,10 @@
 /.ruff_cache/
 /pyproject.toml
 /network/wireless_network.py
+/testTSP/
+/testMAXSAT/
+/testMIPLIB2/
+/Problem Pools/
 
 **/__pycache__
 
