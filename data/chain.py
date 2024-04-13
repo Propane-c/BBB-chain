@@ -4,7 +4,6 @@ import math
 import os
 import random
 from collections import defaultdict
-from dataclasses import dataclass
 
 import graphviz
 
@@ -15,23 +14,6 @@ from .blockhead import BlockHead
 from .lpprblm import LpPrblm
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class NewBlocks:
-    """
-    共识产生的新区块的结构
-    """
-    iskeyblock:bool
-    miniblock:'Block'
-    keyblock:'Block'
-    mbs_unsafe:list['Block']
-    mb_with_kb:'Block'
-
-
-
-
-
-
 
 
 class Chain(object):

@@ -3,7 +3,6 @@ import json
 import logging
 import multiprocessing as mp
 import os
-import sys
 import threading
 import time
 import traceback
@@ -15,7 +14,7 @@ import psutil
 from pympler import asizeof
 
 from branchbound import bb_consensus as bb
-import data.lpprblm as lpprblm
+from data import lpprblm
 from background import Background
 from environment import Environment
 from evaluation import EvaResult

@@ -5,10 +5,9 @@ import sys
 from collections import defaultdict
 
 import data.lpprblm as lpprblm
-from data.chain import Block, Chain, NewBlocks
+from data import Block, Chain, NewBlocks,TxPool
 from branchbound import BranchBound
 from evaluation import Evaluation
-from data.txpool import TxPool
 from .fork_view import ForkView
 
 

@@ -1,5 +1,4 @@
 import copy
-import gc
 import json
 import logging
 import math
@@ -11,11 +10,11 @@ import numpy as np
 
 import network
 from background import Background
-from data.chain import Block, Chain, NewBlocks
+from branchbound.myattack import default_attack_mode
+from data import Block, Chain, NewBlocks
 from evaluation import Evaluation
 from functions import for_name
-from miner.miner import Miner
-from branchbound.myattack import default_attack_mode
+from miner import Miner
 
 
 def get_time(f):
