@@ -99,6 +99,11 @@ class KeyField(object):
         # New key problem
         self.key_tx = key_tx
 
+        # thres
+        self.thres = None
+
+    def init_thres(self, thres:list):
+        self.thres = thres
 
     def __repr__(self) -> str:
         pre_kb_name = self.pre_kb.name \

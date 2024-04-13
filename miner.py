@@ -77,6 +77,8 @@ class ForkView(object):
             q.extend([b for b in b.next if not b.iskeyblock])
         return entire_fork
     
+
+    
     def fork_switch(self, miner_id, round):
         log_prefix = f"round {round} miner {miner_id}"
         switchFork = False
@@ -183,6 +185,8 @@ class Miner(object):
         if notReceived:
             random.shuffle(self.receive_tape)
         return notReceived
+    
+
 
     def receive_miniblock(self, rcvblocks: NewBlocks):
         '''
