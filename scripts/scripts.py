@@ -14,7 +14,7 @@ import pulp
 from pysat.solvers import Solver
 from scipy.optimize import linprog
 
-import lpprblm as lp
+import data.lpprblm as lp
 
 
 def copy_files_from_txt(txt_file_path, source_folder, target_folder):

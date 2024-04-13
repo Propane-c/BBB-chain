@@ -14,7 +14,7 @@ import numpy as np
 import pulp
 from scipy.optimize import linprog
 
-from lpprblm import ZERO_ONE, LpPrblm
+from data.lpprblm import ZERO_ONE, LpPrblm
 
 RES_PATH = Path.cwd() / "RES_ALGO" / time.strftime("%Y%m%d") / time.strftime('%H%M%S')
 if not os.path.exists(RES_PATH):
