@@ -2,7 +2,7 @@ import random
 import logging
 from typing import List
 from miner import Miner
-from chain import Block
+from data import Block
 from .network_abc import Network
 
 logger = logging.getLogger(__name__)

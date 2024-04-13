@@ -9,13 +9,13 @@ from collections import defaultdict
 
 from matplotlib import pyplot as plt
 
-import lpprblm
+import data.lpprblm as lpprblm
 import network
 from background import Background
-from chain import Block, Chain, NewBlocks
-from consensus import BranchBound
+from data.chain import Block, Chain, NewBlocks
+from .bb_consensus import BranchBound
 from evaluation import Evaluation
-from miner import Miner
+from miner.miner import Miner
 
 logger = logging.getLogger(__name__)
 class VirtualAttacker():
@@ -26,7 +26,7 @@ class VirtualAttacker():
         self.miner_id = VirtualAttacker.ADVERMINER_ID #矿工ID
         self.is_adversary = True
         self.vchain = Chain(context)
-        self.consensus = BranchBound(context, self.miner_id)
+        self.consensus = BranchBound(context, self.vchain, self.miner_id)
         self.merged_rcvtape:list[NewBlocks] = []
         
 class Attack(metaclass=ABCMeta): 

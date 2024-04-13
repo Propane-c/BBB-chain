@@ -27,7 +27,7 @@ from scipy.signal import find_peaks, peak_prominences
 from scipy.stats import gaussian_kde
 
 import background
-import consensus.branchbound as bb
+import bb_consensus as bb
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)

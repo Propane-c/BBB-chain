@@ -1,6 +1,5 @@
 import json
 import sys
-sys.path.append("D:\Files\gitspace\chain-xim")
 import os
 import logging
 import itertools
@@ -13,10 +12,10 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-import miner
-import errors
+import miner.miner as miner
+from . import net_errors
 import background
-from chain import Block
+from data.chain import Block
 from network.network_abc import Network
 
 logger = logging.getLogger(__name__)
@@ -302,7 +301,7 @@ class TopologyNetwork(Network):
             elif gen_net_approach == 'rand' and ave_degree is not None:
                 self.gen_network_rand(ave_degree)
             else:
-                raise errors.NetGenError('网络生成方式错误！')
+                raise net_errors.NetGenError('网络生成方式错误！')
             #检查是否有孤立节点或不连通部分
             if nx.number_of_isolates(self.network_graph) == 0:
                 if nx.number_connected_components(self.network_graph) == 1:
@@ -314,11 +313,11 @@ class TopologyNetwork(Network):
                     self.draw_and_save_network()
                     self.save_network_attribute()
                 else:
-                    raise errors.NetUnconnetedError('网络存在不连通部分!')
+                    raise net_errors.NetUnconnetedError('网络存在不连通部分!')
             else:
-                raise errors.NetIsoError(f'网络存在孤立节点! {list(nx.isolates(self.network_graph))}')
-        except (errors.NetMinerNumError, errors.NetAdjError, errors.NetIsoError, 
-                errors.NetUnconnetedError, errors.NetGenError) as error:
+                raise net_errors.NetIsoError(f'网络存在孤立节点! {list(nx.isolates(self.network_graph))}')
+        except (net_errors.NetMinerNumError, net_errors.NetAdjError, net_errors.NetIsoError, 
+                net_errors.NetUnconnetedError, net_errors.NetGenError) as error:
             print(error)
             sys.exit(0)
     
@@ -424,15 +423,15 @@ class TopologyNetwork(Network):
         topology_ndarray  = pd.read_csv('network_topolpgy.csv', header=None, index_col=None).values
         # 判断邻接矩阵是否规范
         if np.isnan(topology_ndarray).any():
-            raise errors.NetAdjError('无向图邻接矩阵不规范!(存在缺失)')
+            raise net_errors.NetAdjError('无向图邻接矩阵不规范!(存在缺失)')
         if topology_ndarray.shape[0] != topology_ndarray.shape[1]:  # 不是方阵
-            raise errors.NetAdjError('无向图邻接矩阵不规范!(row!=column)')
+            raise net_errors.NetAdjError('无向图邻接矩阵不规范!(row!=column)')
         if len(topology_ndarray) != self.MINER_NUM:  # 行数与环境定义的矿工数量不同
-            raise errors.NetMinerNumError('矿工数量与环境定义不符!')
+            raise net_errors.NetMinerNumError('矿工数量与环境定义不符!')
         if not np.array_equal(topology_ndarray, topology_ndarray.T):
-            raise errors.NetAdjError('无向图邻接矩阵不规范!(不是对称阵)')
+            raise net_errors.NetAdjError('无向图邻接矩阵不规范!(不是对称阵)')
         if not np.all(np.diag(topology_ndarray) == 0):
-            raise errors.NetAdjError('无向图邻接矩阵不规范!(对角元素不为0)')
+            raise net_errors.NetAdjError('无向图邻接矩阵不规范!(对角元素不为0)')
         # 生成邻接矩阵
         self.tp_adjacency_matrix = np.zeros((len(topology_ndarray), len(topology_ndarray)))
         for i in range(len(topology_ndarray)):

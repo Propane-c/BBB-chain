@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-import consensus.branchbound as bb
+from branchbound import bb_consensus as bb
 import myplot
 import myplot2
 

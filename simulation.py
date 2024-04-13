@@ -14,8 +14,8 @@ from pathlib import Path
 import psutil
 from pympler import asizeof
 
-import consensus.branchbound as bb
-import lpprblm
+from branchbound import bb_consensus as bb
+import data.lpprblm as lpprblm
 from background import Background
 from environment import Environment
 from evaluation import EvaResult

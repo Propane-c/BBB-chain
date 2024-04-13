@@ -35,28 +35,6 @@ def for_name(name):
  
     return clazz
     
-def primestream(n):
-    # 质数迭代生成器，n为给定范围
-    lst = [True]*(n+1)
-    for i in range(2,n+1):
-        if lst[i]:
-            yield i
-            for j in range(i, n//i+1):
-                lst[i*j] = False
-
-
-def targetG(p_per_round,miner_num,group,q):
-    '''
-    p = target/group
-    (1-p)^(miner_num*q)=1 - p_per_round
-    1-p=(1-p_per_round)**(1/(miner_num*q))
-    p=1-(1-p_per_round)**(1/(miner_num*q))
-    target = round(group*p)
-    '''
-    p=1-(1-p_per_round)**(1/(miner_num*q))
-    target = round(group*p)
-    return hex(target)[2:]
-
 
 def target_adjust(difficulty):
     '''

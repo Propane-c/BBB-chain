@@ -1,11 +1,11 @@
 import copy
-import lpprblm
+from .lpprblm import LpPrblm
 class Transaction(object):
     def __init__(self, tx_from = None, tx_nonce = None, data = None) -> None:
         '''In branchbound, data is a origin key problem'''
         self.tx_from = tx_from
         self.tx_nonce = tx_nonce
-        self.data:lpprblm.LpPrblm = data
+        self.data:LpPrblm = data
 
     def __eq__(self, other: 'Transaction'):
         if (other.tx_from == self.tx_from and
@@ -35,7 +35,7 @@ class TxPool(object):
             # self.queued.append(Transaction('env', prblm_num+2, lpprblm.test1()))
             # self.queued.append(Transaction('env', prblm_num + 2 , lpprblm.prblm_generator(20)))
 
-    def load_prblm_pool(self,  prblm_pool:list[lpprblm.LpPrblm]):
+    def load_prblm_pool(self,  prblm_pool:list[LpPrblm]):
         """载入问题池"""
         for prblm_index, prblm in enumerate(copy.deepcopy(prblm_pool)):
             self.queued.append(Transaction('env', prblm_index + 1 , prblm))

@@ -11,11 +11,11 @@ import numpy as np
 
 import network
 from background import Background
-from chain import Block, Chain, NewBlocks
+from data.chain import Block, Chain, NewBlocks
 from evaluation import Evaluation
 from functions import for_name
-from miner import Miner
-from myattack import default_attack_mode
+from miner.miner import Miner
+from branchbound.myattack import default_attack_mode
 
 
 def get_time(f):

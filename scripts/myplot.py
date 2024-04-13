@@ -16,7 +16,6 @@ from matplotlib.colors import to_rgb
 from matplotlib.patches import (
     ConnectionPatch,
     Ellipse,
-    FancyBboxPatch,
     Patch,
     PathPatch,
     Rectangle,
@@ -28,7 +27,7 @@ from scipy.spatial import ConvexHull
 from scipy.stats import gaussian_kde
 
 import background
-import consensus.branchbound as bb
+import bb_consensus as bb
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)

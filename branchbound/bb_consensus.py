@@ -5,18 +5,16 @@ import copy  # noqa
 import logging  # noqa: E402
 import math  # noqa: E402
 import random  # noqa: E402
-import re  # noqa
 import warnings  # noqa: E402
 
 import numpy as np  # noqa: E402
 
-import lpprblm  # noqa: E402
+import data.lpprblm as lpprblm  # noqa: E402
 from background import Background  # noqa: E402
-from chain import Block, BlockHead, Chain, NewBlocks  # noqa: E402
-from consensus.consensus_abc import Consensus  # noqa: E402
+from data.chain import Block, BlockHead, Chain, NewBlocks  # noqa: E402
 from functions import hashsha256  # noqa: E402, F401
-from lpprblm import IncConstr, LpPrblm  # noqa: E402
-from txpool import TxPool  # noqa: E402
+from data.lpprblm import IncConstr, LpPrblm  # noqa: E402
+from data.txpool import TxPool  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +95,7 @@ class SolvingPair(object):
         return solve_finished
 
 
-class BranchBound(Consensus):
+class BranchBound(object):
     def __init__(self, background: Background, chain: Chain, miner_id=None):
         self.local_chain = chain
         self.background = background

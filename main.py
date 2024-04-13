@@ -5,12 +5,12 @@ import time
 import traceback
 from pathlib import Path
 
-import consensus.branchbound as bb
-import lpprblm
+from branchbound import bb_consensus as bb
+import data.lpprblm as lpprblm
 import simulation
 from background import RESULT_PATH, Background
 from environment import Environment
-from lpprblm import NORMAL, ZERO_ONE
+from data.lpprblm import NORMAL, ZERO_ONE
 
 # import drawing
 
