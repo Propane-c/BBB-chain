@@ -71,14 +71,14 @@ def set_network_param(config:configparser.ConfigParser, environ_settings):
 
 
 @get_time
-def run(pool_path):
+def run(pool_path=None):
     """
     单次运行入口
     """
     
     config, environ_settings = load_config()
     background = set_background(environ_settings)
-    set_logger(background, logging.INFO)
+    set_logger(background, logging.ERROR)
     network_param = set_network_param(config, environ_settings)
     # t = int(environ_settings['t'])
 
@@ -109,8 +109,8 @@ def run(pool_path):
         # pool_path = Path.cwd()/"testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
 
-    prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
-    lp = prblm_pool[0]
+    # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
+    # lp = prblm_pool[0]
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\problem pool1007_1805.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -124,11 +124,11 @@ def run(pool_path):
     #     Path.cwd()/"Problem Pools"/time.strftime("%m%d"))
     # lpprblm.save_test_prblm_pool([lp], f'prblm {time.strftime("%m%d_%H%M%S")}', 
     #     background.get_result_path())
-    # lp = lpprblm.test1()
+    lp = lpprblm.test2()
     background.set_test_prblm(lp)
     quiet=False
     Z = Environment(background, t, q_ave, q_distr, target, 
-                    adversary_ids, network_param, lpprblm.test1(), True)
+                    adversary_ids, network_param, None, True)
     # Z.env_load_prblm_pool([lp, lp2])
     total_round = Z.exec(quiet=quiet)
     
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     simu_type = "single_run"
     # simu_type = "long"
     # simu_type = "short"
-    multiProcessOn = True
+    multiProcessOn = False
     threadNum = 2
     """
     short参数说明：

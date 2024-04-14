@@ -1,5 +1,5 @@
 from miner.miner import Miner
-from data.chain import NewBlocks
+from data import NewBlocks
 from .network_abc import Network
 
 class SynchronousNetwork(Network):

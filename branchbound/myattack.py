@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 import data.lpprblm as lpprblm
 import network
 from background import Background
-from data.chain import Block, Chain, NewBlocks
+from data import Block, Chain, NewBlocks
 from .bb_consensus import BranchBound
 from evaluation import Evaluation
 from miner.miner import Miner

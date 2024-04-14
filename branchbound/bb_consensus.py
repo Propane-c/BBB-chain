@@ -11,7 +11,7 @@ import numpy as np  # noqa: E402
 
 import data.lpprblm as lpprblm  # noqa: E402
 from background import Background  # noqa: E402
-from data.chain import Block, BlockHead, Chain, NewBlocks  # noqa: E402
+from data import Block, BlockHead, Chain, NewBlocks  # noqa: E402
 from functions import hashsha256  # noqa: E402, F401
 from data.lpprblm import IncConstr, LpPrblm  # noqa: E402
 from data.txpool import TxPool  # noqa: E402
