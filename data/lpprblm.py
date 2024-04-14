@@ -49,7 +49,7 @@ class LpPrblm(object):
                 :e.g ((0,1), -1)
                 :代表第0个key prblm下的第1个subprblm_pair中的-
         
-        maximize::
+        minimize::
 
             c @ x
 
@@ -66,7 +66,7 @@ class LpPrblm(object):
         self.key_pname = key_pname
         # coefficients
         if c is not None:
-            self.c:np.ndarray = -c
+            self.c:np.ndarray = c
         else: 
             self.c = None
         self.G_ub:np.ndarray = G_ub
@@ -253,7 +253,7 @@ def solve_lp(lp_prblm:"LpPrblm" = None, c = None, G_ub = None, h_ub = None,
         lp_prblm.feasible = r.success
         if r.success:
             lp_prblm.x_lp = r.x
-            lp_prblm.z_lp = -r.fun
+            lp_prblm.z_lp = r.fun
         solved_success = True
     else: 
         solved_success = False
@@ -413,8 +413,10 @@ def test5():
     b_eq = None
     bounds = []
     for _ in range(len(c)): 
-        bounds.append((0, None))
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+        bounds.append((0,None))
+    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
+    print(linprog(c, G_ub, h_ub, A_eq, b_eq, bounds))
+    print(linprog(-c, G_ub, h_ub, A_eq, b_eq, bounds))
     solve_lp(orig_prblm)
     orig_prblm.fathomed = False
     orig_prblm.fthmd_state = False

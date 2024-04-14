@@ -78,7 +78,7 @@ def run(pool_path=None):
     
     config, environ_settings = load_config()
     background = set_background(environ_settings)
-    set_logger(background, logging.ERROR)
+    set_logger(background, logging.INFO)
     network_param = set_network_param(config, environ_settings)
     # t = int(environ_settings['t'])
 
@@ -124,7 +124,7 @@ def run(pool_path=None):
     #     Path.cwd()/"Problem Pools"/time.strftime("%m%d"))
     # lpprblm.save_test_prblm_pool([lp], f'prblm {time.strftime("%m%d_%H%M%S")}', 
     #     background.get_result_path())
-    lp = lpprblm.test2()
+    lp = lpprblm.test5()
     background.set_test_prblm(lp)
     quiet=False
     Z = Environment(background, t, q_ave, q_distr, target, 

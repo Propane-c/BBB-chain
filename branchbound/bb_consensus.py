@@ -112,8 +112,8 @@ class BranchBound(object):
         self.safe_thre = self.background.get_safe_thre()
         # global state
         self.fathomed_prblms: list[LpPrblm] = []
-        self.upper_bound = sys.maxsize
         self.lower_bound = -sys.maxsize
+        self.upper_bound = sys.maxsize
         self.opt_prblms: list[LpPrblm] = []
         self.mbs_unsafe: list[Block] = []
         # the miniblock being solved
@@ -1125,8 +1125,8 @@ class BranchBound(object):
         self.open_blocks = []
         self.fathomed_prblms = []
         self.opt_prblms = []
-        self.upper_bound = sys.maxsize
         self.lower_bound = -sys.maxsize
+        self.upper_bound = sys.maxsize
         self.optprblm_cache = None
         # 来源于外界的keyblock，需要清理全部的旧信息
         if kb_from == "outer":
@@ -1238,7 +1238,7 @@ class BranchBound(object):
         return new_p1, new_p2
 
 
-    def check_fathomed(self, lp_prblm: LpPrblm, lowerbound=None):
+    def check_fathomed(self, lp_prblm: LpPrblm, upperbound=None):
         '''Judge whether the subproblem branch fathomed.
         return: (infeas_fthmd, wrs_fthmd, int_soln_fthmd, prblm_fthmd)
         :prblm_fthmd = infeas_fthmd or wrs_fthmd or int_soln_fthmd
@@ -1247,13 +1247,13 @@ class BranchBound(object):
                 and lp_prblm.feasible is None):
             raise ValueError(f"{self.LOG_PREFIX}: The problem{lp_prblm.pname} to"
                              "check fathomed is not solved yet")
-        # 获取全局下界
-        if lowerbound is not None:
-            lb = lowerbound
+        # 获取全局上界
+        if upperbound is not None:
+            ub = upperbound
         else:
-            lb = self.lower_bound
+            ub = self.upper_bound
             if self.optprblm_cache is not None:
-                lb = (lb if lb >= self.optprblm_cache.z_lp 
+                ub = (ub if ub <= self.optprblm_cache.z_lp 
                       else self.optprblm_cache.z_lp)
 
         infeas = False
@@ -1264,7 +1264,7 @@ class BranchBound(object):
             infeas = True
             return infeas, wrs, int_soln, True
         # The objective function is worse than the lowerbound.
-        if lp_prblm.z_lp < lb:
+        if lp_prblm.z_lp > ub:
             wrs = True
             return infeas, wrs, int_soln, True
         # Integer solution and better than the lowerbound.
@@ -1304,7 +1304,7 @@ class BranchBound(object):
         # update upperbound
         if not infeas and not wrs and updateUBCrtl:
             # if lp_prblm.z_lp > self.lower_bound:
-            self.upper_bound = lp_prblm.z_lp
+            self.lower_bound = lp_prblm.z_lp
             updateUB = True
         return updateLB, updateUB
 
@@ -1317,11 +1317,11 @@ class BranchBound(object):
         """
         # 如果大于lower_bound，直接更新最优解
         imsg = None
-        if lp_prblm.z_lp > self.lower_bound:
+        if lp_prblm.z_lp < self.upper_bound:
             if opt_save_loc == 'opt_prblms':
                 self.opt_prblms.clear()
                 self.opt_prblms.append(lp_prblm)
-                self.lower_bound = lp_prblm.z_lp
+                self.upper_bound = lp_prblm.z_lp
                 imsg = (f"{self.LOG_PREFIX}: update opt_prblm:"
                         f"{lp_prblm.pname} with z_lp {lp_prblm.z_lp}")
             elif opt_save_loc == 'cache':
@@ -1330,7 +1330,7 @@ class BranchBound(object):
                         f"{lp_prblm.pname} with z_lp {lp_prblm.z_lp}")
 
         # 如果与lower_bound相等，将其附加到`opt_prblms`
-        elif (lp_prblm.z_lp == self.lower_bound and lp_prblm not in self.opt_prblms):
+        elif (lp_prblm.z_lp == self.upper_bound and lp_prblm not in self.opt_prblms):
             if opt_save_loc == 'opt_prblms':
                 self.opt_prblms.append(lp_prblm)
                 imsg = (f"{self.LOG_PREFIX}: append opt_prblm:"
@@ -1349,14 +1349,14 @@ class BranchBound(object):
         """
         if self.optprblm_cache is None:
             return
-        if self.optprblm_cache.z_lp > self.lower_bound:
+        if self.optprblm_cache.z_lp < self.upper_bound:
             self.opt_prblms.clear()
             self.opt_prblms.append(self.optprblm_cache)
-            self.lower_bound = self.optprblm_cache.z_lp
+            self.upper_bound = self.optprblm_cache.z_lp
             imsg = (f"{self.LOG_PREFIX}: adopt opt_cache:"
                     f"{self.optprblm_cache.pname} with z_lp {self.optprblm_cache.z_lp}")
             logger.info(imsg)
-        elif (self.optprblm_cache.z_lp == self.lower_bound and
+        elif (self.optprblm_cache.z_lp == self.upper_bound and
               self.optprblm_cache not in self.opt_prblms):
             self.opt_prblms.append(self.optprblm_cache)
             imsg = (f"{self.LOG_PREFIX}: adopt and append opt_cache:"
