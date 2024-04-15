@@ -496,7 +496,7 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
                     bounds = [(0, None) for _ in range(len(c))]
             orig_prblm = LpPrblm(
                 ((0, 0), 0), None, 0, 
-                copy.deepcopy(c), 
+                copy.deepcopy(-c), 
                 copy.deepcopy(G_ub), 
                 copy.deepcopy(h_ub), 
                 copy.deepcopy(A_eq), 
@@ -504,7 +504,7 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
                 bounds)
             if 'conti_vars' in prblm.keys():
                 orig_prblm.conti_vars = prblm['conti_vars']
-            # solve_ilp_by_pulp(orig_prblm)
+            solve_ilp_by_pulp(orig_prblm)
             solve_lp(orig_prblm)
             orig_prblm.fathomed = False
             orig_prblm.fthmd_state = False 
@@ -553,7 +553,7 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     :return: 最优目标值，如果不可解返回None
     """
     # solve_lp_by_pulp(prblm)
-    c = -prblm.c
+    c = prblm.c
     G_ub = prblm.G_ub
     h_ub = prblm.h_ub
     A_eq = prblm.A_eq
@@ -561,7 +561,7 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     bounds = prblm.bounds
     conti_vars = prblm.conti_vars
 
-    ilp = pulp.LpProblem("ILP", pulp.LpMaximize)
+    ilp = pulp.LpProblem("ILP", pulp.LpMinimize)
     # vars = [pulp.LpVariable(f'x_{i//48}_{i%48}', lowBound=b[0], upBound=b[1], 
     #         cat=pulp.LpInteger) for i, b in enumerate(bounds)]
     vars = []
@@ -766,7 +766,7 @@ def load_tsp(file_path=None):
             G_ub[k, n**2 + j] = -1
             k += 1
     
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, new_A_eq, b_eq, bounds)
+    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, new_A_eq, b_eq, bounds)
     save_test_prblm_pool([orig_prblm],'burma14',Path.cwd() / "testTSP", TSP, True)
     # lp.solve_ilp_by_pulp(orig_prblm)
 

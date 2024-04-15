@@ -78,7 +78,7 @@ def run(pool_path=None):
     
     config, environ_settings = load_config()
     background = set_background(environ_settings)
-    set_logger(background, logging.INFO)
+    set_logger(background, logging.ERROR)
     network_param = set_network_param(config, environ_settings)
     # t = int(environ_settings['t'])
 
@@ -105,12 +105,12 @@ def run(pool_path=None):
         # pool_path = Path.cwd()/"Problem Pools\\fig1.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
         # pool_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\json\problem poolvar162_pseudoBoolean-normalized-g9x9.opb.msat.wcnf.json"
-        pool_path = Path.cwd()/"testTSP\problem poolburma14.json"
+        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
         # pool_path = Path.cwd()/"testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
 
-    # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
-    # lp = prblm_pool[0]
+    prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
+    lp = prblm_pool[0]
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\problem pool1007_1805.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -124,7 +124,7 @@ def run(pool_path=None):
     #     Path.cwd()/"Problem Pools"/time.strftime("%m%d"))
     # lpprblm.save_test_prblm_pool([lp], f'prblm {time.strftime("%m%d_%H%M%S")}', 
     #     background.get_result_path())
-    lp = lpprblm.test5()
+    # lp = lpprblm.test5()
     background.set_test_prblm(lp)
     quiet=False
     Z = Environment(background, t, q_ave, q_distr, target, 
