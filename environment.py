@@ -11,7 +11,7 @@ import numpy as np
 import network
 from background import Background
 from branchbound.myattack import default_attack_mode
-from data import Block, Chain, NewBlocks
+from data import Block, Chain, PubBlocks
 from evaluation import Evaluation
 from functions import for_name
 from miner import Miner
@@ -179,7 +179,7 @@ class Environment(object):
         if copyblk.minifield.bfthmd_state:
             copyblk.update_solve_tree_fthmd_state()
 
-    def add_global_chain(self, newblock:NewBlocks):
+    def add_global_chain(self, newblock:PubBlocks):
         """
         将新产生的区块加入到全局链
         """
@@ -265,7 +265,7 @@ class Environment(object):
                     (newblock is not None and not newblock.iskeyblock)):
                     # if miner.miner_id == self.view_miner.miner_id:
                     # self.evaluation.record_relaxed_solutions(miner, round)
-                    self.evaluation.record_lowerbound(miner, round)
+                    self.evaluation.record_upperbound(miner, round)
                 if newblock is None:
                     continue
                 # 新挖出的矿进入网络

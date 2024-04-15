@@ -71,24 +71,21 @@ def set_network_param(config:configparser.ConfigParser, environ_settings):
 
 
 @get_time
-def run(pool_path):
-    """
-    单次运行入口
-    """
-    
+def run(pool_path = None):
+    """ 单次运行入口 """
     config, environ_settings = load_config()
     background = set_background(environ_settings)
-    set_logger(background, logging.INFO)
+    set_logger(background, logging.ERROR)
     network_param = set_network_param(config, environ_settings)
-    # t = int(environ_settings['t'])
-
     q_ave = int(environ_settings['q_ave'])
     q_distr = environ_settings['q_distr']
     target = environ_settings['target']
+    # t = int(environ_settings['t'])
     # adversary_ids = eval(environ_settings['adversary_ids'])
     adversary_ids = ()
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
+
     background.set_keyblock_strategy('pow')
     background.set_var_num('maxsat')
     background.set_solve_prob(0.5)
@@ -97,6 +94,7 @@ def run(pool_path):
     background.set_bb_difficulty(3)
     background.set_openblock_strategy(bb.OB_RAND)
     background.set_openprblm_strategy(bb.OP_RAND)
+
     if pool_path is not None:
         pool_path = Path(pool_path)
         background.set_result_path(background.get_result_path() / pool_path.stem)
@@ -105,7 +103,8 @@ def run(pool_path):
         # pool_path = Path.cwd()/"Problem Pools\\fig1.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
         # pool_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\json\problem poolvar162_pseudoBoolean-normalized-g9x9.opb.msat.wcnf.json"
-        pool_path = Path.cwd()/"testTSP\problem poolburma14.json"
+        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        # pool_path = Path.cwd()/"Problem Pools\problem pool1007_1805.json"
         # pool_path = Path.cwd()/"testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
 
@@ -124,11 +123,12 @@ def run(pool_path):
     #     Path.cwd()/"Problem Pools"/time.strftime("%m%d"))
     # lpprblm.save_test_prblm_pool([lp], f'prblm {time.strftime("%m%d_%H%M%S")}', 
     #     background.get_result_path())
-    # lp = lpprblm.test1()
+    # lp = lpprblm.test5()
     background.set_test_prblm(lp)
     quiet=False
     Z = Environment(background, t, q_ave, q_distr, target, 
-                    adversary_ids, network_param, lpprblm.test1(), True)
+                    adversary_ids, network_param, 
+                    genesis_prblm=None, recordSols = True)
     # Z.env_load_prblm_pool([lp, lp2])
     total_round = Z.exec(quiet=quiet)
     
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     simu_type = "single_run"
     # simu_type = "long"
     # simu_type = "short"
-    multiProcessOn = True
+    multiProcessOn = False
     threadNum = 2
     """
     short参数说明：
@@ -419,7 +419,7 @@ if __name__ == '__main__':
         if simu_type == "single_run":
             """单次运行测试"""
         
-            i = 0
+            # i = 0
             # while not run():
             #     i+=1
             #     print(i)
@@ -438,6 +438,7 @@ if __name__ == '__main__':
             print(pool_paths)
             for pool_path in pool_paths:
                 res.append(worker_pool.apply_async(single_run, [pool_path]))
+
         if simu_type == "short":
             for args in args_list:
                 if not multiProcessOn:

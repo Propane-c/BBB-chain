@@ -5,7 +5,7 @@ import sys
 from collections import defaultdict
 
 import data.lpprblm as lpprblm
-from data import Block, Chain, NewBlocks,TxPool
+from data import Block, Chain, PubBlocks,TxPool
 from branchbound import BranchBound
 from evaluation import Evaluation
 from .fork_view import ForkView
@@ -33,7 +33,7 @@ class Miner(object):
         self.input = 0  # 要写入新区块的值
         self.input_tape = []
         # 接收相关
-        self.receive_tape: list[NewBlocks] = []
+        self.receive_tape: list[PubBlocks] = []
         self.receive_history = []  # 保留最近接收到的3个块
         self.buffer_size = 3
         # 网络相关
@@ -63,7 +63,7 @@ class Miner(object):
             inLocalChain = True
         return inLocalChain
 
-    def receive_blocks(self, rcvblocks: NewBlocks, round):
+    def receive_blocks(self, rcvblocks: PubBlocks, round):
         """
         Interface between network and miner.
         Append rcvblock not received before to receive_tape, 
@@ -99,7 +99,7 @@ class Miner(object):
     
 
 
-    def receive_miniblock(self, rcvblocks: NewBlocks):
+    def receive_miniblock(self, rcvblocks: PubBlocks):
         '''
         检查该miniblock解决的问题是否已经被接收过了
 
@@ -135,7 +135,7 @@ class Miner(object):
                        "%s links to!" ,self.LOG_PREFIX, keyid, rcv_mb.name)
         return False
 
-    def receive_keyblock(self, rcvblocks: NewBlocks):
+    def receive_keyblock(self, rcvblocks: PubBlocks):
         """
         不接收：
             已经接收到了完全相同的key problem transaction
@@ -378,7 +378,7 @@ class Miner(object):
         return self.local_chain, new_update
         
 
-    def fork_choice_miniblock(self, round, rcvblock:NewBlocks):
+    def fork_choice_miniblock(self, round, rcvblock:PubBlocks):
         """
         rcvblock与正在求解的miniblock连接同一个子问题，放弃当前求解
         open_blocks中有区块与rcvblock连接到相同的问题，就不把rcvblock放入open_blocks中
@@ -463,7 +463,7 @@ class Miner(object):
         return copy_mb, add_success
 
          
-    def fork_choice_keyblock(self, round, rcvblock:NewBlocks):
+    def fork_choice_keyblock(self, round, rcvblock:PubBlocks):
         new_update = False
         if not rcvblock.iskeyblock:
             raise ValueError("Received block is not a keyblock")

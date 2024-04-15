@@ -12,10 +12,11 @@ from matplotlib import pyplot as plt
 import data.lpprblm as lpprblm
 import network
 from background import Background
-from data.chain import Block, Chain, NewBlocks
-from .bb_consensus import BranchBound
+from data import Block, Chain, PubBlocks
 from evaluation import Evaluation
 from miner.miner import Miner
+
+from .bb_consensus import BranchBound
 
 logger = logging.getLogger(__name__)
 class VirtualAttacker():
@@ -27,7 +28,7 @@ class VirtualAttacker():
         self.is_adversary = True
         self.vchain = Chain(context)
         self.consensus = BranchBound(context, self.vchain, self.miner_id)
-        self.merged_rcvtape:list[NewBlocks] = []
+        self.merged_rcvtape:list[PubBlocks] = []
         
 class Attack(metaclass=ABCMeta): 
     @abstractmethod
@@ -128,7 +129,7 @@ class default_attack_mode(metaclass = ABCMeta):
         """
         整合所有攻击者的receive tape到virtual_attacker
         """
-        merged_rcvtape:list[NewBlocks] = []
+        merged_rcvtape:list[PubBlocks] = []
         for attacker in self.attackers:
             if len(attacker.receive_tape) == 0:
                 continue
@@ -145,7 +146,7 @@ class default_attack_mode(metaclass = ABCMeta):
         启动攻击
         """
         attack_success = False
-        stealed_newmbs:list[NewBlocks] = []
+        stealed_newmbs:list[PubBlocks] = []
         if len(self.vattacker.merged_rcvtape) == 0:
             return stealed_newmbs
         for newblock in self.vattacker.merged_rcvtape:
@@ -348,7 +349,7 @@ class default_attack_mode(metaclass = ABCMeta):
         for prblm in honest_mb.pre:
             if prblm.pname == honest_mb.minifield.pre_pname:
                 copy_mb.minifield.pre_p = prblm
-        copy_newmb = NewBlocks(False, copy_mb, None, [], None)
+        copy_newmb = PubBlocks(False, copy_mb, None, [], None)
         return copy_newmb
     
     def add_miniblock_to_local_chain(attacker:Miner, rcv_mb:Block):

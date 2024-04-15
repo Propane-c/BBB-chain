@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("d:\\Files\\gitspace\\chain-xim")
+# sys.path.append("d:\\Files\\gitspace\\chain-xim")
 import copy  # noqa
 import logging  # noqa: E402
 import math  # noqa: E402
@@ -9,12 +9,12 @@ import warnings  # noqa: E402
 
 import numpy as np  # noqa: E402
 
-import data.lpprblm as lpprblm  # noqa: E402
+from data import lpprblm
 from background import Background  # noqa: E402
-from data.chain import Block, BlockHead, Chain, NewBlocks  # noqa: E402
+from data import Block, BlockHead, Chain, PubBlocks  # noqa: E402
 from functions import hashsha256  # noqa: E402, F401
 from data.lpprblm import IncConstr, LpPrblm  # noqa: E402
-from data.txpool import TxPool  # noqa: E402
+from data.txpool import Transaction, TxPool  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ VAR_SPEC = "var_specific"
 VAR_RAND = "var_random"
  
 class SolvingPair(object):
-    def __init__(self, p1: LpPrblm = None, p2: LpPrblm = None, key_lp:LpPrblm = None,
-                 solve_prob_init=0.01):
+    def __init__(self, p1: LpPrblm = None, p2: LpPrblm = None, 
+                 key_lp:LpPrblm = None, solve_prob_init=0.01):
         self.p1 = p1
         self.p2 = p2
         self.key_lp = key_lp
@@ -75,14 +75,14 @@ class SolvingPair(object):
         #     self.success2 = lpprblm.solve_lp(p2)
         if p1 is not None:
             self.success1 = lpprblm.solve_lp(
-                p1, self.key_lp.c, self.G_ub1, self.h_ub1, 
+                p1, self.key_lp.orig_c, self.G_ub1, self.h_ub1, 
                 self.key_lp.A_eq, self.key_lp.b_eq, 
                 self.key_lp.bounds, self.solve_prob)
             if self.success1:
                 p1.timestamp = round
         elif p2 is not None:
             self.success2 = lpprblm.solve_lp(
-                p2, self.key_lp.c, self.G_ub2, self.h_ub2, 
+                p2, self.key_lp.orig_c, self.G_ub2, self.h_ub2, 
                 self.key_lp.A_eq, self.key_lp.b_eq, 
                 self.key_lp.bounds, self.solve_prob)
             if self.success2:
@@ -112,8 +112,8 @@ class BranchBound(object):
         self.safe_thre = self.background.get_safe_thre()
         # global state
         self.fathomed_prblms: list[LpPrblm] = []
-        self.upper_bound = sys.maxsize
         self.lower_bound = -sys.maxsize
+        self.upper_bound = sys.maxsize
         self.opt_prblms: list[LpPrblm] = []
         self.mbs_unsafe: list[Block] = []
         # the miniblock being solved
@@ -184,6 +184,13 @@ class BranchBound(object):
         if self.cur_keyblock is None:
             self.wait_keyblock()
             return None, mineSuccess
+
+        if not self.cur_keyblock.get_fthmstat() and self.upper_bound is not None:
+            obs = self.cur_keyblock.get_keyprblm().obj_bounds
+            if len(obs) == 0 or (len(obs) > 0 and self.upper_bound < obs[0]):
+                newblocks, mineSuccess = self.mining_keyblock(
+                    blockchain, miner_id, input, round, q, prblm_pool, True)
+                return newblocks, mineSuccess
 
         # 尝试产生key-block
         if self.cur_keyblock.get_fthmstat():
@@ -316,7 +323,8 @@ class BranchBound(object):
         self.solved_pairs.append((p1, p2))
 
 
-    def mining_keyblock(self, blockchain, miner_id, input, round, q, prblm_pool):
+    def mining_keyblock(self, blockchain, miner_id, input, 
+                        round, q, prblm_pool, isInterMed=False):
         """
         尝试产生keyblock, 
         如果现在求解的keyblock的fathomed_state为True, 做PoW, 以产生keyblock
@@ -324,7 +332,7 @@ class BranchBound(object):
         # if not self.cur_keyblock.get_fthmstat():
         #     return None, False
         mined_kb, mining_success = self.keyblock_assemble(
-            blockchain, miner_id, input, round, q, prblm_pool)
+            blockchain, miner_id, input, round, q, prblm_pool, isInterMed)
         if mining_success:
             key_pname = (mined_kb.keyfield.key_tx.data.pname
                          if mined_kb.keyfield.key_tx is not None else None)
@@ -355,7 +363,7 @@ class BranchBound(object):
                     f"trying to publish is not a miniblock")
             logger.warning(wmsg)
             return None
-        publishing_block = NewBlocks(False, new_miniblock, None, [], None)
+        publishing_block = PubBlocks(False, new_miniblock, None, [], None)
         return publishing_block
 
  
@@ -368,19 +376,19 @@ class BranchBound(object):
                     f'trying to publish is not a keyblock')
             logger.warning(wmsg)
             return None
-        newblock = NewBlocks(None, None, None, [], None)
-        newblock.iskeyblock = True
-        newblock.keyblock = new_keyblock
-        newblock.mbs_unsafe = [mnb for mnb in self.mbs_unsafe]
+        pubblocks = PubBlocks(None, None, None, [], None)
+        pubblocks.iskeyblock = True
+        pubblocks.keyblock = new_keyblock
+        pubblocks.mbs_unsafe = [mnb for mnb in self.mbs_unsafe]
         if mb_with_kb is not None:
-            newblock.mb_with_kb = mb_with_kb
+            pubblocks.mb_with_kb = mb_with_kb
         # 如果需要连带miniblock一起，此时才清理`self.miniblocks_unsafe`
         if self.kb_strategy != "pow":
             self.mbs_unsafe = []
         logger.info(f"{self.LOG_PREFIX}: publish a keyblock "
-                    f"{newblock.keyblock.name} with unsafe blocks "
-                    f"{[mnb.name for mnb in newblock.mbs_unsafe]}")
-        return newblock
+                    f"{pubblocks.keyblock.name} with unsafe blocks "
+                    f"{[mnb.name for mnb in pubblocks.mbs_unsafe]}")
+        return pubblocks
 
 
     def cal_attack_rate(self, block: Block):
@@ -950,7 +958,7 @@ class BranchBound(object):
 
 
     def keyblock_assemble(self, chain: Chain, miner_id, input,
-                          round, key_pow_q, prblm_pool):
+                          round, key_pow_q, prblm_pool,isInterMed = False):
         '''Try to generate a keyblock, do key PoW
         and add a new problem from the prblm_pool'''
         genKeyblockSuccess = False
@@ -977,7 +985,7 @@ class BranchBound(object):
             # get a prblm from the prblm pool, and assemble a keyblock
             if len(self.opt_prblms) == 0:
                 preKeyFeasible = False
-            key_tx, solveSuccess = self.get_slove_next_keytx(prblm_pool, pre_pname)
+            key_tx, solveSuccess = self.get_and_slove_next_keytx(prblm_pool, pre_pname, isInterMed)
             if not solveSuccess:
                 return None, genKeyblockSuccess
             accect_mbs = self.get_fathomed_prblms_by_chain()
@@ -1074,33 +1082,74 @@ class BranchBound(object):
             pre_pname = random.choice(deepest_subprblms).pname
         self.key_assemble_pre_pname = pre_pname
         return pre_pname
+    
 
-    def get_slove_next_keytx(self, prblm_pool: TxPool, pre_pname:tuple):
+
+    def inter_key_prblm_assemble(self):
+        """当前keyblock实际上还没有解完，不需要从txpool中拿新的
+        根据miniblock更新新的obj_bounds，新构造一个可行性问题"""
+        # 如果当前的keyblock求解完了,说明要么是不可行的，
+        # 要么是可行的但是解都找到了，就去从txpool中去找
+        if self.cur_keyblock.get_fthmstat():
+            return None
+        
+        # 如果找到了新的下界，且当前keyblock没有求解完，新构造一个可行性问题
+        if self.upper_bound is not None:
+            kp = copy.deepcopy(self.cur_keyblock.get_keyprblm())
+            obj_bounds = []
+            
+            if len(kp.obj_bounds) == 0:
+                obj_bounds.append(self.upper_bound)
+                kp.update_obj_bounds(obj_bounds)
+                return kp
+            
+            if self.upper_bound > kp.obj_bounds[0]:
+                raise RuntimeError("Lower bound not satisfy the obj_bounds")
+            for i, ob in enumerate(kp.obj_bounds):
+                if self.upper_bound < ob:
+                    obj_bounds = kp.obj_bounds[i:]
+                    obj_bounds.insert(0, self.upper_bound)
+            kp.update_obj_bounds(obj_bounds)
+            return kp
+        # 没有求解完且没有找到新的下界，不应该产生中间级key_prblm
+        raise RuntimeError("Cur keyblock not solved yet!")
+        
+
+    def get_and_slove_next_keytx(self, prblm_pool: TxPool, 
+                                 pre_pname:tuple, isInterMed:bool = False):
         """
         从prblm_pool中取一个原始问题tx, 以加入keyfield
         """
-        if len(prblm_pool.pending) <= 0:
-            key_tx = None
-            print(f'{self.LOG_PREFIX}: No more problems to solve in the pool.')
-            return key_tx, True
+        key_tx = None
+        key_p = None
+        # 如果需要产生的是中间级keyblock
+        if isInterMed:
+            key_p = self.inter_key_prblm_assemble()
+            key_tx = Transaction(self.miner_id, random.randint(0,1e5), key_p)
+        # 需要从txpool中找新的key_p
+        if key_p is None:
+            if len(prblm_pool.pending) <= 0:
+                print(f'{self.LOG_PREFIX}: No more problems to solve in the pool.')
+                return key_tx, True
 
-        key_tx = prblm_pool.pending[0]
-        keyprblm = key_tx.data
-        
-        solveSuccess = lpprblm.solve_lp(keyprblm, self.solve_prob_init)
+            key_tx = prblm_pool.pending[0]
+            key_p = key_tx.data
+            
+        solveSuccess = lpprblm.solve_lp(key_p, solve_prob=self.solve_prob_init)
         if not solveSuccess:
             logger.info(f"{self.LOG_PREFIX}: solving next key-problem failed")
             return None, solveSuccess
         
         logger.info(f"{self.LOG_PREFIX}: solving next key-problem success")
-        prblm_pool.pending.pop(0)
-        prblm_pool.reorg()
-        keyprblm.pname = ((self.background.key_id_generator(), 0), 0)
-        keyprblm.pre_pname = pre_pname
+        if not isInterMed:
+            prblm_pool.pending.pop(0)
+            prblm_pool.reorg()
+        key_p.pname = ((self.background.key_id_generator(), 0), 0)
+        key_p.pre_pname = pre_pname
         # lpprblm.solve_ilp_by_pulp(keyprblm)
-        _, _, _, keyprblm.fathomed = self.check_fathomed(keyprblm, -sys.maxsize)
-        keyprblm.fthmd_state = keyprblm.fathomed
-        keyprblm.timestamp = self.round
+        _, _, _, key_p.fathomed = self.check_fathomed(key_p, -sys.maxsize)
+        key_p.fthmd_state = key_p.fathomed
+        key_p.timestamp = self.round
         return key_tx, solveSuccess
 
 
@@ -1125,8 +1174,8 @@ class BranchBound(object):
         self.open_blocks = []
         self.fathomed_prblms = []
         self.opt_prblms = []
-        self.upper_bound = sys.maxsize
         self.lower_bound = -sys.maxsize
+        self.upper_bound = sys.maxsize
         self.optprblm_cache = None
         # 来源于外界的keyblock，需要清理全部的旧信息
         if kb_from == "outer":
@@ -1238,7 +1287,7 @@ class BranchBound(object):
         return new_p1, new_p2
 
 
-    def check_fathomed(self, lp_prblm: LpPrblm, lowerbound=None):
+    def check_fathomed(self, lp_prblm: LpPrblm, upperbound=None):
         '''Judge whether the subproblem branch fathomed.
         return: (infeas_fthmd, wrs_fthmd, int_soln_fthmd, prblm_fthmd)
         :prblm_fthmd = infeas_fthmd or wrs_fthmd or int_soln_fthmd
@@ -1248,12 +1297,12 @@ class BranchBound(object):
             raise ValueError(f"{self.LOG_PREFIX}: The problem{lp_prblm.pname} to"
                              "check fathomed is not solved yet")
         # 获取全局下界
-        if lowerbound is not None:
-            lb = lowerbound
+        if upperbound is not None:
+            ub = upperbound
         else:
-            lb = self.lower_bound
+            ub = self.upper_bound
             if self.optprblm_cache is not None:
-                lb = (lb if lb >= self.optprblm_cache.z_lp 
+                ub = (ub if ub <= self.optprblm_cache.z_lp 
                       else self.optprblm_cache.z_lp)
 
         infeas = False
@@ -1264,7 +1313,7 @@ class BranchBound(object):
             infeas = True
             return infeas, wrs, int_soln, True
         # The objective function is worse than the lowerbound.
-        if lp_prblm.z_lp < lb:
+        if lp_prblm.z_lp > ub:
             wrs = True
             return infeas, wrs, int_soln, True
         # Integer solution and better than the lowerbound.
@@ -1304,7 +1353,7 @@ class BranchBound(object):
         # update upperbound
         if not infeas and not wrs and updateUBCrtl:
             # if lp_prblm.z_lp > self.lower_bound:
-            self.upper_bound = lp_prblm.z_lp
+            self.lower_bound = lp_prblm.z_lp
             updateUB = True
         return updateLB, updateUB
 
@@ -1317,11 +1366,11 @@ class BranchBound(object):
         """
         # 如果大于lower_bound，直接更新最优解
         imsg = None
-        if lp_prblm.z_lp > self.lower_bound:
+        if lp_prblm.z_lp < self.upper_bound:
             if opt_save_loc == 'opt_prblms':
                 self.opt_prblms.clear()
                 self.opt_prblms.append(lp_prblm)
-                self.lower_bound = lp_prblm.z_lp
+                self.upper_bound = lp_prblm.z_lp
                 imsg = (f"{self.LOG_PREFIX}: update opt_prblm:"
                         f"{lp_prblm.pname} with z_lp {lp_prblm.z_lp}")
             elif opt_save_loc == 'cache':
@@ -1330,7 +1379,7 @@ class BranchBound(object):
                         f"{lp_prblm.pname} with z_lp {lp_prblm.z_lp}")
 
         # 如果与lower_bound相等，将其附加到`opt_prblms`
-        elif (lp_prblm.z_lp == self.lower_bound and lp_prblm not in self.opt_prblms):
+        elif (lp_prblm.z_lp == self.upper_bound and lp_prblm not in self.opt_prblms):
             if opt_save_loc == 'opt_prblms':
                 self.opt_prblms.append(lp_prblm)
                 imsg = (f"{self.LOG_PREFIX}: append opt_prblm:"
@@ -1349,14 +1398,14 @@ class BranchBound(object):
         """
         if self.optprblm_cache is None:
             return
-        if self.optprblm_cache.z_lp > self.lower_bound:
+        if self.optprblm_cache.z_lp < self.upper_bound:
             self.opt_prblms.clear()
             self.opt_prblms.append(self.optprblm_cache)
-            self.lower_bound = self.optprblm_cache.z_lp
+            self.upper_bound = self.optprblm_cache.z_lp
             imsg = (f"{self.LOG_PREFIX}: adopt opt_cache:"
                     f"{self.optprblm_cache.pname} with z_lp {self.optprblm_cache.z_lp}")
             logger.info(imsg)
-        elif (self.optprblm_cache.z_lp == self.lower_bound and
+        elif (self.optprblm_cache.z_lp == self.upper_bound and
               self.optprblm_cache not in self.opt_prblms):
             self.opt_prblms.append(self.optprblm_cache)
             imsg = (f"{self.LOG_PREFIX}: adopt and append opt_cache:"
@@ -1374,6 +1423,7 @@ class BranchBound(object):
 # miniblock指向一个问题
 
 """if __name__ == '__main__':
+
     # s = 'P0'
     # s = int(re.sub('\D', '', s))
     # print(s, type(s))

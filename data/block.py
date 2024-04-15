@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class NewBlocks:
+class PubBlocks:
     """
     共识产生的新区块的结构
     """

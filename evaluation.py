@@ -78,9 +78,9 @@ class Evaluation(object):
         self.feasi_kbs = []
         # fig 1 solving process
         self.cur_rlxsol = 0 
-        self.cur_lb = -sys.maxsize # 全局的最大下界
+        self.cur_ub = sys.maxsize # 全局的最大下界
         self.relax_sols = defaultdict(list) # {round:[rlx_sols for cur round]}
-        self.lowerbounds = defaultdict(int) # {round:lb}
+        self.upperbounds = defaultdict(int) # {round:lb}
         self.ubdata:list[tuple] = []
         # fig 2 keyblock inter-block time
         self.kb_block_times = []
@@ -211,8 +211,8 @@ class Evaluation(object):
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            if not kb.get_fthmstat():
-                continue
+            # if not kb.get_fthmstat():
+            #     continue
             kp = kb.get_keyprblm()
             kub = UbData(kb.get_miner_id(), kb.name, kp.timestamp, 
                          kb.get_timestamp(), kp.pname, "None", kp.z_lp,
@@ -230,13 +230,13 @@ class Evaluation(object):
                                  p.fathomed, allInt, mb.isFork)
                     self.ubdata.append(astuple(pub))
                     
-    def record_lowerbound(self, miner, round:int):
+    def record_upperbound(self, miner, round:int):
         """
-        记录全局的最大下界
+        记录全局的最大上界
         """
-        conss_lb = miner.consensus.lower_bound
-        self.cur_lb = conss_lb if conss_lb > self.cur_lb else self.cur_lb 
-        self.lowerbounds[round] = self.cur_lb
+        conss_ub = miner.consensus.upper_bound
+        self.cur_ub = conss_ub if conss_ub < self.cur_ub else self.cur_ub 
+        self.upperbounds[round] = self.cur_ub
         # self.lb_perminer[miner.Miner_ID]
 
     def get_solving_rounds_kbtimes_mbgrowth(self, chain:Chain):
@@ -459,7 +459,7 @@ class Evaluation(object):
             solve_prob = solve_prob,
             openblk_st = openblk_st,
             openprblm_st = openprblm_st,
-            lowerbounds = dict(self.lowerbounds),
+            lowerbounds = dict(self.upperbounds),
             ubdata = self.ubdata,
             solve_rounds = self.solve_rounds,
             subpair_nums = self.subpair_nums,

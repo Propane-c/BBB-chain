@@ -1,5 +1,5 @@
 from miner.miner import Miner
-from data.chain import NewBlocks
+from data import PubBlocks
 from .network_abc import Network
 
 class SynchronousNetwork(Network):
@@ -8,7 +8,7 @@ class SynchronousNetwork(Network):
     def __init__(self, global_var, miners: list[Miner]):
         super().__init__(global_var)
         self.miners = miners
-        self.network_tape:list[NewBlocks] = []  # network_tape存储要广播的新块和对应的信息
+        self.network_tape:list[PubBlocks] = []  # network_tape存储要广播的新块和对应的信息
         # 元素chain_packet为字典存储新块及'minerid'、'TTL'等信息
 
         # with open(self.NET_RESULT_PATH / 'network_log.txt', 'a') as f:
@@ -17,7 +17,7 @@ class SynchronousNetwork(Network):
     def set_net_param(self):
         pass
 
-    def access_network(self, newblock:NewBlocks, minerid, round):
+    def access_network(self, newblock:PubBlocks, minerid, round):
         """ 本轮新产生的块添加到network_tape\n
         param: newblock type:block
                minerid type:int
