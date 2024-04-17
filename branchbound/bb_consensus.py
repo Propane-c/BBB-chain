@@ -187,7 +187,9 @@ class BranchBound(object):
 
         if not self.cur_keyblock.get_fthmstat() and self.upper_bound is not None:
             obs = self.cur_keyblock.get_keyprblm().obj_bounds
-            if len(obs) == 0 or (len(obs) > 0 and self.upper_bound < obs[0]):
+            init_ob = self.cur_keyblock.get_keyprblm().init_bound
+            if ((len(obs) == 0 and self.upper_bound < init_ob) or 
+                (len(obs) > 0 and self.upper_bound < obs[0])):
                 newblocks, mineSuccess = self.mining_keyblock(
                     blockchain, miner_id, input, round, q, prblm_pool, True)
                 return newblocks, mineSuccess
@@ -314,12 +316,18 @@ class BranchBound(object):
             if self.optprblm_cache is not None:
                 p1.lb_prblm = self.optprblm_cache
             else:
-                p1.lb_prblm = random.choice(self.opt_prblms)
+                if len(self.opt_prblms) != 0:
+                    p1.lb_prblm = random.choice(self.opt_prblms)
+                else:
+                    p1.lb_prblm = self.cur_keyblock.get_keyprblm()
         if wrs2:
             if self.optprblm_cache is not None:
                 p2.lb_prblm = self.optprblm_cache
             else:
-                p2.lb_prblm = random.choice(self.opt_prblms)
+                if len(self.opt_prblms) != 0:
+                    p2.lb_prblm = random.choice(self.opt_prblms)
+                else:
+                    p2.lb_prblm = self.cur_keyblock.get_keyprblm()
         self.solved_pairs.append((p1, p2))
 
 
@@ -985,7 +993,8 @@ class BranchBound(object):
             # get a prblm from the prblm pool, and assemble a keyblock
             if len(self.opt_prblms) == 0:
                 preKeyFeasible = False
-            key_tx, solveSuccess = self.get_and_slove_next_keytx(prblm_pool, pre_pname, isInterMed)
+            key_tx, solveSuccess = self.get_and_slove_next_keytx(
+                prblm_pool, pre_pname, isInterMed)
             if not solveSuccess:
                 return None, genKeyblockSuccess
             accect_mbs = self.get_fathomed_prblms_by_chain()
@@ -1097,7 +1106,7 @@ class BranchBound(object):
         if self.upper_bound is not None:
             kp = copy.deepcopy(self.cur_keyblock.get_keyprblm())
             obj_bounds = []
-            
+            print(f"mining new keyblock ub: {self.upper_bound} obj_bounds：{kp.init_bound, kp.obj_bounds}")
             if len(kp.obj_bounds) == 0:
                 obj_bounds.append(self.upper_bound)
                 kp.update_obj_bounds(obj_bounds)
@@ -1107,8 +1116,8 @@ class BranchBound(object):
                 raise RuntimeError("Lower bound not satisfy the obj_bounds")
             for i, ob in enumerate(kp.obj_bounds):
                 if self.upper_bound < ob:
-                    obj_bounds = kp.obj_bounds[i:]
-                    obj_bounds.insert(0, self.upper_bound)
+                    obj_bounds = kp.obj_bounds[i+1:]
+            obj_bounds.insert(0, self.upper_bound)
             kp.update_obj_bounds(obj_bounds)
             return kp
         # 没有求解完且没有找到新的下界，不应该产生中间级key_prblm
@@ -1135,7 +1144,8 @@ class BranchBound(object):
             key_tx = prblm_pool.pending[0]
             key_p = key_tx.data
             
-        solveSuccess = lpprblm.solve_lp(key_p, solve_prob=self.solve_prob_init)
+        # solveSuccess = lpprblm.solve_lp(key_p, solve_prob=self.solve_prob_init)
+        solveSuccess = lpprblm.solve_lp(key_p, solve_prob=1)
         if not solveSuccess:
             logger.info(f"{self.LOG_PREFIX}: solving next key-problem failed")
             return None, solveSuccess
@@ -1147,7 +1157,7 @@ class BranchBound(object):
         key_p.pname = ((self.background.key_id_generator(), 0), 0)
         key_p.pre_pname = pre_pname
         # lpprblm.solve_ilp_by_pulp(keyprblm)
-        _, _, _, key_p.fathomed = self.check_fathomed(key_p, -sys.maxsize)
+        _, _, _, key_p.fathomed = self.check_fathomed(key_p, sys.maxsize)
         key_p.fthmd_state = key_p.fathomed
         key_p.timestamp = self.round
         return key_tx, solveSuccess
@@ -1175,6 +1185,7 @@ class BranchBound(object):
         self.fathomed_prblms = []
         self.opt_prblms = []
         self.lower_bound = -sys.maxsize
+
         self.upper_bound = sys.maxsize
         self.optprblm_cache = None
         # 来源于外界的keyblock，需要清理全部的旧信息
@@ -1191,6 +1202,8 @@ class BranchBound(object):
         if keyblock.keyfield.key_tx is not None:
             self.cur_keyblock = keyblock
             self.cur_keyid = keyblock.keyfield.key_tx.data.pname[0][0]
+            if keyblock.get_keyprblm().init_bound is not None:
+                self.upper_bound = keyblock.get_keyprblm().init_bound
             if len(keyblock.next) == 0:
                 self.open_blocks.append(keyblock)
         else:

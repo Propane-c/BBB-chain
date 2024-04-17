@@ -395,9 +395,9 @@ class Miner(object):
         rcv_mb = rcvblock.miniblock
         logger.info("round %s miner %s: rcv_mb %s fthmd state %s",
                     round, self.miner_id, rcv_mb.name, rcv_mb.get_fthmstat())
-        # 验证合法性
-        if not self.consensus.valid_block(self.local_chain, rcv_mb):
-            return new_update
+        # # 验证合法性
+        # if not self.consensus.valid_block(self.local_chain, rcv_mb):
+        #     return new_update
         # 添加到链上
         copy_mb, add_success = self.add_miniblock_to_local_chain(rcv_mb)
         if add_success is False:
@@ -471,11 +471,11 @@ class Miner(object):
         rcvkb = rcvblock.keyblock
         rcvmbs_unsafe = rcvblock.mbs_unsafe
         # 验证合法性
-        for mb_unsafe in rcvmbs_unsafe:
-            if not self.consensus.valid_block(self.local_chain, mb_unsafe):
-                return new_update
-        if not self.consensus.valid_block(self.local_chain, rcvkb):
-                return new_update
+        # for mb_unsafe in rcvmbs_unsafe:
+        #     if not self.consensus.valid_block(self.local_chain, mb_unsafe):
+        #         return new_update
+        # if not self.consensus.valid_block(self.local_chain, rcvkb):
+        #         return new_update
         # 先添加不满足安全性的miniblock到链上
         for mb_unsafe in rcvmbs_unsafe:
             copyblk, add_success = self.add_miniblock_to_local_chain(mb_unsafe)

@@ -78,11 +78,14 @@ class LpPrblm(object):
             self.A_eq = None
             self.b_eq = None
 
+        self.init_bound = None
+
         if orig_c is not None: # 只有keyblock会传入c
             self.orig_c:np.ndarray = orig_c
             self.c = np.zeros(self.orig_c.size)
-            np.append(self.G_ub, self.orig_c[np.newaxis, :], axis=0)
-            np.append(self.h_ub, np.array([obj_bounds[0]]), axis=0)
+            self.G_ub = np.append(self.G_ub, self.orig_c[np.newaxis, :], axis=0)
+            self.h_ub = np.append(self.h_ub, np.array([obj_bounds[0]]), axis=0)
+            self.init_bound = obj_bounds[0]
             if len(obj_bounds) > 1:
                 self.obj_bounds = obj_bounds[1:]
             else:
@@ -143,10 +146,13 @@ class LpPrblm(object):
     def update_obj_bounds(self, obj_bounds):
         if self.orig_c is None:
             raise ValueError("Updating objective bounds: Not a keyblock, orig_c is None!")
-        np.append(self.G_ub, self.orig_c[np.newaxis, :], axis=0)
-        np.append(self.h_ub, np.array([obj_bounds[0]]), axis=0)
+        self.G_ub = np.append(self.G_ub, self.orig_c[np.newaxis, :], axis=0)
+        self.h_ub = np.append(self.h_ub, np.array([obj_bounds[0]]), axis=0)
+        self.init_bound = obj_bounds[0]
         if len(obj_bounds) > 1:
             self.obj_bounds = obj_bounds[1:]
+        else:
+            self.obj_bounds = []
         
     def __deepcopy__(self, memo): 
         cls = self.__class__
@@ -252,13 +258,13 @@ class LpPrblm(object):
         return self.fthmd_state
 
 
-def solve_lp(lp_prblm:"LpPrblm" = None, c = None, G_ub = None, h_ub = None, 
+def solve_lp(lp_prblm:"LpPrblm" = None, orig_c = None, G_ub = None, h_ub = None, 
              A_eq = None, b_eq = None, bounds = None, solve_prob = 1):
     '''Solve the given lp problem, and save the result in the LpPrblm.'''
     s = np.random.random()
     if s < solve_prob:
-        if c is None:
-            c = lp_prblm.orig_c
+        if orig_c is None:
+            orig_c = lp_prblm.orig_c
             G_ub = lp_prblm.G_ub
             h_ub = lp_prblm.h_ub
             A_eq = lp_prblm.A_eq
@@ -279,12 +285,18 @@ def solve_lp(lp_prblm:"LpPrblm" = None, c = None, G_ub = None, h_ub = None,
             # r = linprog(lp_prblm.c, lp_prblm.G_ub, lp_prblm.h_ub, 
                         # lp_prblm.A_eq, lp_prblm.b_eq, lp_prblm.bounds)
         # else:
-        r = linprog(c, G_ub, h_ub, A_eq, b_eq, bounds)
+        # c =  np.zeros(orig_c.size)
+        r = linprog(orig_c, G_ub, h_ub, A_eq, b_eq, bounds)
         lp_prblm.feasible = r.success
         if r.success:
             lp_prblm.x_lp = r.x
             # lp_prblm.z_lp = -r.fun
-            lp_prblm.z_lp = lp_prblm.x_lp @ c
+            lp_prblm.z_lp = lp_prblm.x_lp @ orig_c
+            if orig_c is None:
+                oc = -lp_prblm.orig_c
+                lp_prblm.G_ub = np.append(lp_prblm.G_ub, oc[np.newaxis, :], axis=0)
+                lp_prblm.h_ub = np.append(lp_prblm.h_ub, np.array([-lp_prblm.z_lp]), axis=0)
+
             # lp_prblm.set_orig_z_lp(c)
         solved_success = True
     else: 
@@ -534,7 +546,11 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
                 copy.deepcopy(h_ub), 
                 copy.deepcopy(A_eq), 
                 copy.deepcopy(b_eq), 
-                bounds, obj_bounds=[7000,3500])
+                # bounds, obj_bounds=[4000, 3500, 3450,3400, 3330])
+                # bounds, obj_bounds=[4000, 3500, 3400, 3330])
+                # bounds, obj_bounds=[4000, 3500, 3330])
+                # bounds, obj_bounds=[4000,3500,3400])
+                bounds, obj_bounds=[4000,3500])
             if 'conti_vars' in prblm.keys():
                 orig_prblm.conti_vars = prblm['conti_vars']
             # solve_ilp_by_pulp(orig_prblm)

@@ -85,12 +85,12 @@ class KeyField(object):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if (cls.__name__ == 'KeyField' and k != 'pre_keyblock' 
-                                        and k != 'next_keyblocks'):
+            if (cls.__name__ == 'KeyField' and k != 'pre_kb' 
+                                        and k != 'next_kbs'):
                 setattr(result, k, copy.deepcopy(v, memo))
-            if cls.__name__ == 'KeyField' and k == 'pre_keyblock':
+            if cls.__name__ == 'KeyField' and k == 'pre_kb':
                 setattr(result, k, None)
-            if cls.__name__ == 'KeyField' and k == 'next_keyblocks':
+            if cls.__name__ == 'KeyField' and k == 'next_kbs':
                 setattr(result, k, [])
             if cls.__name__ != 'KeyField':
                 setattr(result, k, copy.deepcopy(v, memo))

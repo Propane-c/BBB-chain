@@ -1,10 +1,12 @@
+import sys
+sys.path.append('E:/Files/gitspace/bbb-github')
+
 import json
 from collections import defaultdict
-from pathlib import Path
 
 import pandas as pd
 
-from branchbound import bb_consensus as bb
+import branchbound.bb_consensus as bb
 import myplot
 import myplot2
 
@@ -311,17 +313,17 @@ def create_data_dict_miner(json_data_list):
 
 if __name__ == "__main__":
     """载入数据"""
-    format_str = DATAFRAME
+    # format_str = DATAFRAME
     # format_str = MINER
     # format_str = DIFF
     # format_str = LONG
     # format_str = ATTACK
     # format_str = SEARCH
     # format_str = SINGLE_EVA
-    # format_str = LBUB
+    format_str = LBUB
     # data = load_json_file(Path.cwd()/"Result_Data"/ "1210short_data测试不同st.json", format_str)Results\20240104\Results\
     # data = load_json_file(Path.cwd()/"Result_Data\\tsp solving process.json", format_str)
-    data = load_json_file(Path.cwd()/"Result_Data\\0131tspm135mbtimes2.json", format_str)
+    data = load_json_file("E:\Files\gitspace\\bbb-github\Results\\20240417\\103148\pproblem poolburma14m1d3evaluation results.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\m1d5vmaxsatevaluation results.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\\1226v100_50m1_20.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\maxsatfig3\m1d5vmaxsatevaluation results.json", format_str)
@@ -388,7 +390,7 @@ if __name__ == "__main__":
         myplot.draw_radars(data)
     elif format_str ==LBUB:
         # myplot.plot_relaxed_sulotions(data)
-        myplot2.plot_bounds_fig3(data, MAXSAT)
+        myplot2.plot_bounds_fig3(data, TSP)
 
     elif format_str ==DATAFRAME:
         myplot2.plot_mbtime_grow_fig5()

@@ -1,35 +1,28 @@
 import json
 import math
 import pathlib
-import sys
 import time
 from collections import defaultdict
-from itertools import groupby
+import sys
+sys.path.append('E:/Files/gitspace/bbb-github')
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from brokenaxes import brokenaxes
 from matplotlib.colors import to_rgb
 from matplotlib.patches import (
-    ConnectionPatch,
     Ellipse,
-    FancyBboxPatch,
-    Patch,
-    PathPatch,
     Rectangle,
 )
 from matplotlib.path import Path
 from matplotlib.ticker import PercentFormatter
 from scipy.signal import find_peaks, peak_prominences
-from scipy.stats import gaussian_kde
 
-import background
-import bb_consensus as bb
+import branchbound.bb_consensus as bb
 
-SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
+SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0415"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
 SAVE = True
 
@@ -502,35 +495,35 @@ def plot_bounds_fig3(data_list:list[dict], type):
                     color = color, linestyle=linestyle, linewidth=linewidth, alpha=0.7, zorder=6)
 
 
-    def get_pre_root(point):
-        if point['pre_pname'] == None:
-            return None
-        pre_point_rows = ub_df[ub_df['pname'] == point['pre_pname']]
-        pre_point = pre_point_rows.iloc[0] if not pre_point_rows.empty else None
-        while pre_point is not None and pre_point['block'] == point['block']:
-            point = pre_point
-            pre_point_rows = ub_df[ub_df['pname'] == point['pre_pname']]
-            pre_point = pre_point_rows.iloc[0] if not pre_point_rows.empty else None
-        if pre_point is None:
-            return None 
-        return root_df[root_df['block'] == pre_point['block']].iloc[0]
+    # def get_pre_root(point):
+    #     if point['pre_pname'] == None:
+    #         return None
+    #     pre_point_rows = ub_df[ub_df['pname'] == point['pre_pname']]
+    #     pre_point = pre_point_rows.iloc[0] if not pre_point_rows.empty else None
+    #     while pre_point is not None and pre_point['block'] == point['block']:
+    #         point = pre_point
+    #         pre_point_rows = ub_df[ub_df['pname'] == point['pre_pname']]
+    #         pre_point = pre_point_rows.iloc[0] if not pre_point_rows.empty else None
+    #     if pre_point is None:
+    #         return None 
+    #     return root_df[root_df['block'] == pre_point['block']].iloc[0]
 
     
     data = data_list[0]
     ub_data = data.get("ubdata", [])
-    columns = ["miner", "block", "round", "bround", "pname", "pre_pname", "ub", "fathomed", "allInteger", "isFork"]
+    columns = ["miner", "block", "round", "bround", "pname", "pre_pname", "ub", "fathomed", "allInteger", "isFork", "isKeyblock"]
     ub_data = [dict(zip(columns, point)) for point in ub_data]
     if type != MAXSAT:
         for point in ub_data:
             if point["ub"] is None:
                 continue
-            point["ub"] = -point["ub"]
+            point["ub"] = point["ub"]
     lowerbounds = data.get("lowerbounds", {})
     point_lookup = {get_pname(point['pname']): point for point in ub_data}
     children_counts = defaultdict(lambda : 1) 
     count_children(ub_data)
     
-    print(children_counts)
+    # print(children_counts)
 
     # 创建数据帧
     ub_df = pd.DataFrame(ub_data)
@@ -541,95 +534,113 @@ def plot_bounds_fig3(data_list:list[dict], type):
     ub_df['is_main'] = ~ub_df['isFork'] & ~ub_df['fathomed'] & (ub_df['block'] != "None")
     ub_df['is_fathomed'] = ub_df['fathomed']
     # sampled_df = ub_df.sample(frac=0.01, random_state=0)  # 调整抽样比例
-    root_df = ub_df.copy().groupby('block').apply(lambda x: x.nsmallest(1, 'round')).reset_index(1,drop=True)
-    main_df = ub_df[ub_df["fathomed"] == False].copy()
-    min_ub_df = main_df[main_df['ub'] == main_df.groupby('block')['ub'].transform('min')]
-    max_ub_value = main_df.groupby('block')['ub'].max()
-    block_df = pd.merge(min_ub_df, max_ub_value, on='block', suffixes=('_min', '_max'))
-    # block_df = main_df.groupby('block').agg(min_ub=('ub', 'min'), max_ub=('ub', 'max'), bround=('bround', 'min')).reset_index()
-    pre_rows = []
-    for _, row in root_df.iterrows():
-        pre_pname = row['pre_pname']
-        matched_row = ub_df[ub_df['pname'] == pre_pname]
-        pre_rows.append(matched_row)
-    pre_df = pd.concat(pre_rows)
-    bpre_rows = []
-    for _, row in block_df.iterrows():
-        pre_pname = row['pre_pname']
-        matched_row = ub_df[ub_df['pname'] == pre_pname]
-        bpre_rows.append(matched_row)
+    # root_df = ub_df.copy().groupby('block').apply(lambda x: x.nsmallest(1, 'round')).reset_index(1,drop=True)
+    # main_df = ub_df[ub_df["fathomed"] == False].copy()
+    # min_ub_df = main_df[main_df['ub'] == main_df.groupby('block')['ub'].transform('min')]
+    # max_ub_value = main_df.groupby('block')['ub'].max()
+    # block_df = pd.merge(min_ub_df, max_ub_value, on='block', suffixes=('_min', '_max'))
+    # # block_df = main_df.groupby('block').agg(min_ub=('ub', 'min'), max_ub=('ub', 'max'), bround=('bround', 'min')).reset_index()
+    # pre_rows = []
+    # for _, row in root_df.iterrows():
+    #     pre_pname = row['pre_pname']
+    #     matched_row = ub_df[ub_df['pname'] == pre_pname]
+    #     pre_rows.append(matched_row)
+    # pre_df = pd.concat(pre_rows)
+    # bpre_rows = []
+    # for _, row in block_df.iterrows():
+    #     pre_pname = row['pre_pname']
+    #     matched_row = ub_df[ub_df['pname'] == pre_pname]
+    #     bpre_rows.append(matched_row)
+    # print("plot")
         
-    bpre_df = pd.concat( bpre_rows)
-    children_counts[((0,0),0)]=bpre_df['children_count'].max()
-    print(ub_df)
-    print(block_df)
-    print(root_df)
-    print(pre_df)
+    # bpre_df = pd.concat( bpre_rows)
+    # children_counts[((0,0),0)]=bpre_df['children_count'].max()
+    # print(ub_df)
+    # print(block_df)
+    # print(root_df)
+    # print(pre_df)
 
      # sns.set(style="white")
     fig = plt.figure(figsize=(10, 6))
     ax = fig.gca()
 
     # 标记allInteger路径
-    int_paths = []
-    intpath_points = set()
-    max_bround_point = None
-    max_bround = float('-inf')
-    for point in ub_data:
-        if point['allInteger'] and point["block"]!= "None":
-            cur_point = point
-            path = [cur_point]
-            if point['bround'] > max_bround:
-                max_bround = point['bround']
-                max_bround_point = point
-            if point['bround'] == max_bround and point['ub'] < max_bround_point['ub']:
-                max_bround = point['bround']
-                max_bround_point = point
-            while cur_point['pre_pname'] != 'None':
-                pre_pname = get_pname(cur_point['pre_pname'])
-                pre_point = point_lookup.get(pre_pname)
-                if pre_point:
-                    path.append(pre_point)
-                    intpath_points.add(get_pname(point['pname']))
-                    cur_point = pre_point
-                else:
-                    break
-            int_paths.append(path)
-    for path in int_paths:
-        if max_bround_point in path:
-            # 用红色标记这条路径
-            draw_int_path(path, "red", 5,'-')
-        else:
-            # 其他路径使用默认颜色
-            draw_int_path(path)
+    def get_draw_all_integer_path():
+        int_paths = []
+        intpath_points = set()
+        max_bround_point = None
+        max_bround = float('-inf')
+        for point in ub_data:
+            if point['allInteger'] and point["block"]!= "None":
+                cur_point = point
+                path = [cur_point]
+                if point['bround'] > max_bround:
+                    max_bround = point['bround']
+                    max_bround_point = point
+                if point['bround'] == max_bround and point['ub'] < max_bround_point['ub']:
+                    max_bround = point['bround']
+                    max_bround_point = point
+                while cur_point['pre_pname'] != 'None':
+                    pre_pname = get_pname(cur_point['pre_pname'])
+                    pre_point = point_lookup.get(pre_pname)
+                    if pre_point:
+                        path.append(pre_point)
+                        intpath_points.add(get_pname(point['pname']))
+                        cur_point = pre_point
+                    else:
+                        break
+                int_paths.append(path)
+        # for path in int_paths:
+        #     if max_bround_point in path:
+        #         # 用红色标记这条路径
+        #         draw_int_path(path, "red", 5,'-')
+        #     else:
+        #         # 其他路径使用默认颜色
+        #         draw_int_path(path)
+        # sampled_points = set(root_df['pname']).union(intpath_points).union((((0,0),0)))
+    
+    # get_draw_all_integer_path()
 
-    sampled_points = set(root_df['pname']).union(intpath_points).union((((0,0),0)))
+    
     # sampled_points = set(ub_df.sample(frac=0.1, random_state=0)['pname'])
     # sampled_points = sampled_points.union(intpath_points)
     # ["#B96666","#78BCFF","#66A266","#F2A663","#BEA9E9"] 
     # ["#FF8283", "#0D898A","#f9cc52","#5494CE", ] '#00796B' '#ff8c00' '#b22222'
     # 绘制UB数据点和连接线
-    smain = 80
+    smain = 10
     s = 5 if type == TSP else 80
-    sopt = 150
+    sopt = 50
     rasterized=False if type == MIPLTP else True
     if type != TSP:
         sns.scatterplot(x="bround",y ="ub",
                         data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] ,
                         s = smain, color = '#0072BD', rasterized=rasterized ,edgecolor="none",
                         zorder = 5, alpha = 0.7) ,
+    
+    print("plot0")
+    sns.scatterplot(x="round",y ="ub",
+                    data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] , 
+                    s = smain, color = '#0072BD', rasterized=rasterized ,edgecolor="none",
+                    zorder = 5, alpha = 0.7)
+    print("plot1")
     sns.scatterplot(x="round",y ="ub",
                     data = ub_df[(ub_df["fathomed"]== True) & 
                                  (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
                     color = "#ff8c00", s= s,rasterized=rasterized,edgecolor="none",alpha = 0.5)
+    print("plot2")
     sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["block"]== "None")], 
                     color = "#9acd32", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
-    sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
-                    color = "black", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
+    print("plot3")
+    # sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
+    #                 color = "black", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
+    print("plot4")
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["allInteger"] == True) & (ub_df["block"]!= "None")] , 
-                    color = "r", s = sopt,rasterized=rasterized,edgecolor="none",zorder = 6) 
-    point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
-    print(bpre_df['children_count'].max())
+                    color = "#BEA9E9", s = 30 ,rasterized=rasterized,edgecolor="none",zorder = 6) 
+    sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["isKeyblock"]== True)], 
+                    color = "r",  s= 100,rasterized=rasterized,edgecolor="none",zorder = 6)
+    print("plot scatter finishhed")
+    # point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
+    # print(bpre_df['children_count'].max())
     blues = plt.cm.Blues
     # my_blues = mcolors.LinearSegmentedColormap.from_list("my_blues", 
     #["#caf0f8","#caf0f8","#ade8f4","#90e0ef","#48cae4","#00b4d8","#0096c7", "#0077b6","#003049"])#"#caf0f8" ,
@@ -643,56 +654,51 @@ def plot_bounds_fig3(data_list:list[dict], type):
         left = center_x - adjusted_width / 2
         
         return left, adjusted_width
-    if drawRect:
-        blocks = []
-        i=0
-        for _, row in block_df.iterrows():
-            if row['bround'] == -1:
-                continue
-            if row['block'] in blocks:
-                continue
-            i+=1
-            print(i)
-            print(row)
-        # 提取每个block的数据
-            blocks.append(row['block'])
-            min_ub = row['ub_min']
-            max_ub = row['ub_max']
-            # 绘制圆角矩形
-            width = 0.04 if type == MAXSAT else 0.06
-            children_count = children_counts[row['pre_pname']]
-            color = blues(1- point_norm(children_count))
-            left, width = adjust_width_for_log_scale(row['bround'], width)
-            # 计算对数尺度下的矩形边界
-            rect = Rectangle((left, min_ub), width, max_ub - min_ub, 
-                            linewidth=1.5, edgecolor='#5494CE',  facecolor = color,#facecolor='#00b4d8',
-                            linestyle='-', capstyle='round', joinstyle='round',
-                            rotation_point='center',alpha = 0.4, zorder = 2)
-            # rect = FancyBboxPatch((row['bround'] - 500, min_ub), 
-            #                   1000, max_ub - min_ub, 
-            #                   boxstyle="round,pad=0.2,rounding_size=100", linewidth=1, 
-            #                   edgecolor='none', facecolor='#0096c7', linestyle='--')
-            plt.gca().add_patch(rect)
-        for idx, block_row in block_df.iterrows():
-            # 获取block点的坐标
-            block_round = block_row['bround']
-            block_ub = block_row['ub_min']
+    
+    # if drawRect:
+    #     blocks = []
+    #     i=0
+    #     for _, row in block_df.iterrows():
+    #         if row['bround'] == -1:
+    #             continue
+    #         if row['block'] in blocks:
+    #             continue
+    #         i+=1
+    #         print(i)
+    #         print(row)
+    #     # 提取每个block的数据
+    #         blocks.append(row['block'])
+    #         min_ub = row['ub_min']
+    #         max_ub = row['ub_max']
+    #         # 绘制圆角矩形
+    #         width = 0.04 if type == MAXSAT else 0.06
+    #         children_count = children_counts[row['pre_pname']]
+    #         color = blues(1- point_norm(children_count))
+    #         left, width = adjust_width_for_log_scale(row['bround'], width)
+    #         # 计算对数尺度下的矩形边界
+    #         rect = Rectangle((left, min_ub), width, max_ub - min_ub, 
+    #                         linewidth=1.5, edgecolor='#5494CE',  facecolor = color,#facecolor='#00b4d8',
+    #                         linestyle='-', capstyle='round', joinstyle='round',
+    #                         rotation_point='center',alpha = 0.4, zorder = 2)
+    #         # rect = FancyBboxPatch((row['bround'] - 500, min_ub), 
+    #         #                   1000, max_ub - min_ub, 
+    #         #                   boxstyle="round,pad=0.2,rounding_size=100", linewidth=1, 
+    #         #                   edgecolor='none', facecolor='#0096c7', linestyle='--')
+    #         plt.gca().add_patch(rect)
+    #     for idx, block_row in block_df.iterrows():
+    #         # 获取block点的坐标
+    #         block_round = block_row['bround']
+    #         block_ub = block_row['ub_min']
 
-            # 获取pre点的坐标
-            pre_row = pre_df[pre_df['pname'] == block_row['pre_pname']]
-            if not pre_row.empty:
-                pre_round = pre_row.iloc[0]['bround']
-                pre_ub = pre_row.iloc[0]['ub']
-                # 绘制折线连接两点
-                plt.plot([pre_round, block_round, block_round], [pre_ub, pre_ub, block_ub], color = '#5494CE',
-                        linestyle='--',linewidth = 1.5,alpha = 0.5, zorder = 0)#color='#CFCFCF'
+    #         # 获取pre点的坐标
+    #         pre_row = pre_df[pre_df['pname'] == block_row['pre_pname']]
+    #         if not pre_row.empty:
+    #             pre_round = pre_row.iloc[0]['bround']
+    #             pre_ub = pre_row.iloc[0]['ub']
+    #             # 绘制折线连接两点
+    #             plt.plot([pre_round, block_round, block_round], [pre_ub, pre_ub, block_ub], color = '#5494CE',
+    #                     linestyle='--',linewidth = 1.5,alpha = 0.5, zorder = 0)#color='#CFCFCF'
 
-    # # 处理Lowerbounds数据
-    lb_rounds_new = list(map(int, lowerbounds.keys()))
-    if type == MAXSAT:
-        lb_values_new = [v for v in lowerbounds.values()]
-    else:
-        lb_values_new = [-v for v in lowerbounds.values()]
     # my_oranges = mcolors.LinearSegmentedColormap.from_list("my_oranges", ["white", "#ee9b00"])
     
     # sns.kdeplot(data=ub_df[ub_df['is_main']],     x='round', y='ub', cmap="Blues" , fill=True, bw_adjust=0.2, zorder = 0)
@@ -701,6 +707,7 @@ def plot_bounds_fig3(data_list:list[dict], type):
     point_norm = mcolors.Normalize(vmin=0, vmax=math.log(max(children_counts.values())))
     
     point_cmap = plt.cm.Blues
+
     def draw_point(point,pre_point):
         # print(point["block"],point["pname"],point["bround"])
         alpha=0.6
@@ -749,20 +756,26 @@ def plot_bounds_fig3(data_list:list[dict], type):
             return point
         return pre_point_rows.iloc[0]       
     
-    if type == TSP:
-        for i, point in ub_df.iterrows():
-            if point['pname'] not in sampled_points:
-                continue  # 只绘制抽样的点
-        #     # if point['block'] != "B1":
-        #     #     continue
-        #     # print(point['pname'])
-        #     # if not point["allInteger"]:
-        #     #     continue
-        #     # if point['pname'] in sampled_points or (point["fathomed"] and not point["allInteger"]):
-            pre_point = get_pre_point(point) if not point["allInteger"] else point
-            draw_point(point, pre_point)
+    # if type == TSP:
+    #     for i, point in ub_df.iterrows():
+    #         if point['pname'] not in sampled_points:
+    #             continue  # 只绘制抽样的点
+    #     #     # if point['block'] != "B1":
+    #     #     #     continue
+    #     #     # print(point['pname'])
+    #     #     # if not point["allInteger"]:
+    #     #     #     continue
+    #     #     # if point['pname'] in sampled_points or (point["fathomed"] and not point["allInteger"]):
+    #         pre_point = get_pre_point(point) if not point["allInteger"] else point
+    #         draw_point(point, pre_point)
 
     # # 绘制Lowerbounds的线段
+    # # 处理Lowerbounds数据
+    lb_rounds_new = list(map(int, lowerbounds.keys()))
+    if type == MAXSAT:
+        lb_values_new = [v for v in lowerbounds.values()]
+    else:
+        lb_values_new = [v for v in lowerbounds.values()]
     plt.plot(lb_rounds_new, lb_values_new, color="#66A266", linewidth=8, zorder = 3)
 
     plts = [plt.Line2D([], [], color='green', linewidth=2, label='upper bounds'),
@@ -772,13 +785,19 @@ def plot_bounds_fig3(data_list:list[dict], type):
         plt.Line2D([],[],color="black", linestyle='None',marker = 'o', label="fork"),
         plt.Line2D([],[],color="#9acd32", linestyle='None',marker = 'o', label="unpublished")]
     
+    ax.axhline(y=4000, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    ax.axhline(y=3500, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    # ax.axhline(y=3450, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    # ax.axhline(y=3400, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    # ax.axhline(y=3330, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    
     plt.xlabel('Round')
     plt.ylabel('Values')
-    plt.xscale("log")
+    # plt.xscale("log")
     
     fig.subplots_adjust(left=0.079, bottom=0.1, right=0.98, top=0.98)
     if type == TSP:
-        plt.xlim(100, 100000)
+        plt.xlim(100, 200000)
         plt.ylim(2500, 4000)
     elif type == MAXSAT:
         plt.xlim(100, 2500)

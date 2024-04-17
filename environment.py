@@ -284,7 +284,7 @@ class Environment(object):
                     self.view_miner = miner
                     self.total_round = round
                     if self.evaluation.recordSols:
-                        self.evaluation.get_ubs(self.view_miner.local_chain)
+                        self.evaluation.get_relax_sols(self.view_miner.local_chain)
                     self.background.reset_id_center()
                     if (len(self.miners[0].local_chain.get_feasible_keyblocks())==0 
                         and ERROR_PATH is not None):
@@ -339,9 +339,9 @@ class Environment(object):
             print(f"view miner: {self.view_miner.miner_id}")
             self.evaluation.save_results_to_json(pool_path)
             # self.global_chain.printchain2txt()
-            self.view_miner.local_chain.printchain2txt()
+            # self.view_miner.local_chain.printchain2txt()
             # self.global_chain.ShowStructureWithGraphviz()
-            self.view_miner.local_chain.show_chain_by_graphviz()
+            # self.view_miner.local_chain.show_chain_by_graphviz()
             # self.attack.save_draw_final_success_rates()
         return evaluation_result
 

@@ -69,6 +69,7 @@ class UbData():
     fathomed:bool
     allInteger:bool
     isFork:bool
+    isKeyblock:bool
 
 class Evaluation(object):
     def __init__(self, background:Background, recordSols:bool = False):
@@ -204,8 +205,9 @@ class Evaluation(object):
         self.cur_rlxsol = conss_un if conss_un != sys.maxsize else 0
         self.relax_sols[round].append(self.cur_rlxsol)
 
-    def get_ubs(self, chain:Chain):
-        feasi_kbs = self.get_feasi_kbs(chain)
+    def get_relax_sols(self, chain:Chain):
+        # feasi_kbs = self.get_feasi_kbs(chain)
+        feasi_kbs = chain.get_keyblocks_pref()
         if len(feasi_kbs) == 0:
             return
         for kb in feasi_kbs:
@@ -215,46 +217,49 @@ class Evaluation(object):
             #     continue
             kp = kb.get_keyprblm()
             kub = UbData(kb.get_miner_id(), kb.name, kp.timestamp, 
-                         kb.get_timestamp(), kp.pname, "None", kp.z_lp,
-                         False, kp.all_integer(),  False)
+                         kb.get_timestamp(), kp.pname, "None", kp.init_bound,
+                         False, kp.all_integer(),  False, True)
             self.ubdata.append(astuple(kub))
             acp_mbs = chain.get_acpmbs_after_kb_and_label_forks(kb)
             mbs = chain.get_mbs_after_kb(kb)
             for mb in mbs:
                 p:LpPrblm
-                for p in mb:  
+                for p in mb:
                     allInt = p.all_integer() if p.lb_prblm is None else False
                     # fathomed = p.fathomed if not allInt else  False
                     pub = UbData(mb.get_miner_id(), mb.name, p.timestamp, 
                                  mb.get_timestamp(),p.pname, p.pre_pname, p.z_lp, 
-                                 p.fathomed, allInt, mb.isFork)
+                                 p.fathomed, allInt, mb.isFork, False)
                     self.ubdata.append(astuple(pub))
                     
     def record_upperbound(self, miner, round:int):
         """
-        记录全局的最大上界
+        记录全局的最小上界
         """
         conss_ub = miner.consensus.upper_bound
-        self.cur_ub = conss_ub if conss_ub < self.cur_ub else self.cur_ub 
-        self.upperbounds[round] = self.cur_ub
-        # self.lb_perminer[miner.Miner_ID]
+        self.cur_ub = conss_ub if conss_ub < self.cur_ub else self.cur_ub
+        # if conss_ub < self.cur_ub:
+        #     self.cur_ub = conss_ub
+        #     self.upperbounds[round] = self.cur_ub
+        self.upperbounds[round]=self.cur_ub
 
     def get_solving_rounds_kbtimes_mbgrowth(self, chain:Chain):
         """
         获取每个keyblock被解决的总轮数
         """
-        feasi_kbs = self.get_feasi_kbs(chain)
+        # feasi_kbs = self.get_feasi_kbs(chain)
+        feasi_kbs = chain.get_keyblocks_pref()
         if len(feasi_kbs) == 0:
             return {}
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            if not kb.get_fthmstat():
-                continue
+            # if not kb.get_fthmstat():
+            #     continue
             solve_round = kb.get_kb_time_w_next()
             self.solve_rounds.update({kb.name:solve_round})
             self.kb_block_times.append(solve_round)
-            self.mb_growths[kb.name] = solve_round / len(chain.get_acpmbs_after_kb_and_label_forks(kb))
+            # self.mb_growths[kb.name] = solve_round / len(chain.get_acpmbs_after_kb_and_label_forks(kb))
         return self.solve_rounds
 
         
@@ -262,7 +267,8 @@ class Evaluation(object):
         """
         获取链上所有keyblock对应的子问题对数量
         """
-        feasi_kbs = self.get_feasi_kbs(chain)
+        # feasi_kbs = self.get_feasi_kbs(chain)
+        feasi_kbs = chain.get_keyblocks_pref()
         if len(feasi_kbs) == 0:
             return {}
         for kb in feasi_kbs:
@@ -294,21 +300,23 @@ class Evaluation(object):
 
     def record_unpub_pair(self, key_name, subpair_unpub:int, 
                         unpub_pair_time:int = None, 
-                        unpub_subs:list[LpPrblm] = None, miner_id:int = None):
+                        unpub_subs:list[LpPrblm] = None, miner_id:int = None, 
+                        isKeyblock = False):
         """
         记录已算出但未发布出来的sub-problem数量
         """
-        self.subpair_unpub[key_name] += subpair_unpub
-        if unpub_pair_time is not None:
-            self.unpub_times.append(unpub_pair_time)
-        if not self.recordSols:
-            return
-        for p in unpub_subs:
-            p:LpPrblm
-            allInt = p.all_integer() if p.lb_prblm is None else False
-            self.ubdata.append(astuple(UbData(miner_id, "None", p.timestamp, -1, 
-                                              p.pname, p.pre_pname,
-                                              p.z_lp, p.fathomed, allInt,  False)))
+        pass
+        # self.subpair_unpub[key_name] += subpair_unpub
+        # if unpub_pair_time is not None:
+        #     self.unpub_times.append(unpub_pair_time)
+        # if not self.recordSols:
+        #     return
+        # for p in unpub_subs:
+        #     p:LpPrblm
+        #     allInt = p.all_integer() if p.lb_prblm is None else False
+        #     self.ubdata.append(astuple(UbData(miner_id, "None", p.timestamp, -1, 
+        #                                       p.pname, p.pre_pname,
+        #                                       p.z_lp, p.fathomed, allInt,  False, isKeyblock)))
 
     def record_fork_times(self, fork_time:int = None):
         """记录产生fork的时间点"""
@@ -435,11 +443,11 @@ class Evaluation(object):
         """
         self.get_solving_rounds_kbtimes_mbgrowth(chain)
         self.get_subpair_nums(chain)
-        self.cal_keyblock_fork_rate(chain)
-        self.cal_miniblock_fork_rate(chain)
-        self.get_mb_block_times2(chain)
-        self.cal_steal_success_rate()
-        self.cal_adversary_block_rate(chain)
+        # self.cal_keyblock_fork_rate(chain)
+        # self.cal_miniblock_fork_rate(chain)
+        # self.get_mb_block_times2(chain)
+        # self.cal_steal_success_rate()
+        # self.cal_adversary_block_rate(chain)
 
 
     def collect_evaluation_results(self):
