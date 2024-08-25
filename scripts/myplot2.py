@@ -635,9 +635,9 @@ def plot_bounds_fig3(data_list:list[dict], type):
     #                 color = "black", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
     print("plot4")
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["allInteger"] == True) & (ub_df["block"]!= "None")] , 
-                    color = "#BEA9E9", s = 30 ,rasterized=rasterized,edgecolor="none",zorder = 6) 
-    sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["isKeyblock"]== True)], 
-                    color = "r",  s= 100,rasterized=rasterized,edgecolor="none",zorder = 6)
+                    color = "r", s = 30 ,rasterized=rasterized,edgecolor="none",zorder = 6) 
+    # sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["isKeyblock"]== True)], 
+    #                 color = "r",  s= 100,rasterized=rasterized,edgecolor="none",zorder = 6)
     print("plot scatter finishhed")
     # point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
     # print(bpre_df['children_count'].max())
@@ -785,11 +785,12 @@ def plot_bounds_fig3(data_list:list[dict], type):
         plt.Line2D([],[],color="black", linestyle='None',marker = 'o', label="fork"),
         plt.Line2D([],[],color="#9acd32", linestyle='None',marker = 'o', label="unpublished")]
     
-    ax.axhline(y=4000, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    ax.axhline(y=3700, color='r', linestyle='--',linewidth = 1, zorder = 3)
     ax.axhline(y=3500, color='r', linestyle='--',linewidth = 1, zorder = 3)
-    # ax.axhline(y=3450, color='r', linestyle='--',linewidth = 1, zorder = 3)
-    # ax.axhline(y=3400, color='r', linestyle='--',linewidth = 1, zorder = 3)
-    # ax.axhline(y=3330, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    ax.axhline(y=3400, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    ax.axhline(y=3350, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    ax.axhline(y=3325, color='r', linestyle='--',linewidth = 1, zorder = 3)
+    # ax.axhline(y=3300, color='r', linestyle='--',linewidth = 1, zorder = 3)
     
     plt.xlabel('Round')
     plt.ylabel('Values')

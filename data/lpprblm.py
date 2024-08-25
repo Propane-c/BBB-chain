@@ -546,11 +546,12 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
                 copy.deepcopy(h_ub), 
                 copy.deepcopy(A_eq), 
                 copy.deepcopy(b_eq), 
-                # bounds, obj_bounds=[4000, 3500, 3450,3400, 3330])
-                # bounds, obj_bounds=[4000, 3500, 3400, 3330])
-                # bounds, obj_bounds=[4000, 3500, 3330])
-                # bounds, obj_bounds=[4000,3500,3400])
-                bounds, obj_bounds=[4000,3500])
+                # bounds, obj_bounds=[3700, 3500, 3400, 3350, 3325, 3300])
+                bounds, obj_bounds=[3700, 3500, 3400, 3350, 3325])
+                # # bounds, obj_bounds=[4000, 3500, 3400, 3330])
+                # # bounds, obj_bounds=[4000, 3500, 3330])
+                # # bounds, obj_bounds=[4000,3500,3400])
+                # bounds, obj_bounds=[4000,3500])
             if 'conti_vars' in prblm.keys():
                 orig_prblm.conti_vars = prblm['conti_vars']
             # solve_ilp_by_pulp(orig_prblm)

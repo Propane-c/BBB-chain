@@ -323,7 +323,7 @@ if __name__ == "__main__":
     format_str = LBUB
     # data = load_json_file(Path.cwd()/"Result_Data"/ "1210short_data测试不同st.json", format_str)Results\20240104\Results\
     # data = load_json_file(Path.cwd()/"Result_Data\\tsp solving process.json", format_str)
-    data = load_json_file("E:\Files\gitspace\\bbb-github\Results\\20240417\\103148\pproblem poolburma14m1d3evaluation results.json", format_str)
+    data = load_json_file("E:\Files\gitspace\\bbb-github\Results\\20240422\\134117\pproblem poolburma14m1d3evaluation results.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\m1d5vmaxsatevaluation results.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\\1226v100_50m1_20.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\maxsatfig3\m1d5vmaxsatevaluation results.json", format_str)

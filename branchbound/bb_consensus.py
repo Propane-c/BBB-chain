@@ -1106,11 +1106,13 @@ class BranchBound(object):
         if self.upper_bound is not None:
             kp = copy.deepcopy(self.cur_keyblock.get_keyprblm())
             obj_bounds = []
-            print(f"mining new keyblock ub: {self.upper_bound} obj_bounds：{kp.init_bound, kp.obj_bounds}")
+            print(f"mining new keyblock ub: {self.upper_bound} "
+                  f"obj_bounds: {kp.init_bound, kp.obj_bounds}")
             if len(kp.obj_bounds) == 0:
-                obj_bounds.append(self.upper_bound)
-                kp.update_obj_bounds(obj_bounds)
-                return kp
+                # obj_bounds.append(self.upper_bound)
+                # kp.update_obj_bounds(obj_bounds)
+                # return kp
+                return None
             
             if self.upper_bound > kp.obj_bounds[0]:
                 raise RuntimeError("Lower bound not satisfy the obj_bounds")
