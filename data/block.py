@@ -32,11 +32,12 @@ class KeyField(object):
             key_height:int = None,
             pre_keyblock:"Block" = None, 
             pre_pname:tuple = None, 
-            pre_key_feasible:bool = None, 
-            opt_prblms:list[LpPrblm] = None, 
-            fthmd_prblms:list[LpPrblm] = None,
+            is_pre_key_feasible:bool = None, 
+            pre_opt_prblms:list[LpPrblm] = None, 
+            pre_fthmd_prblms:list[LpPrblm] = None,
             key_tx:Transaction = None,
-            accept_mbs:list[str] = None
+            pre_accept_mbs:list[str] = None,
+            pre_iz_pulp = None
         ):
         # Key PoW
         self.key_hash = key_hash
@@ -47,10 +48,11 @@ class KeyField(object):
         self.pre_pname = pre_pname
         self.next_kbs:list[Block] = []
         # Related to the previous keyblock
-        self.pre_key_feasible = pre_key_feasible
-        self.opt_prblms = opt_prblms
-        self.fthmd_prblms = fthmd_prblms
-        self.accept_mbs = accept_mbs
+        self.is_pre_key_feasible = is_pre_key_feasible
+        self.pre_opt_prblms = pre_opt_prblms
+        self.pre_fthmd_prblms = pre_fthmd_prblms
+        self.pre_iz_pulp = pre_iz_pulp
+        self.pre_accept_mbs = pre_accept_mbs
         # New key problem
         self.key_tx = key_tx
 
@@ -63,10 +65,10 @@ class KeyField(object):
     def __repr__(self) -> str:
         pre_kb_name = self.pre_kb.name \
                     if self.pre_kb is not None else None
-        fthmd_prblms = [p.pname for p in self.fthmd_prblms] \
-                    if len(self.fthmd_prblms)!=0 else []
-        opt_prblm_names = [p.pname for p in self.opt_prblms] \
-                    if len(self.opt_prblms) > 0 else []
+        fthmd_prblms = [p.pname for p in self.pre_fthmd_prblms] \
+                    if len(self.pre_fthmd_prblms)!=0 else []
+        opt_prblm_names = [p.pname for p in self.pre_opt_prblms] \
+                    if len(self.pre_opt_prblms) > 0 else []
         next_keyblocks = [b.name for b in self.next_kbs] \
                     if len(self.next_kbs) > 0 else []        
         key_str = (f"key_hash: {self.key_hash}\n"+
@@ -74,7 +76,7 @@ class KeyField(object):
                    f"pow_nonce: {self.pow_nonce}\n"+
                    f"origin_prblm: {self.key_tx}\n" + 
                    f"pre_keyblock: {pre_kb_name}\n"+
-                   f"pre_key_feasible: {self.pre_key_feasible}\n"+
+                   f"pre_key_feasible: {self.is_pre_key_feasible}\n"+
                    f"next_keyblocks:{next_keyblocks}\n"
                    f"fthmd_prblms: {fthmd_prblms}\n"+
                    f"opt_prblm: {opt_prblm_names}\n")
@@ -224,7 +226,7 @@ class Block(object):
     def __init__(self, name:str = None, iskeyblock:bool = None, 
                 blockhead: BlockHead = None, content=None, 
                 isadversary=False, isgenesis=False, blocksize_MB=2,
-                ispublished=True):
+                ispublished=True, rest_gas= None, cur_opt= None):
         self.name = name
         self.blockhead = blockhead
         self.isAdversary = isadversary
@@ -241,6 +243,9 @@ class Block(object):
         # extra info just benefit for programming(local state)
         self.ispublished = ispublished
         self.isFork = True
+
+        self.rest_gas = rest_gas
+        self.cur_opt = cur_opt
     
     def __iter__(self)->LpPrblm:
         if self.iskeyblock:
@@ -258,7 +263,7 @@ class Block(object):
 
     def __contains__(self, prblm: LpPrblm):
         if self.iskeyblock:
-            if prblm == self.get_keyprblm():
+            if prblm == self.get_keyprblm_key():
                 return True
             return False
         else:
@@ -314,6 +319,44 @@ class Block(object):
             del bdict[omk]
         return '\n'+ _dict_formatter(bdict)
 
+    def set_keyfield(self, 
+            key_hash:str = None, 
+            pow_nonce:int = None,
+            key_height:int = None, 
+            pre_keyblock:'Block' = None, 
+            pre_pname:tuple = None, 
+            pre_key_feasible:bool = None, 
+            pre_opt_prblms:list[LpPrblm] = None,
+            pre_fthmd_prblms:list[LpPrblm] = None, 
+            keyprblm_tx:Transaction = None,
+            pre_accept_mbs:list[str] = None,
+            pre_iz_pulp = None
+        ):
+        '''set the keyfield, the last_keyblock is a Block type'''
+        if self.iskeyblock is False:
+            raise TypeError(f'{self.name} is not a keyblock')
+        if pre_opt_prblms is None:
+            pre_opt_prblms = []
+        if pre_fthmd_prblms is None:
+            pre_fthmd_prblms = []
+        self.keyfield =  KeyField(key_hash, pow_nonce, key_height, 
+                pre_keyblock, pre_pname, pre_key_feasible, 
+                pre_opt_prblms, pre_fthmd_prblms, keyprblm_tx, pre_accept_mbs,
+                pre_iz_pulp)
+                        
+    def set_minifield(self, pre_prblm:LpPrblm, 
+                    subprblm_pairs:list[tuple[LpPrblm,LpPrblm]]):
+        if self.iskeyblock is True:
+            raise TypeError(f'{self.name} is not a miniblock')
+        if len(subprblm_pairs) == 0:
+            raise TypeError("The list of subprblm pairs is empty")
+        self.minifield = MiniField()
+        for (p1, p2) in subprblm_pairs:
+            self.minifield.add_subprblm_pair(p1,p2)
+        self.minifield.classify_nodes()
+        self.minifield.update_fathomed_state()
+        self.minifield.pre_pname = pre_prblm.pname
+        self.minifield.pre_p = pre_prblm
 
     def get_hash(self):
         return self.blockhead.blockhash
@@ -332,13 +375,12 @@ class Block(object):
     def inc_heavy(self):
         """增加区块的heavy"""
         self.blockhead.heavy += 1
-        # logger.info(f"{self.name}: updated heavy: {self.get_heavy()}")
 
     def get_miner_id(self):
         """获取miner_id"""
         return self.blockhead.miner_id
     
-    def get_block_time_w_pre(self):
+    def get_block_time_with_pre(self):
         """"""
         if self.pre is None:
             return 0
@@ -347,7 +389,7 @@ class Block(object):
     def get_timestamp(self):
         return self.blockhead.timestamp
     
-    def get_kb_time_w_next(self):
+    def get_kb_time_with_next_key(self):
         """获取与下一个keyblock的时间差"""
         if not self.iskeyblock:
             raise ValueError(f"get kb time error: {self.name} is a miniblock")
@@ -356,7 +398,7 @@ class Block(object):
         kb_time = next_kbs[0].get_timestamp() - self.get_timestamp()
         return kb_time
 
-    def get_subpairs_name_in_mb(self)->list[tuple]:
+    def get_subpair_names_mini(self)->list[tuple]:
         if self.iskeyblock:
             logger.warning("Getting subpairs: %s is a key-block", self.name)
             return []
@@ -364,6 +406,15 @@ class Block(object):
             logger.warning("%s donot have subpairs", self.name)
             return []
         return [(p1.pname, p2.pname) for (p1,p2) in self.minifield]
+    
+    def get_subpairs_mini(self)->list[tuple]:
+        if self.iskeyblock:
+            logger.warning("Getting subpairs: %s is a key-block", self.name)
+            return []
+        if len(self.minifield.subprblm_pairs)==0:
+            logger.warning("%s donot have subpairs", self.name)
+            return []
+        return [(p1, p2) for (p1,p2) in self.minifield]
     
     def get_pre_pname(self):
         if self.iskeyblock:
@@ -379,13 +430,13 @@ class Block(object):
             return self.keyfield.key_tx.data.fthmd_state
         return self.minifield.bfthmd_state
 
-    def get_keyheight(self):
+    def get_keyheight_key(self):
         """获取由keyblock组成的链中，该keyblock的高度"""
         if not self.iskeyblock:
             raise TypeError("get keyheight: %s is not a keyblock", self.name)
         return self.keyfield.key_height
 
-    def get_keyprblm(self):
+    def get_keyprblm_key(self):
         """get the origin key problem in the keyblock
 
         Returns:
@@ -398,25 +449,24 @@ class Block(object):
             return None
         return self.keyfield.key_tx.data
 
-    def get_keypname(self):
+    def get_keypname_key(self):
         """获取keyblock中key_problem的name"""
-        kp = self.get_keyprblm()
+        kp = self.get_keyprblm_key()
         kpname = kp.pname if kp is not None else None
         return kpname
     
     def get_keyid(self):
         """获取该block所在key的id, 如果是keyblock且没有包含key problem，返回None"""
         if self.iskeyblock:
-            keyprblm = self.get_keyprblm()
+            keyprblm = self.get_keyprblm_key()
             if keyprblm is None:
                 logger.warning("get keyid of %s failed: key problem is None", self.name)
                 return None
             return keyprblm.pname[0][0]
         return self.minifield.root_pair[0].pname[0][0]
 
-    
-    
-    def get_soltree_depth(self):
+
+    def get_solve_tree_depth(self):
         """
         获取block中问题的深度, 若keyblock返回1, Miniblock返回高度差
         """
@@ -469,48 +519,8 @@ class Block(object):
         elif len(self.minifield.leaf_prblms) == 0:
             self.minifield.classify_nodes()
         return [p for p in self.minifield.leaf_prblms if not p.fthmd_state]
-                
-                        
-    def set_keyfield(self, 
-            key_hash:str = None, 
-            pow_nonce:int = None,
-            key_height:int = None, 
-            pre_keyblock:'Block' = None, 
-            pre_pname:tuple = None, 
-            pre_key_feasible:bool = None, 
-            opt_prblms:list[LpPrblm] = None,
-            fthmd_prblms:list[LpPrblm] = None, 
-            keyprblm_tx:Transaction = None,
-            accept_mbs:list[str] = None
-        ):
-        '''set the keyfield, the last_keyblock is a Block type'''
-        if self.iskeyblock is False:
-            raise TypeError(f'{self.name} is not a keyblock')
-        if opt_prblms is None:
-            opt_prblms = []
-        if fthmd_prblms is None:
-            fthmd_prblms = []
-        self.keyfield =  KeyField(key_hash, pow_nonce, key_height, 
-                pre_keyblock, pre_pname, pre_key_feasible, 
-                opt_prblms, fthmd_prblms, keyprblm_tx, accept_mbs)
-    
-            
-            
-    def set_minifield(self, pre_prblm:LpPrblm, 
-                    subprblm_pairs:list[tuple[LpPrblm,LpPrblm]]):
-        if self.iskeyblock is True:
-            raise TypeError(f'{self.name} is not a miniblock')
-        if len(subprblm_pairs) == 0:
-            raise TypeError("The list of subprblm pairs is empty")
-        self.minifield = MiniField()
-        for (p1, p2) in subprblm_pairs:
-            self.minifield.add_subprblm_pair(p1,p2)
-        self.minifield.classify_nodes()
-        self.minifield.update_fathomed_state()
-        self.minifield.pre_pname = pre_prblm.pname
-        self.minifield.pre_p = pre_prblm
 
-    def update_solve_tree_fthmd_state(self):
+    def update_solve_tree_fthmd_state_mini(self):
         """更新问题树的状态"""
         if self.iskeyblock:
             raise ValueError("update_solve_tree_fthmd_state: "
@@ -531,7 +541,7 @@ class Block(object):
         update_state(self)
         return updateSuccess
     
-    def check_link_fthmd_prblm(self):
+    def check_link2_fthmd_prblm(self):
         """
         检查一个miniblock是否连接到了一个fathomed state的问题，
         如果连接到了返回True，否则返回False

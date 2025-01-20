@@ -27,7 +27,7 @@ class LpPrblm(object):
     def __init__(self, pname = None, pre_pname = None, pheight = None, 
                  c = None, G_ub = None, h_ub = None, A_eq = None,  b_eq = None, 
                  bounds = None, x_nk = None, pre_rest_x = None, 
-                 key_pname=None, inc_constrs= None, timestamp = None):
+                 key_pname=None, inc_constrs= None, timestamp = None, fix_pid = None):
         '''
         Param
         -----
@@ -64,6 +64,7 @@ class LpPrblm(object):
         self.pheight = pheight
         self.timestamp = timestamp
         self.key_pname = key_pname
+        self.fix_pid = fix_pid
         # coefficients
         if c is not None:
             self.c:np.ndarray = c
@@ -101,21 +102,15 @@ class LpPrblm(object):
         self.lb_prblm:LpPrblm = None
         # states
         self.fthmd_state = None
-        # links, not used # Deprecation
-        # self.pre_p:LpPrblm = None
-        # self.next_pairs:list[tuple[LpPrblm, LpPrblm]] = []
     
     def get_Gub_hub(self, key_lp: 'LpPrblm' = None):
         if self.key_pname is None:
             return self.G_ub, self.h_ub
         if len(self.inc_constrs) == 0:
             return key_lp.G_ub, key_lp.h_ub
-        # G_ub = key_lp.G_ub
-        # h_ub = key_lp.h_ub
         inc_Gub = np.zeros((len(self.inc_constrs), key_lp.c.size))
         inc_hub = np.zeros(len(self.inc_constrs))
         for i, inc_con in enumerate(self.inc_constrs):
-            # inc_Gub = np.zeros(G_ub.shape[1])
             inc_Gub[i][inc_con.idx] = inc_con.G_ub_var
             inc_hub[i] = inc_con.h_ub_var
         if key_lp.G_ub is None:
@@ -141,24 +136,8 @@ class LpPrblm(object):
         return result
     
     def __eq__(self, other: 'LpPrblm'):
-        if (
-            # self.c.all() == other.c.all() and
-            # self.G_ub.all() == other.G_ub.all() and
-            # self.h_ub.all() == other.h_ub.all() and
-            # self.bounds.all() == other.bounds.all() and
-            # self.x_nk == other.x_nk and 
-            self.pname == other.pname
-            ):
-            # if self.A_eq is None:
-            #     return True 
-            # if (self.A_eq.all() == other.A_eq.all() and
-            #     self.b_eq.all() == other.b_eq.all()):
-            #     return True
-            # else:
-            #     return False
-            return True
-        else:
-            return False
+        return self.pname == other.pname
+
         
     def __repr__(self) -> str:
         omit_keys = {'timestamp'}
@@ -235,18 +214,6 @@ def solve_lp(lp_prblm:"LpPrblm" = None, c = None, G_ub = None, h_ub = None,
     s = np.random.random()
     if s < solve_prob:
         if c is None:
-            # if lp_prblm.G_ub is None or lp_prblm.G_ub.size == 0:
-            #     G_ub = None
-            #     h_ub = None
-            # elif lp_prblm.G_ub.size != 0:
-            #     G_ub = lp_prblm.G_ub 
-            #     h_ub = lp_prblm.h_ub
-            # if lp_prblm.A_eq is None or lp_prblm.A_eq.size == 0:
-            #     A_eq = None
-            #     b_eq = None
-            # elif lp_prblm.A_eq.size != 0:
-            #     A_eq  = lp_prblm.A_eq 
-            #     b_eq = lp_prblm.b_eq
             r = linprog(lp_prblm.c, lp_prblm.G_ub, lp_prblm.h_ub, lp_prblm.A_eq, lp_prblm.b_eq, lp_prblm.bounds)
         else:
             r = linprog(c, G_ub, h_ub, A_eq, b_eq, bounds)
@@ -257,25 +224,26 @@ def solve_lp(lp_prblm:"LpPrblm" = None, c = None, G_ub = None, h_ub = None,
         solved_success = True
     else: 
         solved_success = False
+    # print(lp_prblm.z_lp)
     return solved_success
 
 def rand_prblm(var_num, conNum:int = 5):
     """
     随机生成指定变量数量的`一般`整数规划问题
     """
-    c = np.array(np.random.choice(np.arange(-20,20),var_num,True))
-    G_ub = np.array([np.random.choice(np.arange(-20,20),var_num,True) for _ in range(conNum)])
-    h_ub = np.array(np.random.choice(np.arange(-20,20),len(G_ub),True))
+    c = np.array(np.random.choice(np.arange(-50,150),var_num,True))
+    G_ub = np.array([np.random.choice(np.arange(-50,150),var_num,True) for _ in range(conNum)])
+    h_ub = np.array(np.random.choice(np.arange(-50,150),len(G_ub),True))
     A_eq = None
     b_eq = None
     bounds = []
     for _ in range(var_num):
         bounds.append((0, None))
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
+    p = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False 
+    return p
 
 
 def rand_01(var_num, conNum:int = 5):
@@ -290,11 +258,11 @@ def rand_01(var_num, conNum:int = 5):
     bounds = []
     for _ in range(var_num):
         bounds.append((0, 1))
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
+    p = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False 
+    return p
 
 def prblm_generator(var_num, type:str = NORMAL , conNum:int = 5):
     """
@@ -302,19 +270,21 @@ def prblm_generator(var_num, type:str = NORMAL , conNum:int = 5):
     注：线性规划问题可能没有整数解
     """
     while True:
-        print("generating")
         if type == NORMAL:
-            test_prblm = rand_prblm(var_num, conNum)
+            p = rand_prblm(var_num, conNum)
         elif type == ZERO_ONE:
-            test_prblm = rand_01(var_num, conNum)
-        if test_prblm.feasible is False:
+            p = rand_01(var_num, conNum)
+        if p.feasible is False:
             continue
-        if test_prblm.x_lp is not None:
-            if all(list(map(lambda f: f.is_integer(), test_prblm.x_lp))):
+        if p.x_lp is not None:
+            if all(list(map(lambda f: f.is_integer(), p.x_lp))):
                 continue
-        # curtime = time.strftime("%m%d_%H%M")
-        # save_test_prblm_pool([test_prblm], curtime, Path.cwd()/"Problem Pools"/f"{time.strftime('%m%d')}")
-        return test_prblm
+        if p.z_lp == 0:
+            continue
+        solve_ilp_by_pulp(p)
+        if p.iz_pulp == 0:
+            continue
+        return p
 
 
 def test1():
@@ -324,12 +294,12 @@ def test1():
     A_eq = None
     b_eq = None
     bounds = [(0, None), (0, None), (0, None)]
-    orig_prblm = LpPrblm(((0, 0), 0), None,0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
+    p = LpPrblm(((0, 0), 0), None,0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
     
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
+    p.fathomed = False
+    p.fthmd_state = False 
+    return p
 
 def test2():
     c = np.array([35,-47, -37, -10, -78, 46, -32, -2, 5, 28, -90, -6, -45, -67, 33, -18, -86, -46, -7, 50])
@@ -345,11 +315,11 @@ def test2():
               (0, None), (0, None), (0, None), (0, None), (0, None), 
               (0, None), (0, None), (0, None), (0, None), (0, None), 
               (0, None), (0, None), (0, None), (0, None), (0, None)]
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
+    p = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False 
+    return p
 
 def test3():
     c = np.array([23, 53, 28, -6, -29, 78, -18, -47, 51, 72])
@@ -362,11 +332,11 @@ def test3():
     b_eq = None
     bounds = [(0, None), (0, None), (0, None), (0, None), (0, None), 
               (0, None), (0, None), (0, None), (0, None), (0, None)]
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
+    p = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False 
+    return p
 
 def test4():
     c = np.array(    [   2, -22, -43,  -2,  -19])
@@ -379,12 +349,11 @@ def test4():
     A_eq = None
     b_eq = None
     bounds = [(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)]
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    return orig_prblm
-
+    p = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False
+    return p
 
 def test5():
     """hard"""
@@ -414,54 +383,63 @@ def test5():
     bounds = []
     for _ in range(len(c)): 
         bounds.append((0,None))
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
+    p = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
     print(linprog(c, G_ub, h_ub, A_eq, b_eq, bounds))
     print(linprog(-c, G_ub, h_ub, A_eq, b_eq, bounds))
-    solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False
-    # curtime = time.strftime("%m%d_%H%M")
-    # save_test_prblm_pool([orig_prblm], curtime, Path.cwd()/"Problem Pools")
-    return orig_prblm
+    solve_lp(p)
+    p.fathomed = False
+    p.fthmd_state = False
+    return p
 
 def prblm_pool_generator(total_num:int, var_num:int, prblm_type:str = NORMAL):
     """
     产生问题数固定的问题池
     """
     print(f"Generating problem pool with size {total_num} and var_num {var_num}")
-    prblm_pool = []
+    prblm_pool:list[LpPrblm] = []
     for i in range(total_num):
-        if i % 100 == 0:
+        if i % 10 == 0:
             print(f"Generate Progress: {i}")
-        prblm_pool.append(prblm_generator(var_num, prblm_type))
+        p = prblm_generator(var_num, prblm_type)
+        prblm_pool.append(p)
     print("")
+    for i in range(len(prblm_pool)):
+        prblm_pool[i].fix_pid = i
     return prblm_pool
 
-def save_test_prblm_pool(prblm_pool:list[LpPrblm], var_num, save_path, 
-                         prblm_type:str = ZERO_ONE, saveBounds:bool = False,
-                         file_name = None):
-    """
-    保存产生的问题池
-    """
+def save_prblm_pool(prblm_pool:list[LpPrblm], save_dir, prblm_type:str = ZERO_ONE,
+                    saveBounds:bool = False, file_name = None):
+    """ 保存产生的问题池 """
+
     def swich_to_list(x):
         if x is not None:
             return x.tolist()
         return []
-    # var_num = global_var.get_var_num()
-    if not os.path.exists(save_path):
-        save_path.mkdir(parents=True)
-    file_name = f'problem pool{var_num}.json' if file_name is None else file_name
-    with open(save_path / file_name, 'w+') as f:
+    
+    if not os.path.exists(save_dir):
+        save_dir.mkdir(parents=True)
+    var_num = len(prblm_pool[0].c)
+    file_name = f'{var_num}vars.json' if file_name is None else file_name
+    with open(save_dir / file_name, 'a') as f:
         for prblm in prblm_pool:
             
-            p_dict = {'c': swich_to_list(-prblm.c),
-                      'G_ub':swich_to_list(prblm.G_ub),
-                      'h_ub':swich_to_list(prblm.h_ub),
-                      'conti_vars':prblm.conti_vars,
-                      'type': prblm_type}
+            p_dict = {
+                'c': swich_to_list(prblm.c),
+                'G_ub':swich_to_list(prblm.G_ub),
+                'h_ub':swich_to_list(prblm.h_ub),
+                'conti_vars':prblm.conti_vars,
+                'type': prblm_type
+            }
             if prblm.A_eq is not None:
-                p_dict.update({'A_eq':swich_to_list(prblm.A_eq),
-                               'b_eq':swich_to_list(prblm.b_eq),})
+                p_dict.update({
+                    'A_eq':swich_to_list(prblm.A_eq),
+                    'b_eq':swich_to_list(prblm.b_eq),
+                })
+            if prblm.iz_pulp is not None:
+                p_dict.update({
+                    'ix_pulp': prblm.ix_pulp,
+                    'iz_pulp':prblm.iz_pulp
+                })
             if saveBounds:
                 p_dict.update({'bounds':prblm.bounds})  
             p_json = json.dumps(p_dict)
@@ -472,44 +450,38 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
     读取给定的file_path的prblm_pool
     """
     print("loading problem pool....")
-    prblm_pool = []
+    prblm_pool:list[LpPrblm] = []
     with open(file_path, 'r') as f:
-        prblm_json_list = f.read().split('\n')[:-1]
-        for prblm_json in prblm_json_list:
-            prblm = json.loads(prblm_json)
-            c = np.array(prblm['c'])
-            G_ub = np.array(prblm['G_ub'])
-            h_ub = np.array(prblm['h_ub'])
-            if 'A_eq' in prblm.keys():
-                A_eq = np.array(prblm['A_eq'])
-                b_eq = np.array(prblm['b_eq'])
+        p_json_list = f.read().split('\n')[:-1]
+        for fix_pid, p_json in enumerate(p_json_list):
+            p_data = json.loads(p_json)
+            c = np.array(p_data['c'])
+            G_ub = np.array(p_data['G_ub'])
+            h_ub = np.array(p_data['h_ub'])
+            A_eq = np.array(p_data['A_eq']) if 'A_eq' in p_data.keys() else None
+            b_eq = np.array(p_data['b_eq']) if 'B_eq' in p_data.keys() else None
+
+            if 'bounds' in p_data.keys():
+                bounds = [tuple(bound) for bound in p_data['bounds']]
             else:
-                A_eq = None
-                b_eq = None
-            # 根据类型生成0-1规划或一般整数规划
-            if 'bounds' in prblm.keys():
-                bounds = [tuple(bound) for bound in prblm['bounds']]
+                bound = (0,1) if 'type' in p_data.keys() and p_data['type'] == ZERO_ONE else (0, None)
+                bounds = [bound for _ in range(len(c))]
+            
+            p = LpPrblm(((0, 0), 0), None, 0, copy.deepcopy(c), copy.deepcopy(G_ub), 
+                        copy.deepcopy(h_ub), copy.deepcopy(A_eq),copy.deepcopy(b_eq), bounds)
+            p.conti_vars = p_data['conti_vars'] if 'conti_vars' in p_data.keys() else None
+            
+            if 'ix_pulp' in p_data.keys() :
+                p.ix_pulp = p_data['ix_pulp']
+            if 'iz_pulp' in p_data.keys() :
+                p.iz_pulp = p_data['iz_pulp']
             else:
-                if 'type' in prblm.keys() and prblm['type'] == ZERO_ONE:
-                    bounds = [(0, 1) for _ in range(len(c))]
-                else:
-                    bounds = [(0, None) for _ in range(len(c))]
-            orig_prblm = LpPrblm(
-                ((0, 0), 0), None, 0, 
-                copy.deepcopy(-c), 
-                copy.deepcopy(G_ub), 
-                copy.deepcopy(h_ub), 
-                copy.deepcopy(A_eq), 
-                copy.deepcopy(b_eq), 
-                bounds)
-            if 'conti_vars' in prblm.keys():
-                orig_prblm.conti_vars = prblm['conti_vars']
-            solve_ilp_by_pulp(orig_prblm)
-            solve_lp(orig_prblm)
-            orig_prblm.fathomed = False
-            orig_prblm.fthmd_state = False 
-            prblm_pool.append(orig_prblm)
-        # save_test_prblm_pool(prblm_pool,len(c), save_path)
+                solve_ilp_by_pulp(p)
+            solve_lp(p)
+            p.fathomed = False
+            p.fthmd_state = False
+            p.fix_pid = fix_pid 
+            prblm_pool.append(p)
         return prblm_pool
     
 def solve_lp_by_pulp(prblm:LpPrblm):
@@ -524,7 +496,7 @@ def solve_lp_by_pulp(prblm:LpPrblm):
     b_eq = prblm.b_eq
     bounds = prblm.bounds
 
-    lp = pulp.LpProblem("ILP", pulp.LpMinimize)
+    lp = pulp.LpProblem("LP", pulp.LpMinimize)
     vars = [pulp.LpVariable(f'x{i}', lowBound=b[0], upBound=b[1]) 
             for i, b in enumerate(bounds)]
 
@@ -541,7 +513,7 @@ def solve_lp_by_pulp(prblm:LpPrblm):
         #     print(v.name, "=", v.varValue)
         obj_value = pulp.value(lp.objective)
         # print("Optimal value:", obj_value)
-        prblm.z_pulp = -obj_value
+        prblm.z_pulp = obj_value
         prblm.x_pulp = [v.varValue for v in lp.variables()]
         return obj_value
     else:
@@ -552,7 +524,6 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     使用`pulp`求解整数规划问题
     :return: 最优目标值，如果不可解返回None
     """
-    # solve_lp_by_pulp(prblm)
     c = prblm.c
     G_ub = prblm.G_ub
     h_ub = prblm.h_ub
@@ -562,19 +533,10 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     conti_vars = prblm.conti_vars
 
     ilp = pulp.LpProblem("ILP", pulp.LpMinimize)
-    # vars = [pulp.LpVariable(f'x_{i//48}_{i%48}', lowBound=b[0], upBound=b[1], 
-    #         cat=pulp.LpInteger) for i, b in enumerate(bounds)]
     vars = []
     for i, b in enumerate(bounds):
         cat = pulp.LpInteger if i not in conti_vars else pulp.LpContinuous
         vars.append(pulp.LpVariable(f'x_{i}', lowBound=b[0], upBound=b[1], cat=cat))
-    
-    # vars=[]
-    # for i, b in enumerate(bounds):
-    #     vars.append(pulp.LpVariable(f'x_{i//14}_{i%14}', lowBound=b[0], upBound=b[1], 
-    #         cat=pulp.LpInteger) )
-    #     if i//14 == i%14:
-    #         print(i//14, i%14, b, "\n")
 
     ilp += pulp.lpDot(c, vars)
     if G_ub is not None:
@@ -583,32 +545,16 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     if A_eq is not None:
         for i in range(len(A_eq)):
             ilp += (pulp.lpDot(A_eq[i], vars) == b_eq[i])
-    print(ilp)
+    # print(ilp)
     ilp.solve(pulp.PULP_CBC_CMD(msg=False))
-    v_names = []
     if ilp.status != pulp.LpStatusOptimal:
         return None
-    for i, v in enumerate(ilp.variables()):
-        print(v.name, "=", v.varValue)
-        v_names.append(v.name)
+    # for i, v in enumerate(ilp.variables()):
+        # print(v.name, "=", v.varValue)
     obj_value = pulp.value(ilp.objective)
-    print("Optimal value:", obj_value)
-    prblm.iz_pulp = -obj_value
+    print("Optimal value Integer:", obj_value)
+    prblm.iz_pulp = obj_value
     prblm.ix_pulp = [v.varValue for v in ilp.variables()]
-    # # 解析解并构建路径
-    # edges = [(int(s.split('_')[1]), int(s.split('_')[2])) for s in v_names if int(s.split('_')[1]) < 14]
-    # import networkx as nx
-    # import matplotlib.pyplot as plt
-    # # 创建图并添加边
-    # G = nx.DiGraph()
-    # G.add_edges_from(edges)
-
-    # 绘制图
-    # plt.figure(figsize=(10, 8))
-    # pos = nx.spring_layout(G)  # 节点的布局
-    # nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=500, edge_color='gray', linewidths=1, font_size=10)
-    # plt.title('Traveling Salesman Problem Solution Path')
-    # plt.show()
     return obj_value
 
 def load_MPS(file_path):
@@ -618,17 +564,6 @@ def load_MPS(file_path):
     file_path = Path(file_path)
     # variables_dict, lp= pulp.LpProblem.fromMPS("academictimetablesmall.mps", pulp.LpMinimize)
     variables_dict, lp= pulp.LpProblem.fromMPS(file_path, pulp.LpMinimize)
-    # print(lp)
-    # lp.solve(pulp.PULP_CBC_CMD(msg=False))
-    # v_names = []
-    # if lp.status != pulp.LpStatusOptimal:
-    #     return None
-    # for i, v in enumerate(lp.variables()):
-    #     print(v.name, "=", v.varValue)
-    #     v_names.append(v.name)
-    # obj_value = pulp.value(lp.objective)
-    # print("Optimal value:", obj_value)
-    # print("-"*20)
     c = []
     A_eq = []
     b_eq = []
@@ -639,8 +574,6 @@ def load_MPS(file_path):
         c.append(lp.objective.get(var) if lp.objective.get(var) is not None else 0)
         if var.cat == pulp.LpContinuous:
             conti_vars.append(i)
-    # c = np.array([lp.objective.get(var) if lp.objective.get(var) is not None else 0 
-    #               for var in variables_dict.values()])
     constraint:pulp.LpConstraint
     for constraint in lp.constraints.values():
         coeff = [constraint.get(var) if constraint.get(var) is not None else 0 
@@ -667,20 +600,13 @@ def load_MPS(file_path):
     # solve_lp(prblm)
     prblm.fathomed = False
     prblm.fthmd_state = False
-    save_test_prblm_pool([prblm], f"var{c.size}_{file_path}", Path.cwd() / "MIPLIB_POOL", prblm_type = NORMAL,saveBounds = True,
+    save_prblm_pool([prblm], f"var{c.size}_{file_path}", Path.cwd() / "MIPLIB_POOL", prblm_type = NORMAL,saveBounds = True,
                          file_name=f"int{c.size-len(conti_vars)}_conti{len(conti_vars)}_ub{h_ub.size}_eq{b_eq.size}_{file_path.stem}.json")
     # solve_ilp_by_pulp(prblm)
     return prblm
 
 def load_maxsat(file_path:str=None):
     file_path = Path(file_path)
-    # file_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\pseudoBoolean-normalized-g4x4.opb.msat.wcnf"、
-    # file_path  ="E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\pseudoBoolean-normalized-g9x3.opb.msat.wcnf"
-    # file_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\\uaq-uaq-nr-nr240-nc80-n3-k2-rpp4-ppr2-plb50.wcnf"
-    # file_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\kbtree-kbtree9_7_3_5_70_4.wcsp.wcnf"
-    # file_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\kbtree-kbtree9_7_3_5_80_1.wcsp.wcnf"
-    # file_path = "E:\Files\A-blockchain\\branchbound\MAXSAT\maxsat\\vpa-UAutomizer_NO_01_false-termination_true-no-overflow.c_Abstraction1.wcnf"
-    # file_path = f"E:\Files\A-blockchain\\branchbound\MAXSAT\EASY\\{file_path}"
     with open(file_path, 'r') as file:
         file_content = file.readlines()
     hard_clauses = []
@@ -712,8 +638,7 @@ def load_maxsat(file_path:str=None):
         h_ub[i+len(soft_clauses)] = -1+ len([var for var in clause if var < 0])
     bounds = [(0,1) for _ in range(len(soft_clauses)+var_num)]
     prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, None, None, bounds)
-    # lp.save_test_prblm_pool([prblm], f"vpa-UAutomizer_NO_01_false-termination_true-no-overflow_{len(soft_clauses)+var_num}", Path.cwd() / "testMAXSAT")
-    save_test_prblm_pool([prblm], f"var{len(soft_clauses)+var_num}_{file_path}", 
+    save_prblm_pool([prblm], f"var{len(soft_clauses)+var_num}_{file_path}", 
                          Path.cwd() / "testMAXSAT", prblm_type = ZERO_ONE, 
                          file_name=f"var{len(soft_clauses)+var_num}_soft{len(soft_clauses)}_con{h_ub.size}_{file_path.stem}.json")
     # lp.solve_ilp_by_pulp(prblm)
@@ -767,77 +692,235 @@ def load_tsp(file_path=None):
             k += 1
     
     orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, new_A_eq, b_eq, bounds)
-    save_test_prblm_pool([orig_prblm],'burma14',Path.cwd() / "testTSP", TSP, True)
+    save_prblm_pool([orig_prblm],'burma14',Path.cwd() / "testTSP", TSP, True)
     # lp.solve_ilp_by_pulp(orig_prblm)
 
+    import random
+import xml.etree.ElementTree as ET
+
+def generate_random_tsp_xml(node_count, file_name="random_tsp.xml"):
+    # 创建 XML 文件的根结构
+    root = ET.Element("travellingSalesmanProblemInstance")
+
+    # 添加相关元数据
+    name = ET.SubElement(root, "name")
+    name.text = f"random_{node_count}_nodes"
+    source = ET.SubElement(root, "source")
+    source.text = "Generated"
+    description = ET.SubElement(root, "description")
+    description.text = f"{node_count}-Nodes Random TSP Problem"
+    double_precision = ET.SubElement(root, "doublePrecision")
+    double_precision.text = "15"
+    ignored_digits = ET.SubElement(root, "ignoredDigits")
+    ignored_digits.text = "5"
     
+    # 创建图部分
+    graph = ET.SubElement(root, "graph")
 
+    # 生成节点和边的距离
+    for i in range(node_count):
+        vertex = ET.SubElement(graph, "vertex")
         
-        
+        # 为每个节点生成与其他节点的随机距离
+        for j in range(node_count):
+            if i != j:
+                # 随机生成一个 100 到 1000 之间的距离值
+                cost = random.uniform(100, 1000)
+                edge = ET.SubElement(vertex, "edge", cost=f"{cost:.15e}")
+                edge.text = str(j)
+    
+    # 将 XML 数据写入文件
+    tree = ET.ElementTree(root)
+    tree.write(file_name, encoding="UTF-8", xml_declaration=True)
+
+def spot_to_ilp(spot_file_path, task_num):
+    with open(spot_file_path, 'r') as file:
+        lines = file.readlines()
+
+    n_tasks = int(lines[0].strip())
+    task_lines = lines[1:n_tasks + 1]
+    tasks = [list(map(int, line.strip().split())) for line in task_lines]
+    n_constraints = int(lines[n_tasks + 1].strip())
+    constraint_lines = lines[n_tasks + 2:]
+    constraints = [list(map(int, line.strip().split())) for line in constraint_lines]
+
+    c = []
+    A_eq = []
+    b_eq = []
+    G_ub = [] 
+    h_ub = []
+    bounds = []
+
+    variable_index = 0
+    task_to_variables = [] 
+
+    for task in tasks:
+        task_id = task[0]
+        weight = task[1]
+        domain_size = task[2]
+        variables_for_task = []
+        for i in range(domain_size):
+            c.append(weight)
+            variables_for_task.append(variable_index)
+            bounds.append((0, 1))
+            variable_index += 1
+        task_to_variables.append(variables_for_task)
+    
+        row = [0] * variable_index
+        for var_idx in variables_for_task:
+            row[var_idx] = 1
+        G_ub.append(row)
+        h_ub.append(1)
+    
+    total_variables = len(c) 
+    for row in G_ub:
+        if len(row) < total_variables:
+            row.extend([0] * (total_variables - len(row)))
+    
+    for constraint in constraints:
+        constraint_type = constraint[0]
+
+        if constraint_type == 2:
+            task1, task2 = constraint[1], constraint[2]
+            forbidden_values = constraint[3:]
+
+            for i in range(0, len(forbidden_values), 2):
+                val1, val2 = forbidden_values[i], forbidden_values[i + 1]
+                if val1 > len(task_to_variables[task1]):
+                    vars1 = task_to_variables[task1][0] 
+                else:
+                    vars1 = task_to_variables[task1][val1 - 1]
+                if val2 > len(task_to_variables[task2]):
+                    vars2 = task_to_variables[task2][0]
+                else:
+                    vars2 = task_to_variables[task2][val2 - 1]
+                row = [0] * len(c)
+                row[vars1] = 1
+                row[vars2] = 1
+                G_ub.append(row)
+                h_ub.append(1)
+
+        elif constraint_type == 3: 
+            task1, task2, task3 = constraint[1], constraint[2], constraint[3]
+            forbidden_values = constraint[4:]
+            for i in range(0, len(forbidden_values), 3):
+                val1, val2, val3 = forbidden_values[i:i + 3]
+                if val1 > len(task_to_variables[task1]):
+                    vars1 = task_to_variables[task1][0]
+                else:
+                    vars1 = task_to_variables[task1][val1 - 1]
+                if val2 > len(task_to_variables[task2]):
+                    vars2 = task_to_variables[task2][0]
+                else:
+                    vars2 = task_to_variables[task2][val2 - 1]
+                if val3 > len(task_to_variables[task3]):
+                    vars3 = task_to_variables[task3][0]
+                else:
+                    vars3 = task_to_variables[task3][val3 - 1]
+                row = [0] * len(c)
+                row[vars1] = 1
+                row[vars2] = 1
+                row[vars3] = 1
+                G_ub.append(row)
+                h_ub.append(2) 
+
+    c = np.array(c)
+    G_ub = np.array(G_ub) if G_ub else None
+    h_ub = np.array(h_ub) if h_ub else None
+    A_eq = None
+    b_eq = None
+    print(c)
+    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
+    # solve_lp(orig_prblm)
+    orig_prblm.fathomed = False
+    orig_prblm.fthmd_state = False 
+    # orig_prblm.iz_pulp = -19125
+    solve_ilp_by_pulp(orig_prblm)
+    save_prblm_pool([orig_prblm], Path.cwd() / "SPOT" / "Generated", NORMAL, True, f"{task_num}_1.json")
+    return orig_prblm
 
 
+def extract_new_spot(n_reduced_variables, file_id):
+    instance = 414
+    # n_reduced_variables = 10
+
+    path = Path('E:\Files\A-blockchain\\branchbound\SPOT5\data', f'{instance}.spot')
+    with open(path) as f:
+        lines = f.readlines()
+    
+    lines = [list(map(int, line.strip().split(' '))) for line in lines]
+    n_variables = lines[0][0]
+    n_constraints = lines[n_variables+1][0]
+    l_variables = lines[1:n_variables+1]
+    l_constraints = lines[n_variables+2:len(lines)]
+    l_reduced_variables = random.sample(l_variables, n_reduced_variables)
+    l_reduced_constraints = []
+    l_ID = []
+    for i in range(len(l_reduced_variables)):
+        l_ID.append(l_reduced_variables[i][0])
+    for i in range(n_constraints):
+        insert = True
+        if(l_constraints[i][0]==2):
+            for j in 1,2:
+                if l_constraints[i][j] not in l_ID:
+                    insert = False
+        else:
+            for j in 1,2,3:
+                if l_constraints[i][j] not in l_ID:
+                    insert = False
+        if insert == True:
+            l_reduced_constraints.append(l_constraints[i])
+
+    print(f'Number of variables: {n_variables}')
+    print(f'Number of constraints: {n_constraints}')
+
+    save_dir = Path(f'e:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{n_reduced_variables}')
+    if not os.path.exists(save_dir):
+        save_dir.mkdir(parents=True)
+    path = Path(save_dir, f'{n_reduced_variables}_{file_id}.spot')
+
+    with open(path, "w+") as f:
+        f.write(str(n_reduced_variables))
+        f.write("\n")
+        for i in range(len(l_reduced_variables)):
+            l_reduced_variables[i][0] = i
+            f.write(str(l_reduced_variables[i]).replace("[", "").replace("]", "").replace(",",""))
+            f.write("\n")
+        f.write(str(len(l_reduced_constraints)))
+        f.write("\n")
+        for i in range(len(l_reduced_constraints)):
+            if (l_reduced_constraints[i][0] == 2):
+                l_reduced_constraints[i][1] = l_ID.index(l_reduced_constraints[i][1])
+                l_reduced_constraints[i][2] = l_ID.index(l_reduced_constraints[i][2])
+            else:
+                l_reduced_constraints[i][1] = l_ID.index(l_reduced_constraints[i][1])
+                l_reduced_constraints[i][2] = l_ID.index(l_reduced_constraints[i][2])
+                l_reduced_constraints[i][3] = l_ID.index(l_reduced_constraints[i][3])
+            f.write(str(l_reduced_constraints[i]).replace("[", "").replace("]", "").replace(",",""))
+            f.write("\n")
 
 
 if __name__ == "__main__":
-    file_path = "E:\Files\A-blockchain\\branchbound\MIPLIB2017\easiest_1000\\markshare_4_0.mps"
-    # for root, dirs, files in os.walk(file_path):
-    #     for file in files:...
-    # loadMPS(file_path)
-    # for root, dirs, files in os.walk():
-    #     for file in files:
-    folder = Path("E:\Files\A-blockchain\\branchbound\MIPLIB2017\easiest_1000")
-    for file_path in folder.glob('*'):
-        # 检查是否是文件
-        if file_path.is_file():
-            # print(file_path)
-            load_MPS(file_path)
-            # print(file)
-    # l = [((1,0),0), ((1,2),0), ((1,0),0)]
-    # position = []
-    # for i in l:
-    #     address_index = tuple([x for x in range(len(l)) if l[x] == i])
-    #     position.append(address_index)
-    # res_position = []
-    # for indexes in list(set(position)):
-    #     if len(indexes) > 0:
-    #         res_position.append( random.choice(indexes))
-    #     else:
-    #        res_position.append(indexes[0])
-    # l = [en for i,en in enumerate(l) if i in res_position]
-    # print(res_position, l)
-    # c=np.array([1,2,3])
-    # print((-c).tolist())
-    # class Node(object):
-    #     def __init__(self, node_id = None, fathomed = None):
-    #         self.node_id:int = node_id
-    #         self.fathomed:bool = fathomed
-    #         self.iskey:bool = False
-    #         self.prev:Node = None
-    # n1 = Node(1,False)
-    # n1.iskey = True
-    # n2 = Node(2,False)
-    # n2.prev = n1
-    # n3 = Node(3,True)
-    # n3.prev = n2
-    # n4 = Node(4,False)
-    # n4.prev = n3
-    # n5 = Node(5,False)
-    # n5.prev = n2
-    # def check_del(node:Node):
-    #     can_del = False
-    #     def check(node:Node):
-    #         nonlocal can_del
-    #         if not node.iskey:
-    #             if not node.fathomed:
-    #                 check(node.prev)
-    #             else:
-    #                 can_del = True
-    #         else:
-    #             if node.fathomed:
-    #                 can_del = True
-    #     check(node)
-    #     return can_del
-    # print(check_del(n4))
+    id = 100
+    
+    # Convert the content into ILP problem form
+    task_num = 80
+    for i in range(100):
+        # spot_file_path = f"E:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{task_num}\\{task_num}_{i}.spot"
+        # lp = spot_to_ilp(spot_file_path, task_num)
+        extract_new_spot(task_num, i)
+
+    for i in range(100):
+        
+        spot_file_path = f"E:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{task_num}\\{task_num}_{i}.spot"
+        lp = spot_to_ilp(spot_file_path, task_num)
+        # extract_new_spot(task_num, i)
+
+    # Output the ILP problem components
+    # print(len(lp.c), len(lp.h_ub))
+
+
+            
 
 
 

@@ -3,6 +3,8 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, astuple, dataclass
 
+import numpy as np
+
 from background import Background
 
 # from miner import Miner
@@ -19,6 +21,7 @@ class EvaResult:
     solve_prob:float
     openblk_st:str
     openprblm_st:str
+    gas:int
     # solving process
     lowerbounds:dict # {round:lb}
     ubdata:list
@@ -56,6 +59,10 @@ class EvaResult:
     accept_advblock_nums:dict
     adv_rates:dict # {keyblock.name: 攻击者区块占所有区块的比例}
     accept_adv_rates:dict # {keyblock.name: 攻击者区块占接受链的比例}
+    # 求解误差
+    solutions_by_pulp:list
+    solutions_by_bbb:list
+    solution_errors:list
 
 @dataclass
 class UbData():
@@ -123,6 +130,10 @@ class Evaluation(object):
         self.mb_growths = defaultdict(float) # {keyblock.name: growth_rate}
         self.kb_growths = 0
         self.mb_grow_proc = [] # {keyblock.name: grow_proc}
+        # 求解误差
+        self.solutions_by_pulp = []
+        self.solutions_by_bbb = []
+        self.solution_errors = []
     
     
 
@@ -131,6 +142,24 @@ class Evaluation(object):
             return self.feasi_kbs
         self.feasi_kbs = chain.get_feasible_keyblocks()
         return self.feasi_kbs
+
+    def get_opt_solutions(self, chain:Chain):
+        feasi_kbs = self.get_feasi_kbs(chain)
+        if len(feasi_kbs) == 0:
+            return []
+        for kb in feasi_kbs:
+            next_kb = kb.keyfield.next_kbs[0]
+            if next_kb.keyfield.pre_iz_pulp is None:
+                continue
+            solution_bbb = None
+            opt_ps = next_kb.keyfield.pre_opt_prblms
+            if opt_ps is not None and len(opt_ps) != 0:
+                solution_bbb = opt_ps[0].z_lp
+            self.solutions_by_bbb.append(solution_bbb)
+            solution_pulp = next_kb.keyfield.pre_iz_pulp
+            self.solutions_by_pulp.append(solution_pulp)
+            solution_error = 10 if solution_bbb is None else np.abs((solution_pulp-solution_bbb)/solution_pulp)
+            self.solution_errors.append(solution_error)
 
     def get_mb_block_times(self, chain:Chain):
         """
@@ -147,7 +176,7 @@ class Evaluation(object):
                 if ((not mb.pre.iskeyblock) and 
                     mb.pre.get_keyid() != mb.get_keyid()):
                     continue
-                mb_time = mb.get_block_time_w_pre()
+                mb_time = mb.get_block_time_with_pre()
                 self.mb_times.append(mb_time)
         return self.mb_times
 
@@ -176,24 +205,6 @@ class Evaluation(object):
                 self.mb_times2.append(cur_mbtime-pre_timestamp)
                 pre_timestamp = cur_mbtime
                 self.mb_grow_proc.append(cur_mbtime/mb_count)
-                
-
-
-        # if len(timestamps) == 0:
-        #     warnings.warn("get timestamps failed!")
-        # timestamps = sorted(timestamps)
-        # timestamps.insert(0, 0)
-        # for i in range(1, len(timestamps)-1):
-        #     j = i
-        #     while timestamps[i+1] == timestamps[j] and j > 0:
-        #         j -= 1
-        #     self.mb_times2.append(timestamps[i+1]-timestamps[j])
-
-    # def get_mb_growth_rate(self,chain:Chain):
-    #     feasi_kbs = self.get_feasi_kbs(chain)
-    #     for kb in feasi_kbs:
-    #         if kb.keyfield.key_tx is None:
-    #             continue
             
                 
     def record_relaxed_solutions(self, miner, round:int):
@@ -211,9 +222,9 @@ class Evaluation(object):
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            if not kb.get_fthmstat():
-                continue
-            kp = kb.get_keyprblm()
+            # if not kb.get_fthmstat():
+            #     continue
+            kp = kb.get_keyprblm_key()
             kub = UbData(kb.get_miner_id(), kb.name, kp.timestamp, 
                          kb.get_timestamp(), kp.pname, "None", kp.z_lp,
                          False, kp.all_integer(),  False)
@@ -249,12 +260,13 @@ class Evaluation(object):
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            if not kb.get_fthmstat():
-                continue
-            solve_round = kb.get_kb_time_w_next()
+            # if not kb.get_fthmstat():
+            #     continue
+            solve_round = kb.get_kb_time_with_next_key()
             self.solve_rounds.update({kb.name:solve_round})
             self.kb_block_times.append(solve_round)
-            self.mb_growths[kb.name] = solve_round / len(chain.get_acpmbs_after_kb_and_label_forks(kb))
+            if len(chain.get_acpmbs_after_kb_and_label_forks(kb)) > 0:
+                self.mb_growths[kb.name] = solve_round / len(chain.get_acpmbs_after_kb_and_label_forks(kb))
         return self.solve_rounds
 
         
@@ -334,8 +346,8 @@ class Evaluation(object):
                 continue
             if kb.keyfield.key_tx is None:
                 continue
-            if kb.keyfield.key_tx.data.fthmd_state is False:
-                continue
+            # if kb.keyfield.key_tx.data.fthmd_state is False:
+            #     continue
             mbs = chain.get_mbs_after_kb(kb)
             acp_mbs = chain.get_acpmbs_after_kb_and_label_forks(kb)
             total_mb_num += len(mbs)
@@ -344,7 +356,7 @@ class Evaluation(object):
             self.accept_mb_nums.update({kb.name:len(acp_mbs)})
             if len(mbs)>0:
                 mb_forkrate = (len(mbs)- len(acp_mbs))/len(mbs)
-            self.miniblock_forkrates.update({kb.name:mb_forkrate})
+                self.miniblock_forkrates.update({kb.name:mb_forkrate})
         if total_mb_num > 0:
             self.total_mb_forkrate = (total_mb_num-total_accepted_mb_num)/total_mb_num
         return self.miniblock_forkrates, self.total_mb_forkrate
@@ -440,9 +452,10 @@ class Evaluation(object):
         self.get_mb_block_times2(chain)
         self.cal_steal_success_rate()
         self.cal_adversary_block_rate(chain)
+        self.get_opt_solutions(chain)
 
 
-    def collect_evaluation_results(self):
+    def collect_evaluation_results(self, chain):
         """收集所有评估结果, 并以EvaResult的对象返回"""
         miner_num = self.background.get_miner_num()
         diffculty = self.background.get_bb_difficulty()
@@ -451,6 +464,7 @@ class Evaluation(object):
         solve_prob = self.background.get_solve_prob()
         openblk_st = self.background.get_openblock_strategy()
         openprblm_st = self.background.get_openprblm_strategy()
+        self.cal_packaged_results(chain)
         self.result = EvaResult(
             var_num = var_num,
             miner_num = miner_num,
@@ -459,6 +473,7 @@ class Evaluation(object):
             solve_prob = solve_prob,
             openblk_st = openblk_st,
             openprblm_st = openprblm_st,
+            gas = self.background.get_total_gas(),
             lowerbounds = dict(self.upperbounds),
             ubdata = self.ubdata,
             solve_rounds = self.solve_rounds,
@@ -488,6 +503,10 @@ class Evaluation(object):
             accept_advblock_nums = dict(self.accept_advblock_nums),
             accept_adv_rates = dict(self.accept_adv_rates),
             adv_rates = dict(self.adv_rates),
+            # 求解误差
+            solutions_by_pulp = self.solutions_by_pulp,
+            solutions_by_bbb=self.solutions_by_bbb,
+            solution_errors = self.solution_errors
         )
         return self.result
 

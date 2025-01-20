@@ -36,7 +36,6 @@ class Environment(object):
             target:str = None, 
             adversary_ids:tuple = None, 
             network_param:dict = None, 
-            genesis_prblm = None,
             recordSols:bool = False):
         self.background = background
         self.evaluation = Evaluation(self.background, recordSols)
@@ -54,7 +53,7 @@ class Environment(object):
             self.create_miners_q_rand()
         elif q_distr == 'equal':
             self.create_miners_q_equal()
-        self.env_create_genesis_block(genesis_prblm)
+        self.env_create_genesis_block()
         # generate network
         self.network:network.Network = \
             for_name(self.background.get_network_type())(self.background, self.miners)
@@ -67,6 +66,7 @@ class Environment(object):
         # 每轮结束时，各个矿工的链与common prefix相差区块个数的分布
         self.cp_pdf = np.zeros((1, self.max_suffix)) 
         self.view_miner:Miner = None
+        self.res_gases:dict = None
            
         
     def init_attack_mode(self, t, adversary_ids):
@@ -148,15 +148,14 @@ class Environment(object):
         for miner in self.miners:
             miner.txpool.load_prblm_pool(prblm_pool)
 
-    def env_create_genesis_block(self, o_prblm):
+    def env_create_genesis_block(self):
         '''create genesis block for all the miners in the system.'''
-        origin_prblm = self.background.get_genesis_prblm()
-        # origin_prblm = prblm_generator()
+        genesis_prblm = self.background.get_genesis_prblm()
         # origin_prblm = o_prblm
         
-        self.global_chain.create_genesis_block(copy.deepcopy(origin_prblm))
+        self.global_chain.create_genesis_block(copy.deepcopy(genesis_prblm))
         for miner in self.miners:
-            miner.local_chain.create_genesis_block(copy.deepcopy(origin_prblm))
+            miner.local_chain.create_genesis_block(copy.deepcopy(genesis_prblm))
             miner.consensus.cur_keyblock = miner.local_chain.head
             miner.consensus.open_blocks.append(miner.local_chain.head)
             miner.consensus.cur_keyid = 0
@@ -166,10 +165,8 @@ class Environment(object):
         将miniblock复制后添加到全局链上
         """
         copyblk = copy.deepcopy(new_mb)
-        block_to_link = \
-            self.global_chain.search_forward_by_hash(new_mb.blockhead.prehash)
-        self.global_chain.\
-            add_block_direct(copyblk, block_to_link)
+        block_to_link =  self.global_chain.search_forward_by_hash(new_mb.blockhead.prehash)
+        self.global_chain.add_block_direct(copyblk, block_to_link)
         # 与该区块branch的子问题建立连接
         for prblm in block_to_link:
             if prblm.pname == new_mb.minifield.pre_pname:
@@ -177,7 +174,7 @@ class Environment(object):
         # 更新状态树
         copyblk.minifield.update_fathomed_state()
         if copyblk.minifield.bfthmd_state:
-            copyblk.update_solve_tree_fthmd_state()
+            copyblk.update_solve_tree_fthmd_state_mini()
 
     def add_global_chain(self, newblock:NewBlocks):
         """
@@ -192,10 +189,8 @@ class Environment(object):
         for mb_undafe in newmbs_unsafe:
             self.add_miniblock_to_global_chain(mb_undafe)
         copy_kb = copy.deepcopy(new_kb)
-        block_to_link = \
-            self.global_chain.search_forward_by_hash(new_kb.blockhead.prehash)
-        self.global_chain.\
-            add_block_direct(copy_kb, block_to_link)
+        block_to_link = self.global_chain.search_forward_by_hash(new_kb.blockhead.prehash)
+        self.global_chain.add_block_direct(copy_kb, block_to_link)
         pre_kb = new_kb.keyfield.pre_kb
         # 如果没有pre_keyblock，不需要建立连接
         if pre_kb is None:
@@ -215,15 +210,17 @@ class Environment(object):
             mb_with_kb = newblock.mb_with_kb
             self.add_miniblock_to_global_chain(mb_with_kb)
 
-    def attack_execute(self,round):
-        return self.attack.mine_steal(round)
-        # if self.attack_execute_type == 'execute_sample0':
-        #     self.attack.execute_sample0(round)
-        # elif self.attack_execute_type == 'execute_sample1':
-        #     self.attack.execute_sample1(round)
-        # else:
-        #     print('Undefined attack mode, please check the system_config.ini')
-        #     exit()
+    def attack_execute(self,  miner:Miner, round):
+        if miner.miner_id != self.ad_main.miner_id:
+            return
+        logger.info(f"Miner{miner.miner_id}: start attack")
+        stealed_newmbs = self.attack.mine_steal(round)
+        # if len(stealed_newmbs) > 0:
+        #     for newmb in stealed_newmbs:
+        #         self.add_global_chain(newmb)
+        for ad in self.adversary_mem:
+            ad.input_tape = []
+            ad.receive_tape = []
     
     #@get_time
     def exec(self, evn_exec_done = None, terminate_event = None, ERROR_PATH = None, quiet = True):
@@ -244,28 +241,20 @@ class Environment(object):
                         evn_exec_done.set()
                     print(f"Env terminate!--{mp.current_process().name}")
                     return
-                if miner.isAdversary and miner.miner_id != self.ad_main.miner_id:
+                if miner.isAdversary:
+                    self.attack_execute()
                     continue
-                if miner.isAdversary and miner.miner_id == self.ad_main.miner_id:
-                    logger.info(f"Miner{miner.miner_id}: start attack")
-                    stealed_newmbs = self.attack_execute(round)
-                    # if len(stealed_newmbs) > 0:
-                    #     for newmb in stealed_newmbs:
-                    #         self.add_global_chain(newmb)
-                    for ad in self.adversary_mem:
-                        ad.input_tape = []  # clear the input tape
-                        ad.receive_tape = []  # clear the communication tape
-                    continue
+                    
                 # 执行挖矿程序
                 newblock = miner.backbone_protocol(round)
-                miner.input_tape = []  # clear the input tape
-                miner.receive_tape = []  # clear the communication tape
+                miner.input_tape = []
+                miner.receive_tape = []
                 # # 监测动态解
                 if self.evaluation.recordSols and (newblock is None or 
                     (newblock is not None and not newblock.iskeyblock)):
-                    # if miner.miner_id == self.view_miner.miner_id:
-                    # self.evaluation.record_relaxed_solutions(miner, round)
-                    self.evaluation.record_lowerbound(miner, round)
+                    if miner.miner_id == self.view_miner.miner_id:
+                        self.evaluation.record_relaxed_solutions(miner, round)
+                        self.evaluation.record_lowerbound(miner, round)
                 if newblock is None:
                     continue
                 # 新挖出的矿进入网络
@@ -296,11 +285,6 @@ class Environment(object):
             if quiet is True:
                 continue
             self.process_bar(round, max_rounds, t_0) # 进度条
-            # if time.time()-t_gc >= 300:
-            #     print("garbage collecting...",end=" ")
-            #     gc.collect()
-            #     time.sleep(10)
-            #     t_gc = time.time()
         self.view_miner = self.miners[0]
         self.total_round = max_rounds
         self.background.reset_id_center()
@@ -333,15 +317,14 @@ class Environment(object):
         # # Evaluation Results
         if self.view_miner is None:
             self.view_miner = self.miners[0]
-        self.evaluation.cal_packaged_results(self.view_miner.local_chain)
-        evaluation_result = self.evaluation.collect_evaluation_results()
+        evaluation_result = self.evaluation.collect_evaluation_results(self.view_miner.local_chain)
         if not quiet:
             print(f"view miner: {self.view_miner.miner_id}")
             self.evaluation.save_results_to_json(pool_path)
             # self.global_chain.printchain2txt()
-            self.view_miner.local_chain.printchain2txt()
+            # self.view_miner.local_chain.printchain2txt()
             # self.global_chain.ShowStructureWithGraphviz()
-            self.view_miner.local_chain.show_chain_by_graphviz()
+            # self.view_miner.local_chain.show_chain_by_graphviz()
             # self.attack.save_draw_final_success_rates()
         return evaluation_result
 

@@ -6,10 +6,10 @@ import os
 import threading
 import time
 import traceback
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
-# from memory_profiler import profile
+import numpy as np
 import psutil
 from pympler import asizeof
 
@@ -22,12 +22,12 @@ from evaluation import EvaResult
 # 不同矿工数量＼不同难度值下求解20个变量的问题的平均求解速度
 logger = logging.getLogger(__name__)
 
-def new_environment(
-        background:Background, prblm:lpprblm, miner_num,  
+def new_environment(background:Background, lp:lpprblm, miner_num,  
         difficulty, adversary_num, safe_thre = 1, solve_prob = 0.5,
         opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND):
     """建立问题池中只有一个问题的环境"""
-    background.set_test_prblm(prblm)
+    background.set_genesis_prblm(lp)
+    background.init_gases([lp])
     background.set_miner_num(miner_num)
     background.set_bb_difficulty(difficulty)
     background.reset_block_number()
@@ -36,7 +36,7 @@ def new_environment(
     background.set_solve_prob(solve_prob)
     background.set_openblock_strategy(opblk_st)
     background.set_openprblm_strategy(opprblm_st)
-    return Environment(background, adversary_num, 50, 'equal', 'F', None, {}, None)
+    return Environment(background, adversary_num, 50, 'equal', 'F', None, {})
 
 def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
     """获取问题池, 可以指定pool_size和var_num随机产生, 也可以从"""
@@ -45,18 +45,20 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
         # pool_path = (Path.cwd()/"Problem Pools"/"01"/f"problem pool{var_num}.json")
-        pool_path = Path(".\\testTSP\problem poolburma14.json")
+        # pool_path = Path(".\\testTSP\problem poolburma14.json")
+        pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
+        # pool_path = Path.cwd() / "SPOT" / f"Generated\\{var_num}_1.json"
         prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path, pool_save_path)
     elif m == 'rand':
         prblm_pool = lpprblm.prblm_pool_generator(pool_size, var_num, lpprblm.ZERO_ONE)
-        lpprblm.save_test_prblm_pool(prblm_pool, var_num, pool_save_path, lpprblm.ZERO_ONE)
+        lpprblm.save_prblm_pool(prblm_pool, pool_save_path, lpprblm.ZERO_ONE)
     return prblm_pool
 
 
 @dataclass
-class intermediate_res:
+class res_intermediate_full:
     """
     记录仿真过程中的仿真数据中间结果
     """
@@ -68,52 +70,58 @@ class intermediate_res:
     solve_prob:float
     openblk_st:str
     openprblm_st:str
+    gas:int
     # 缓存中间结果
-    solve_rounds:list
-    subpair_nums:list
-    acp_subpair_nums:list
-    subpair_unpubs:list
-    mb_forkrates:list
-    mb_nums:list
-    accept_mb_nums:list
-    mb_growths:list
+    solve_rounds: list = field(default_factory=list)
+    subpair_nums: list = field(default_factory=list)
+    acp_subpair_nums: list = field(default_factory=list)
+    subpair_unpubs: list = field(default_factory=list)
+    mb_forkrates: list = field(default_factory=list)
+    mb_nums: list = field(default_factory=list)
+    accept_mb_nums: list = field(default_factory=list)
+    mb_growths: list = field(default_factory=list)
     ## 偷答案
-    attack_nums:list
-    success_nums:list
-    success_rates:list
-    atklog_depth:dict
-    atklog_mb:list
+    attack_nums: list = field(default_factory=list)
+    success_nums: list = field(default_factory=list)
+    success_rates: list = field(default_factory=list)
+    atklog_depth: dict = field(default_factory=dict)
+    atklog_mb: list = field(default_factory=list)
     ## 攻击者区块占得数量和比例
-    advblock_nums:list
-    accept_advblock_nums:list
-    adv_rates:list
-    accept_adv_rates:list
+    advblock_nums: list = field(default_factory=list)
+    accept_advblock_nums: list = field(default_factory=list)
+    adv_rates: list = field(default_factory=list)
+    accept_adv_rates: list = field(default_factory=list)
     ## 动态平均值
-    dyn_avesr:list
-    dyn_avespn:list
-    dyn_avembfr:list
+    dyn_avesr: list = field(default_factory=list)
+    dyn_avespn: list = field(default_factory=list)
+    dyn_avembfr: list = field(default_factory=list)
     # 结果
-    ave_solve_round:float
-    ave_subpair_num:float
-    ave_acp_subpair_num:float
-    ave_subpair_unpubs:float
-    ave_mb_forkrate:float
-    total_mb_forkrate:float
-    ave_mb_growth:float
+    ave_solve_round: float = 0.0
+    ave_subpair_num: float = 0.0
+    ave_acp_subpair_num: float = 0.0
+    ave_subpair_unpubs: float = 0.0
+    ave_mb_forkrate: float = 0.0
+    total_mb_forkrate: float = 0.0
+    ave_mb_growth: float = 0.0
     ## 偷答案成功概率
-    ave_success_rate:float
-    total_success_rate:float
+    ave_success_rate: float = 0.0
+    total_success_rate: float = 0.0
     ## 攻击者区块的比例
-    ave_advrate:float
-    ave_accept_advrate:float
-    total_advrate:float
-    total_accept_advrate:float
+    ave_advrate: float = 0.0
+    ave_accept_advrate: float = 0.0
+    total_advrate: float = 0.0
+    total_accept_advrate: float = 0.0
     ## 出块时间
-    mb_times:list
-    kb_times:list
-    unpub_times:list
-    fork_times:list
-    grow_proc:list
+    mb_times: list = field(default_factory=list)
+    kb_times: list = field(default_factory=list)
+    unpub_times: list = field(default_factory=list)
+    fork_times: list = field(default_factory=list)
+    grow_proc: list = field(default_factory=list)
+    ## 求解误差
+    solution_errors: list = field(default_factory=list)
+    ave_solution_error: float = 0.0
+    solve_rate:float = 0.0
+    not_solve_rate:float = 0.0
     
 
 @dataclass
@@ -127,6 +135,7 @@ class res_lite:
     solve_prob:float
     openblk_st:str
     openprblm_st:str
+    gas:int
     # 结果
     ave_solve_round:float
     ave_subpair_num:float
@@ -151,136 +160,116 @@ class res_lite:
     unpub_times:list
     fork_times:list
     grow_proc:list
+    ## 求解误差
+    ave_solution_error:float
+    solve_rate:float
+    not_solve_rate:float
 
 @dataclass
-class res_collect:
+class res_final:
     """汇总所有仿真结果"""
     data_list: list[res_lite]
     
     
-def intermediate_to_lite(inter_res:intermediate_res):
-    return res_lite(
-        inter_res.var_num,
-        inter_res.difficulty,
-        inter_res.miner_num,
-        inter_res.adversary_num,
-        inter_res.safe_thre,
-        inter_res.solve_prob,
-        inter_res.openblk_st,
-        inter_res.openprblm_st,
-        inter_res.ave_solve_round,
-        inter_res.ave_subpair_num,
-        inter_res.ave_acp_subpair_num,
-        inter_res.ave_subpair_unpubs,
-        inter_res.ave_mb_forkrate,
-        inter_res.total_mb_forkrate,
-        inter_res.ave_mb_growth,
-        inter_res.ave_success_rate,
-        inter_res.total_success_rate,
-        inter_res.atklog_depth,
-        inter_res.atklog_mb,
-        inter_res.ave_advrate,
-        inter_res.ave_accept_advrate,
-        inter_res.total_advrate,
-        inter_res.total_accept_advrate,
-        inter_res.mb_times,
-        inter_res.kb_times,
-        inter_res.unpub_times,
-        inter_res.fork_times,
-        inter_res.grow_proc,
-    )
+def med_res_to_lite_res(med_res:res_intermediate_full):
+    lite_fields = {field.name for field in fields(res_lite)}
+    med_res_dict = {key: value for key, value in med_res.__dict__.items() if key in lite_fields}
+    return res_lite(**med_res_dict)
 
-def simudata_collect_to_json(sd_collect:res_collect, file_path, file_name=None):
+def simudata_collect_to_json(sd_collect:res_final, file_path, file_name=None):
     print("saving.....")
     if file_name is None:
-        file_name = f'simudata_collect{time.strftime("%H%M%S")}.json'
+        file_name = f'final_results_{time.strftime("%H%M%S")}.json'
     with open(file_path / file_name, "w+") as f:
-        for sd_lite in sd_collect.data_list:
-            sd_lite_dict = asdict(sd_lite)
-            p_json = json.dumps(sd_lite_dict)
+        for res_lite in sd_collect.data_list:
+            res_lite_dict = asdict(res_lite)
+            filtered_dict = {
+                key: value
+                for key, value in res_lite_dict.items()
+                if not (
+                    (isinstance(value, (int, float)) and value == 0) or
+                    (isinstance(value, (list, dict)) and not value)
+                )
+            }
+            p_json = json.dumps(filtered_dict)
             f.write(p_json + '\n')
 
-# @ profile(stream=open('mem.log','w+'))
-def short_simulation(
-        background:Background,
-        repeat_num:int,
-        iter_num:int, 
-        var_num:int, 
-        difficulties:list = None, 
-        miner_nums:list = None,
-        adversary_num = None, 
-        prblm_pool_method:str = None,
-        recBlockTimes:bool = False,
-        safe_thre = 1,
-        solve_prob = 0.5,
-        opblk_st:str = bb.OB_RAND, 
-        opprblm_st:str = bb.OP_RAND):
-    """
-    prblm_pool_method: 'rand' or 'load'
-    结果：
-    {var_num:{difficulty:{miner_num:data}}}
-    
-    """
+def short_simulation(background:Background,repeat_num:int,pool_size:int, var_num:int, 
+                     difficulties:list = None, miner_nums:list = None,adversary_num = None, 
+                     prblm_pool_method:str = None,recBlockTimes:bool = False, safe_thre = 1,
+                     solve_prob = 0.5,opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND, gas = 10000):
     # 结果保存路径
     ROOT_PATH = background.get_result_path()
     if adversary_num >0:
         RESULT_PATH = ROOT_PATH / f"attack_v{var_num}m{miner_nums}d{difficulties}a{adversary_num}-{mp.current_process().pid}"
     else:
-        RESULT_PATH = ROOT_PATH / f"short_v{var_num}m{miner_nums}d{difficulties}--{time.strftime('%H%M%S')}-{mp.current_process().pid}"
+        RESULT_PATH = ROOT_PATH / f"short_g{gas}v{var_num}m{miner_nums}d{difficulties}--{time.strftime('%H%M%S')}-{mp.current_process().pid}"
     RESULT_PATH.mkdir(parents=True)
-    CACHE_PATH = RESULT_PATH / 'collect_cache'
+    CACHE_PATH = RESULT_PATH / 'result_cache'
     CACHE_PATH.mkdir(parents=True)
-    # 可选的miner_num和diffculty
-    if difficulties is None:
-        difficulties = [5, 7, 9]
-    if miner_nums is None:
-        miner_nums = [1, 3, 5, 7, 10, 15, 20, 30]
-    if prblm_pool_method is None:
-        prblm_pool_method = 'rand'
+    difficulties = [5, 7, 9] if difficulties is None else difficulties
+    miner_nums = [1, 3, 5, 7, 10, 15, 20, 30] if miner_nums is None else miner_nums
+    prblm_pool_method = 'rand' if prblm_pool_method is None else prblm_pool_method
+        
     background.set_var_num(var_num)
-    # 获取问题池
-    prblm_pool = get_prblm_pool(iter_num, var_num, prblm_pool_method, RESULT_PATH)
-    # 保存最终仿真结果
-    sd_collect = res_collect([])
-    # 开始仿真
-    for difficulty in difficulties: # 不同难度值
+    background.set_total_gas(gas)
+    prblm_pool = get_prblm_pool(pool_size, var_num, prblm_pool_method, RESULT_PATH)
+    final_res = res_final([])
+
+    for difficulty in difficulties:
         logger.info(f"var_num:{var_num}, difficulty: {difficulty}")
-        for miner_num in miner_nums: # 不同矿工数量
+        for miner_num in miner_nums:
             # 保存错误日志
             error_dir = f"errorlogs_v{var_num}d{difficulty}m{miner_num}a{adversary_num}"
             ERROR_PATH = RESULT_PATH / error_dir
             ERROR_PATH.mkdir(parents=True)
-            # 记录本轮迭代的结果
-            sd_spec = intermediate_res(
-                var_num, difficulty, miner_num, adversary_num, safe_thre, solve_prob,
-                opblk_st, opprblm_st, [], [],[], [],[], [], [], [], [], [],[],{},[],[],
-                [],[],[],[],[],[],0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [], [], [], [],[])
+            med_reses:list[res_intermediate_full] = []
+            med_res = res_intermediate_full(
+                var_num=var_num,
+                difficulty=difficulty,
+                miner_num=miner_num,
+                adversary_num=adversary_num,
+                safe_thre=safe_thre,
+                solve_prob=solve_prob,
+                openblk_st=opblk_st,
+                openprblm_st=opprblm_st,
+                gas=gas
+            )
             # 进行迭代仿真
-            # random.shuffle(prblm_pool)
-            for rep_cnt in range(repeat_num):
-                # print(i)
-                short_simu_iter(rep_cnt, iter_num, miner_num, difficulty, var_num, 
-                                adversary_num, sd_spec, background, prblm_pool,
-                                recBlockTimes, ERROR_PATH, safe_thre, solve_prob, 
-                                opblk_st, opprblm_st)
-            # 迭代完成, 计算指定参数的结果平均值, 并保存
-            cal_ave_save_intermediate(sd_spec, sd_collect, RESULT_PATH, CACHE_PATH)
-            # print("中间结果 memory size: ", asizeof.asizeof(sd_spec))
-    # 最终结果保存
-    simudata_collect_to_json(sd_collect, RESULT_PATH)
-    # print("最终结果 memory size: ", asizeof.asizeof(sd_collect))
+            for rep_cnt in range(repeat_num): 
+                short_sim_iter(
+                    rep_cnt, pool_size, miner_num, difficulty, var_num, adversary_num, med_res, background, 
+                    prblm_pool, recBlockTimes, ERROR_PATH, safe_thre, solve_prob, opblk_st, opprblm_st
+                )
+            cal_average_save_med_res(med_res, final_res, RESULT_PATH, CACHE_PATH)
+    simudata_collect_to_json(final_res, RESULT_PATH)
+    
+def merge_intermediate_res(data_list: list[res_intermediate_full]) -> res_intermediate_full:
+    """
+    合并多个IntermediateRes实例，将列表字段逐位求平均，生成新的IntermediateRes实例。
+    """
+    merged_data = {} 
+    # Process all fields
+    for field in fields(res_intermediate_full):
+        field_name = field.name
+        field_type = field.type
+        
+        if field_name == "solution_errors":  # Handle list fields
+            merged_data[field_name] = np.mean(
+                [getattr(instance, field_name) for instance in data_list], axis=0
+            ).tolist()
+        else:  # For non-list, non-numeric fields, take the value from the first instance
+            merged_data[field_name] = getattr(data_list[0], field_name)
+    
+    return res_intermediate_full(**merged_data)
 
-def evn_exec_with_error_handling(
-        iter_num:int, 
-        Evn:Environment, 
-        evn_exec_done:threading.Event, 
-        continue_flag:threading.Event, 
-        ERROR_PATH):
+
+def evn_exec_with_error(prblm_num:int, Evn:Environment, evn_exec_done:threading.Event, 
+                        continue_flag:threading.Event, ERROR_PATH):
     try:
         Evn.exec(evn_exec_done, continue_flag, ERROR_PATH)
     except Exception:
-        
-        err_path = ERROR_PATH / f"exce_error_iter{iter_num}"
+        err_path = ERROR_PATH / f"exce_error_p{prblm_num}"
         err_path.mkdir(parents=True)
         with open(err_path / "error_info.txt", "w+") as f:
             traceback.print_exc(file=f)
@@ -288,104 +277,72 @@ def evn_exec_with_error_handling(
         # Evn.miners[0].local_chain.ShowStructureWithGraphviz(None, None,
             # graph_path = ERROR_PATH, graph_title = f"exce_error_iter{iter_num}")
         # Evn.miners[0].local_chain.printchain2txt(err_path)
-        evn_exec_done.set()  # 通知环境已执行完成
+        evn_exec_done.set()
 
-def env_evec_with_memory_monitor(
-        Evn:Environment, 
-        process_id, 
-        iter_num,
-        process:psutil.Process, 
-        ERROR_PATH, 
-        continue_flag:threading.Event):
+def env_evec_with_monitor(Evn:Environment, process_id, iter_num, process:psutil.Process, 
+                          ERROR_PATH, continue_flag:threading.Event):
     """
     内存实时监测模块
     """
-    # memory_threshold = 1556480
-    # print("monitoring start")
-    memory_threshold = 10 * 1024 * 1024 * 1024
+    memory_thre = 10 * 1024 * 1024 * 1024
     exec_done = threading.Event()
     # 启动环境exec线程，并设置为守护线程，确保能够第一时间结束线程
-    exec_thread = threading.Thread(
-        target=evn_exec_with_error_handling, 
-        args=(iter_num, Evn, exec_done, continue_flag, ERROR_PATH))
+    exec_thread = threading.Thread(target=evn_exec_with_error, args=(iter_num, Evn, exec_done, continue_flag, ERROR_PATH))
     exec_thread.daemon = True
     exec_thread.start()
     while not exec_done.is_set():
-        # 检查当前进程的内存占用
-        cur_memory_usage = process.memory_info().rss
-        if cur_memory_usage > memory_threshold:
-            # with outer_evn_lock:
-            outer_evn_size = asizeof.asizeof(Evn)
-            # 内存占用超过阈值，保存参数信息到txt文件
-            record_memory_exceed_err(
-                iter_num, Evn, outer_evn_size, process_id, 
-                cur_memory_usage, memory_threshold, ERROR_PATH)
-            continue_flag.set()  # 通知主线程继续循环
-            print("Memory usage exceeded. Skipping...")
-            time.sleep(2)
-            return# 退出内存监测循环
-        else:
-            # 每秒检查一次
-            time.sleep(1)  
+        memory_usage = process.memory_info().rss
+        if memory_usage < memory_thre:
+            time.sleep(1)
+            continue
+        evn_size = asizeof.asizeof(Evn)
+        record_memory_exceed_err(iter_num, Evn, evn_size, process_id, memory_usage, memory_thre, ERROR_PATH)
+        continue_flag.set()  # 通知主线程继续循环
+        print("Memory usage exceeded. Skipping...")
+        time.sleep(2)
+        return
     exec_done.clear()
     return
 
-def record_memory_exceed_err(
-        iteration, 
-        outer_evn:Environment, 
-        outer_evn_size, 
-        current_process_id, 
-        current_memory_usage, 
-        memory_threshold, 
-        ERROR_PATH):
+def record_memory_exceed_err(iteration, outer_evn:Environment, outer_evn_size, 
+                             current_process_id, current_memory_usage, memory_threshold, ERROR_PATH):
     """记录超出内存的仿真参数"""
     with open(ERROR_PATH / f"memory_exceeded_iter{iteration}.txt", "a") as f:
-        f.write(f"PID{current_process_id} Memory usage {current_memory_usage} "
-                f"exceeded {memory_threshold} bytes.\n")
+        f.write(f"PID{current_process_id} Memory usage =-0{current_memory_usage} exceeded {memory_threshold} bytes.\n")
         f.write(f"Evrionment memory size: {outer_evn_size}\n")
         for miner in outer_evn.miners:
-            f.write(f"Miner{miner.miner_id} memory size: "
-                    f"{asizeof.asizeof(miner)}\n")
-            f.write(f"    Chain{miner.miner_id} memory size: "
-                    f"{asizeof.asizeof(miner.local_chain)}\n")
-            f.write(f"    Consensus{miner.miner_id} memory size: "
-                    f"{asizeof.asizeof(miner.consensus)}\n")
+            f.write(f"Miner{miner.miner_id} memory size: {asizeof.asizeof(miner)}\n")
+            f.write(f"    Chain{miner.miner_id} memory size: {asizeof.asizeof(miner.local_chain)}\n")
+            f.write(f"    Consensus{miner.miner_id} memory size: {asizeof.asizeof(miner.consensus)}\n")
         f.write(str(outer_evn.background.get_genesis_prblm()))
     with open(ERROR_PATH / "a_hard_prblms_memory.json", "a+") as f:
         prblm = outer_evn.background.get_genesis_prblm()
-        p_json = json.dumps({
-        'c': (-prblm.c).tolist(),
-        'G_ub':prblm.G_ub.tolist(),
-        'h_ub':prblm.h_ub.tolist()})
+        p_json = json.dumps({'c': prblm.c.tolist(),'G_ub':prblm.G_ub.tolist(),'h_ub':prblm.h_ub.tolist()})
         f.write(p_json + '\n')
 
-def short_simu_iter(
-        rep_cnt, iter_num, miner_num, difficulty, var_num, 
-        adversary_num, sd_spec, background, prblm_pool, 
-        recBlockTimes, ERROR_PATH, safe_thre = 1, solve_prob = 0.5,
-        opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND):
+def short_sim_iter(rep_cnt, pool_size, miner_num, difficulty, var_num, 
+                   adversary_num, sd_spec, background, prblm_pool, 
+                   recBlockTimes, ERROR_PATH, safe_thre = 1, solve_prob = 0.5,
+                   opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND):
     # 开始迭代
     current_process_id = os.getpid()
     current_process = psutil.Process(current_process_id)
-    for i in range(iter_num):
+    for i in range(pool_size):
         # 新建环境并运行
         eva_res = None
         try:
-            logger.info(f"iter_num:{i}")
+            print(f"prblm_count:{i}")
             # 新建环境对象
-            Evn = new_environment(background, prblm_pool[i], miner_num, 
-                                  difficulty, adversary_num, safe_thre, 
-                                  solve_prob, opblk_st, opprblm_st)
+            Evn = new_environment(background, prblm_pool[i], miner_num, difficulty, adversary_num, safe_thre, 
+                                solve_prob, opblk_st, opprblm_st)
             print(f"PID{mp.current_process().pid}: m{Evn.miner_num}d{difficulty}", 
-                  f"v{var_num}ad{adversary_num}--repeat--{rep_cnt}--iter_num{i}", )
+                f"v{var_num}ad{adversary_num}--repeat--{rep_cnt}--prblm_count{i}", )
             continue_flag = threading.Event()
             # 启动内存监测线程
-            memory_monitor_thread = threading.Thread(
-                target=env_evec_with_memory_monitor,
-                args=(Evn, current_process_id, i, current_process, 
-                      ERROR_PATH, continue_flag))
-            memory_monitor_thread.start()
-            memory_monitor_thread.join()
+            monitor_thread = threading.Thread(target=env_evec_with_monitor,
+                args=(Evn, current_process_id, i, current_process, ERROR_PATH, continue_flag))
+            monitor_thread.start()
+            monitor_thread.join()
             # 如果监测超出内存限制，执行continue
             if continue_flag.is_set():
                 # 内存超出阈值，主线程执行continue，跳过当前迭代
@@ -397,14 +354,6 @@ def short_simu_iter(
                 time.sleep(10)
                 continue
             eva_res = Evn.view()
-            # spnums = list(eva_res.subpair_nums.values())
-            # for sp in spnums:
-            #     if not(sp == 4 or sp == 6 or sp == 8):
-            #         err_path = ERROR_PATH / f"exce_error_iter{iter_num}rpt{rep_cnt}_{time.strftime('%H%M%S')}"
-            #         Evn.miners[0].local_chain.ShowStructureWithGraphviz(None, None,
-            #             graph_path = ERROR_PATH, graph_title = f"exce_error_iter{iter_num}_{time.strftime('%H%M%S')}")
-            #         err_path = ERROR_PATH / f"exce_error_iter{iter_num}rpt{rep_cnt}_{time.strftime('%H%M%S')}"
-            #         Evn.miners[0].local_chain.printchain2txt(err_path)
             del Evn
             gc.collect()
         except Exception:
@@ -413,16 +362,14 @@ def short_simu_iter(
                 traceback.print_exc(file = f)
             print("Error encountered. Skipping...")
             # sys.exit()
-            continue 
+            continue
+
         # 如果有内容则更新中间结果
         if eva_res is not None and len(eva_res.mb_nums) > 0:
-            record_intermediate(sd_spec, eva_res, recBlockTimes)
+            record_med_res(sd_spec, eva_res, recBlockTimes)
 
 
-def record_intermediate(
-        med_res:intermediate_res, 
-        eva_res:EvaResult,
-        recBlockTimes:bool):
+def record_med_res(med_res:res_intermediate_full, eva_res:EvaResult,recBlockTimes:bool):
     """
     记录中间结果 
         :各个keyblock的求解时间solve_rounds
@@ -475,6 +422,8 @@ def record_intermediate(
             med_res.adv_rates.append(advrate)
         for acp_advrate in eva_res.accept_adv_rates.values():
             med_res.accept_adv_rates.append(acp_advrate)
+    for se in eva_res.solution_errors:
+        med_res.solution_errors.append(se)
     # 出块时间
     if recBlockTimes:
         # miniblock出块时间
@@ -497,11 +446,7 @@ def cal_average(data_list:list):
         raise ValueError("divided by zero")
     return sum(data_list)/len(data_list)
 
-def cal_ave_save_intermediate(
-        med_res:intermediate_res, 
-        res_collect:res_collect, 
-        result_path, 
-        cache_path):
+def cal_average_save_med_res(med_res:res_intermediate_full, res_collect:res_final, result_path, cache_path):
     """
     计算并保存对特定var_num、difficulty、miner_num仿真结果
     """
@@ -538,18 +483,33 @@ def cal_ave_save_intermediate(
             med_res.ave_accept_advrate = cal_average(med_res.accept_adv_rates)
             med_res.total_advrate = sum(med_res.advblock_nums)/sum(med_res.mb_nums)
             med_res.total_accept_advrate = sum(med_res.accept_advblock_nums)/sum(med_res.accept_mb_nums)
+        # 求解误差
+        if len(med_res.solution_errors)>0:
+            med_res.ave_solution_error = cal_average(med_res.solution_errors)
+            med_res.solve_rate = med_res.solution_errors.count(0) / len(med_res.solution_errors)
+            med_res.not_solve_rate = med_res.solution_errors.count(10) / len(med_res.solution_errors)
     
     file_name = f'intermediate_m{m}d{d}v{v}.json'
     with open(result_path / file_name, 'w+') as f:
         sdspec_dict = asdict(med_res)
-        json_res = json.dumps(sdspec_dict)
+        filtered_dict = {
+            key: value
+            for key, value in sdspec_dict.items()
+            if not (
+                (isinstance(value, (int, float)) and value == 0) or
+                (isinstance(value, (list, dict)) and not value)
+            )
+        }
+
+        json_res = json.dumps(filtered_dict)
         f.write(json_res)
-    sd_lite = intermediate_to_lite(med_res)
-    # logger.info(f"{sd_lite}")
+    sd_lite = med_res_to_lite_res(med_res)
     res_collect.data_list.append(sd_lite)
     # 缓存仿真结果
     cache_name = f"collect_before_m{m}d{d}v{v}.json"
     simudata_collect_to_json(res_collect, cache_path, cache_name)
+
+
 
 """keyblock分叉率仿真，与前面不同的是该仿真为一长链"""
 @dataclass
@@ -603,83 +563,9 @@ def simu_mbkb_forkrate_longchain(
     simudata_kbfr_to_json(sd_kbfr, RESULT_PATH, f'kbfr_cache_d{difficulty}_{kb_strategy}.json')
     
         
-def record_intermediate_kbfr(
-        simudata_kbfr:simudata_kbfr, 
-        eva_res:EvaResult):
+def record_intermediate_kbfr(simudata_kbfr:simudata_kbfr, eva_res:EvaResult):
     simudata_kbfr.kb_forkrates.append(eva_res.kb_forkrate)
     simudata_kbfr.kb_nums.append(eva_res.kb_num)
     simudata_kbfr.kb_forknums.append(eva_res.kb_forknum)
-    simudata_kbfr.ave_kb_forkrate = \
-        sum(simudata_kbfr.kb_forkrates)/len(simudata_kbfr.kb_forkrates)
-    simudata_kbfr.total_kb_forkrate = \
-        sum(simudata_kbfr.kb_forknums)/sum(simudata_kbfr.kb_nums)
-
-# def simu_convergence(d):
-#     # RESULT_ROOT = global_var.get_result_path()
-#     lower_bounds = {}# miner_num: [lowerbounds]
-#     upper_bounds = {}# miner_num: [upperbounds]
-#     lower_results = {}# difficulty: lower_bounds
-#     upper_results = {}# difficulty: upper_bounds
-#     miner_nums = [1, 3, 10]
-#     # miner_nums = [1]
-#     diffculties = [d]
-#     for diffculty in diffculties:# 不同难度值
-#         logger.info(f"difficulty: {diffculty}")
-#         for miner_num in miner_nums:
-#             miner_num_key = f'{miner_num}miners'
-#             # ave_miner_num_key = f'{miner_num}miners_ave'
-#             lower_bounds.update({miner_num_key: []})
-#             upper_bounds.update({miner_num_key: []})
-#             for i in range(1):# 重复轮数
-#                 global_var.set_miner_num(miner_num)
-#                 global_var.set_bb_difficulty(diffculty)
-#                 global_var.reset_block_number()
-#                 global_var.reset_key_prblm_number()
-#                 Z = Environment(0, 1, 'equal', 'F', lpprblm.test1(), {}, ())
-#                 print(f"{Z.miner_num} miners  ", i)
-#                 total_round, total_subpair_num, ilp_feasible = Z.exec('total_round')
-#                 lower_bounds[miner_num_key]=total_subpair_num
-#                 upper_bounds[miner_num_key]=ilp_feasible
-#             # Z.view()
-#             Z.global_chain.ShowStructureWithGraphviz(f"m{miner_num}d{diffculty}")
-#         # logger.info(f"miner_num: {miner_num}, diffculty: {diffculty}")
-#         # lower_results.update({diffculty: lower_bounds})
-#         # upper_results.update({diffculty: upper_bounds})
-#         # logger.info(f"lower_results: {lower_results}\nupper_results:{upper_results}")
-#         # print(f"lower_results: {lower_results}\nupper_results:{upper_results}")
-#     return lower_bounds, upper_bounds
-
-if __name__ == "__main__":
-    @dataclass
-    class data:
-        var_num:int
-        difficulty:int
-        miner_num:int
-        solve_rounds:list
-        subpair_nums:list
-        mb_forkrates:list
-        ave_solve_round:float
-        ave_subpair_num:float
-        ave_mb_forkrate:float
-        dyn_avesr:list
-        dyn_avespn:list
-        dyn_avembfr:list
-    
-    @dataclass
-    class data_c:
-        data_l:list[data]
-        data_d:dict
-    dc = data_c([],{})
-    d = data(10, 5, 1, [], [], [], 0, 0, 0, [], [], [])
-    d.solve_rounds.append(1)
-    dc.data_l.append(d)
-    d = data(23, 5, 1, [], [], [], 0, 0, 0, [], [], [])
-    dc.data_l.append(d)
-    dc.data_d.update({(1,2):00})
-    print(dc.data_d.keys())
-    for k in dc.data_d.keys():
-        print(111)
-        print(k, type(k))
-    print(d,'\n', asdict(dc))
-    dcdc = {1:[12,232,123123,2]}
-    print(len(dcdc),dcdc)
+    simudata_kbfr.ave_kb_forkrate = sum(simudata_kbfr.kb_forkrates)/len(simudata_kbfr.kb_forkrates)
+    simudata_kbfr.total_kb_forkrate = sum(simudata_kbfr.kb_forknums)/sum(simudata_kbfr.kb_nums)

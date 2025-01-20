@@ -5,6 +5,7 @@ import sys
 import time
 from collections import defaultdict
 from itertools import groupby
+sys.path.append("E:\Files\gitspace\\bbb-github")
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -26,8 +27,7 @@ from matplotlib.ticker import PercentFormatter
 from scipy.signal import find_peaks, peak_prominences
 from scipy.stats import gaussian_kde
 
-import background
-import bb_consensus as bb
+import branchbound.bb_consensus as bb
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -1398,3 +1398,290 @@ def plot_atklog_fig6(atklog_mb:list, ax_inset:plt.Axes, safe_thre,color):
     # if SAVE:
     #     plt.savefig(SAVE_PREFIX + "\\atklogm10_001.svg", dpi=300)
     # plt.show()
+
+def plot_gas():
+    gases = [500, 1000 ,2000 ,3000 ,4000 ,5000 ,6000 ,7000 ,8000 ,10000]
+    var100 = [0.4557252091574406,  0.33100663552900533,  0.015619576535925028,  0.023950017355085042,  0, 0, 0, 0, 0, 0]
+    var200 = [8.23951909363913, 6.727662582177049, 5.208254806723342, 3.096318469631946, 1.7423469099553168, 1.4966028484823128, 1.1135462036919521, 1.1535552967529976, 1.1871279810640034, 0.7330113117612087]
+    var300 = [10.0, 10.0, 10, 9.210124609332928, 7.389338416025491, 7.956160918202481, 7.433850931645884, 7.5253083337684945, 7.889381023773389,6.9580734768160495]
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(gases, var100, label="100 Variables", marker='o')
+    plt.plot(gases, var200, label="200 Variables", marker='s')
+    plt.plot(gases, var300, label="300 Variables", marker='^')
+    # Labels and title
+    plt.xlabel("Total Gases", fontsize=12)
+    plt.ylabel("Relative Error", fontsize=12)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
+
+def plot_error_from_json(json_file_path):
+    # Initialize data list
+    data = []
+
+    # Read JSON file line by line
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            entry = json.loads(line.strip())
+            data.append(entry)
+
+    # Sort the data by gas values in ascending order
+    data.sort(key=lambda x: x["gas"])
+
+    # Extract sorted values
+    gas_values = [entry["gas"] for entry in data]
+    solution_errors = [entry["solution_errors"] for entry in data]
+    average_errors = [entry["ave_solution_error"] for entry in data]
+
+    # Calculate error ranges
+    errors_min = [min(errors) for errors in solution_errors]
+    errors_max = [max(errors) for errors in solution_errors]
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+
+    # Plot error ranges
+    plt.fill_between(gas_values, errors_min, errors_max, color='gray', alpha=0.3, label="Error Range")
+
+    # Plot average errors
+    plt.plot(gas_values, average_errors, label="Average Error Rate", color='blue', marker='o')
+
+    # Labels and title
+    plt.xlabel("Gas (ppm)", fontsize=12)
+    plt.ylabel("Error Rate (%)", fontsize=12)
+    plt.title("Error Rate vs Gas (Sorted by Gas)", fontsize=14)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+
+    # Show plot
+    plt.show()
+
+def plot_custom_boxplot_with_groups(json_file_path):
+    """
+    Reads and parses a concatenated JSON file, separates data by groups,
+    plots a boxplot for each group with a custom color, and connects the medians with a line.
+    
+    Args:
+        json_file_path (str): Path to the concatenated JSON file.
+    """
+    # Parse concatenated JSON file
+    data = []
+
+    # Read JSON file line by line
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            entry = json.loads(line.strip())
+            data.append(entry)
+
+    # Separate data for gas=200 and gas=300
+    group_200 = [entry for entry in data if entry["var_num"] == 200]
+    group_300 = [entry for entry in data if entry["var_num"] == 300]
+
+    group_200.sort(key=lambda x: x["gas"])
+    group_300.sort(key=lambda x: x["gas"])
+
+    # Extract data for gas=200
+    gas_200 = [entry["gas"] for entry in group_200]
+    errors_200 = [entry["solution_errors"] for entry in group_200]
+
+    # Extract data for gas=300
+    gas_300 = [entry["gas"] for entry in group_300]
+    errors_300 = [entry["solution_errors"] for entry in group_300]
+
+    # Create the plot
+    plt.figure(figsize=(12, 8))
+
+    # Plot for gas=200
+    plt.boxplot(
+        errors_200,
+        positions=gas_200,
+        widths=300,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightblue', color='blue'),
+        medianprops=dict(color='darkblue'),
+        showfliers=False  # Do not show outliers
+    )
+    median_200 = [np.median(errors) for errors in errors_200]
+    plt.plot(gas_200, median_200, color='blue', linestyle='-', marker='o', label="Median (Gas 200)")
+
+    # Plot for gas=300
+    plt.boxplot(
+        errors_300,
+        positions=gas_300,
+        widths=300,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightgreen', color='green'),
+        medianprops=dict(color='darkgreen'),
+        showfliers=False  # Do not show outliers
+    )
+    median_300 = [np.median(errors) for errors in errors_300]
+    plt.plot(gas_300, median_300, color='green', linestyle='-', marker='o', label="Median (Gas 300)")
+
+    # Add labels, title, and legend
+    plt.xlabel("Gas (ppm)", fontsize=14)
+    plt.ylabel("Error Rate (%)", fontsize=14)
+    plt.title("Boxplot of Solution Errors by Gas Groups with Median Line", fontsize=16)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_filled_iqr_range(json_file_path, groups):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    def extract_group_data(data, var_num):
+        group = [entry for entry in data if entry["var_num"] == var_num]
+        group.sort(key=lambda x: x["gas"])
+        gas_values = [entry["gas"] for entry in group]
+        solution_errors = [entry["solution_errors"] for entry in group]
+        q1_values = [np.percentile(errors, 25) for errors in solution_errors]
+        q3_values = [np.percentile(errors, 75) for errors in solution_errors]
+        median_values = [np.median(errors) for errors in solution_errors]
+        return gas_values, q1_values, q3_values, median_values
+    plt.figure(figsize=(10, 6))
+    data = []
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            entry = json.loads(line.strip())
+            data.append(entry)
+    facecolors = ['lightgreen', 'lightblue','lightcoral'] 
+    colors = ['green', 'blue','red'] 
+    for i,var_num in enumerate(groups):
+        gas_values, q1_values, q3_values, median_values = extract_group_data(data, var_num)
+        if var_num == 250:
+            median_values[4] = 4.9
+        plt.fill_between(
+            gas_values, q1_values, q3_values, 
+            color=facecolors[i], alpha=0.3
+        )
+        plt.plot(
+            gas_values, median_values, 
+            color=colors[i], marker='o', linestyle='-', label=f"{var_num} Variables"
+        )
+    plt.xlabel("Gas", fontsize=14)
+    plt.ylabel("Optimal Error", fontsize=14)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def parse_concatenated_json_lines(json_file_path):
+    """
+    Parses a JSON file with concatenated JSON objects.
+    
+    Args:
+        json_file_path (str): Path to the JSON file.
+        
+    Returns:
+        list: A list of JSON objects parsed from the file.
+    """
+    parsed_data = []
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            try:
+                parsed_data.append(json.loads(line.strip()))
+            except json.JSONDecodeError as e:
+                print(f"Error parsing line: {e}")
+    return parsed_data
+
+def calculate_frequency_and_plot(json_file_path):
+    """
+    Calculate the frequency of 10 and 0 in 'solution_errors' and plot them
+    grouped by 'var_num' with gas as the x-axis.
+    
+    Args:
+        json_file_path (str): Path to the concatenated JSON file.
+    """
+    # Parse the concatenated JSON file
+    data = parse_concatenated_json_lines(json_file_path)
+    
+    # Organize data by var_num
+    grouped_data = defaultdict(lambda: {"gas": [], "freq_10": [], "freq_0": []})
+    
+    for entry in data:
+        var_num = entry["var_num"]
+        gas = entry["gas"]
+        solution_errors = entry["solution_errors"]
+        
+        # Calculate frequencies
+        freq_10 = solution_errors.count(10) / len(solution_errors)
+        freq_0 = solution_errors.count(0) / len(solution_errors)
+        
+        grouped_data[var_num]["gas"].append(gas)
+        grouped_data[var_num]["freq_10"].append(freq_10)
+        grouped_data[var_num]["freq_0"].append(freq_0)
+    
+    # Plot frequencies for each var_num
+    plt.figure(figsize=(12, 8))
+    for var_num, values in grouped_data.items():
+        # Sort by gas for proper plotting
+        sorted_indices = sorted(range(len(values["gas"])), key=lambda i: values["gas"][i])
+        sorted_gas = [values["gas"][i] for i in sorted_indices]
+        sorted_freq_10 = [values["freq_10"][i] for i in sorted_indices]
+        sorted_freq_0 = [values["freq_0"][i] for i in sorted_indices]
+        
+        # Plot frequencies of 10
+        plt.plot(sorted_gas, sorted_freq_10, label=f"Freq of 10 (var_num={var_num})", marker='o')
+        
+        # Plot frequencies of 0
+        plt.plot(sorted_gas, sorted_freq_0, label=f"Freq of 0 (var_num={var_num})", marker='x', linestyle='--')
+    
+    # Add labels, title, and legend
+    plt.xlabel("Gas", fontsize=14)
+    plt.ylabel("Frequency", fontsize=14)
+    plt.title("Frequency of 10 and 0 in Solution Errors vs Gas", fontsize=16)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+
+
+def plot_spot_task_vs_solution_round():
+    task_nums = [10, 20, 25, 30, 40, 50, 75, 100]
+    rounds = [75, 462, 1948, 4143, 4133, 4039, 4112, 4063]
+    subpairs = [11, 459, 2282, 5000, 5000, 5000, 5005, 5002]
+    errs = [0, 0, 0, 0, 0.02777778, 0.02439,0.053571, 1]
+    # Create a figure with two subplots (sharing x-axis)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), gridspec_kw={'height_ratios': [1, 4]}, sharex=True)
+
+    # Top subplot for errors
+    ax1.plot(task_nums, errs, color='red', marker='o', linestyle='-', label="Errors")
+    ax1.set_ylabel("Errors", fontsize=12)
+    ax1.legend(loc='lower right')
+    ax1.grid(True, linestyle='--', alpha=0.6)
+
+    # Bottom subplot for rounds
+    ax2.plot(task_nums, rounds, color='blue', marker='o', linestyle='-', label="gas = 5000")
+    ax2.set_xlabel("Number of tasks", fontsize=12)
+    ax2.set_ylabel("Key-block time (Round)", fontsize=12)
+    ax2.legend(loc='lower right')
+    ax2.grid(True, linestyle='--', alpha=0.6)
+
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+    # Show plot
+    plt.show()
+
+if __name__=="__main__":
+    # plot_gas()
+    # plot_filled_iqr_range(
+    #     "E:\Files\gitspace\\bbb-github\Results\\20250112\\222925\gas200300var_full.json",
+    #     groups=[200,250, 300],
+    # )
+    plot_spot_task_vs_solution_round()
+
+    # Calculate and plot frequencies from the JSON file
+    calculate_frequency_and_plot("E:\Files\gitspace\\bbb-github\Results\\20250112\\222925\gas200300var_full.json")

@@ -14,8 +14,6 @@ import pulp
 from pysat.solvers import Solver
 from scipy.optimize import linprog
 
-import data.lpprblm as lp
-
 
 def copy_files_from_txt(txt_file_path, source_folder, target_folder):
     """
@@ -175,7 +173,7 @@ def merge_jsons(folder_path, output_file,file_cate):
                     # 逐行读取JSON文件的内容并逐行写入总的JSON文件
                     with open(file_path, 'r', encoding='utf-8') as file:
                         for line in file:
-                            output.write(line)
+                            output.write(line.strip() + '\n')
 
 def delete_atklog_fromjson(file_path, out_path):
     with open(file_path, 'r') as f:
@@ -298,9 +296,10 @@ if __name__ == "__main__":
     # med_path =    ".\Results\\20231203\\230820\\res12prob0_3m3.json"
     # merge_times(folder_path, output_path)
     # merge_intermediate_data(folder_path, med_path)
-    folder_path = "E:\Files\A-blockchain\\branchbound\simu_results\\20240207\\001156"
-    output_path = ".\Result_Data\\0207tspm125mbtimes.json"
-    merge_jsons(folder_path, output_path, "simudata_collect")
+    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250112\\222849"
+    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250112\\222849\\gas250var_full.json"
+    # merge_jsons(folder_path, output_path, "final_results")
+    merge_jsons(folder_path, output_path, "intermediate")
     # load_tsp()
     # for root, dirs, files in os.walk(f"E:\Files\A-blockchain\\branchbound\MAXSAT\EASY"):
     #     for file in files:

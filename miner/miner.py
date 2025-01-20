@@ -7,6 +7,7 @@ from collections import defaultdict
 import data.lpprblm as lpprblm
 from data import Block, Chain, NewBlocks,TxPool
 from branchbound import BranchBound
+from background import Background
 from evaluation import Evaluation
 from .fork_view import ForkView
 
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Miner(object):
-    def __init__(self, background, miner_id, q, target, evaluation:Evaluation):
+    def __init__(self, background:Background, miner_id, q, target, evaluation:Evaluation):
         self.miner_id = miner_id  # 矿工ID
         self.isAdversary = False
         self.q = q
@@ -43,6 +44,7 @@ class Miner(object):
         self.txpool = copy.deepcopy(TxPool())
         # outer evaluation
         self.evaluation = evaluation
+        self.background = background
 
     def set_adversary(self, isAdversary: bool):
         """
@@ -144,10 +146,6 @@ class Miner(object):
         rcv_kb = rcvblocks.keyblock
         local_kbs = self.local_chain.get_keyblocks_pref()
         for kb in local_kbs:
-            # # 如果已经有了相同的问题，就不接收
-            # if rcvkfield.orig_prblm_tx is not None:
-            #     if rcvkfield.orig_prblm_tx == kbfield.orig_prblm_tx:
-            #         return False
             # 如果上一个keyblock相同，但是接收到的区块没有包含下一个问题，就不接收
             if (kb.keyfield.pre_kb is not None and rcv_kb.keyfield.key_tx is None
                 and rcv_kb.keyfield.pre_kb.name == kb.keyfield.pre_kb.name):
@@ -203,7 +201,7 @@ class Miner(object):
             forkview.check_on_curfork_and_update_forks(new_mb, self.miner_id, self.round)
         # 如果该区块fathomed，更新问题树状态
         if new_mb.minifield.bfthmd_state:
-            if new_mb.update_solve_tree_fthmd_state():
+            if new_mb.update_solve_tree_fthmd_state_mini():
                 k_fstat = self.consensus.cur_keyblock.get_fthmstat()
                 logger.info("%s: updated solve tree with %s , key fathomd state %s", 
                             self.LOG_PREFIX, new_mb.name, k_fstat)
@@ -215,17 +213,18 @@ class Miner(object):
             mineSuccess = False
             new_mb.ispublished = False
             return None, mineSuccess
-        # `warning` 弃用dmin
-        # if new_mb.get_prblm_depth() < self.consensus.dmin:
-        #     mine_success = False
-        #     return None, mine_success
+        fix_pid = self.consensus.cur_keyblock.get_keyprblm_key().fix_pid
+        self.background.consume_gas_multi(fix_pid, len(new_mb.get_subpairs_mini()))
+        new_mb.rest_gas = self.background.get_rest_gas(fix_pid)
+        new_mb.cur_opt = self.consensus.opt_prblms[0].z_lp if self.consensus.opt_prblms else None
+        logger.info("%s: rest_gas:%s, cur_opt:%s ", self.LOG_PREFIX, new_mb.rest_gas, new_mb.cur_opt )
         return newblocks, mineSuccess
 
     
     def record_new_fork_mb(self, root_block:Block, root_pname:tuple, 
                            cur_block:Block, cur_fork:Block =None):
-        """ 依据root_block和root_pname记录一个fork，
-        并指明目前所在的fork，保存到`fork_views`
+        """ 
+        依据root_block和root_pname记录一个fork, 并指明目前所在的fork, 保存到`fork_views`
         """
         if len(root_block.next) == 0:
             return
@@ -233,8 +232,6 @@ class Miner(object):
         isRecorded, forkview = self.root_already_recorded(root_pname)
         if isRecorded:
             forkview.add_new_forks(cur_block)
-            logger.info("%s: adding a fork %s with root %s", 
-                        self.LOG_PREFIX, cur_block.name, root_block.name)
             return
         # 如果未被记录，新建fork_view并保存
         forkview = ForkView(root_block, root_pname, cur_fork)
@@ -245,11 +242,7 @@ class Miner(object):
             if b.minifield.pre_pname == root_pname:
                 forkview.add_new_forks(b)
         if len(forkview.forks) <= 1:
-            logger.warning("%s: set up forkview failed! root %s has no forks", 
-                           self.LOG_PREFIX, root_block.name)
             return
-        logger.info("%s: set up a forkview with root %s and forks %s, cur fork %s",
-                    self.LOG_PREFIX, root_block.name, forkview.get_forks(), cur_fork.name)
         self.forkviews.append(forkview)
     
     def root_already_recorded(self, root_pname:tuple):
@@ -265,10 +258,8 @@ class Miner(object):
 
     def fork_detect_mb(self, cur_block:Block):
         """
-        检测是否有分叉，若有，则记录到`fork_views`；
-        检测规则：即open_blocks中存在和该block链接到同一个子问题上的block
-
-        TODO：修改检测逻辑，可能分叉部分已经不在open blocks中了
+        检测是否有分叉，若有，则记录到`fork_views`;
+        检测规则: 即open_blocks中存在和该block链接到同一个子问题上的block
         """
         def detect_on_cur_fork(cur_block:Block):
             if len(self.forkviews) == 0:
@@ -277,8 +268,6 @@ class Miner(object):
             for forkview in self.forkviews:
                 onCurFork = forkview.check_on_curfork_and_update_forks(
                     cur_block, self.miner_id, self.round)
-                logger.info("%s: %s onCurFork %s ", 
-                            self.LOG_PREFIX, cur_block.name, onCurFork)
                 if onCurFork is not None:
                     break
             return onCurFork
@@ -292,9 +281,6 @@ class Miner(object):
                 if ob.iskeyblock:
                     return False
                 if pre_pname == ob.get_pre_pname():
-                    logger.info("miner %s detected a fork %s with root %s", 
-                                self.miner_id, cur_block.name, ob.pre.name)
-                    # self.evaluation.record_fork_times(cur_block.get_block_time())
                     self.record_new_fork_mb(cur_block.pre, pre_pname, cur_block, ob)
                     return True
             return False
@@ -323,14 +309,11 @@ class Miner(object):
             del_fvs.append(fork_view)
             if self.consensus.pre_block in prefkbs:
                 self.consensus.cancel_solving_prblm()
-            logger.info("%s: switching fork... pre open blocks: %s, pre opt_prblms : %s",
-                        self.LOG_PREFIX, [ob.name for ob in self.consensus.open_blocks],
-                        [p.pname for p in self.consensus.opt_prblms])
             obs = [ob for ob in self.consensus.open_blocks if ob not in prefkbs]
             for fkb in curfkbs:
                 self.consensus.check_again_mb_fthmd_state(fkb)
                 if fkb.get_fthmstat():
-                    if fkb.update_solve_tree_fthmd_state():
+                    if fkb.update_solve_tree_fthmd_state_mini():
                         self.consensus.reorg_open_blocks()
             # TODO: 原分叉上找到了比新分叉上更优的问题的情况
             # 清除在原分叉上找到的最优问题
@@ -342,13 +325,13 @@ class Miner(object):
                     del_optps.append(opt_p)
             self.consensus.opt_prblms = [opt_p for opt_p in self.consensus.opt_prblms 
                                          if opt_p not in del_optps]
-            lb = -sys.maxsize if len(self.consensus.opt_prblms) == 0 else self.consensus.opt_prblms[0].z_lp
+            ub = sys.maxsize if len(self.consensus.opt_prblms) == 0 else self.consensus.opt_prblms[0].z_lp
             p:lpprblm.LpPrblm
             for fkb in curfkbs:
                 for p in fkb:
-                    if not (p.all_integer() and p.z_lp>=lb):
+                    if not (p.all_integer() and p.z_lp<=ub):
                         continue
-                    if p.z_lp>lb:
+                    if p.z_lp<ub:
                         self.consensus.opt_prblms.clear()
                     self.consensus.opt_prblms.append(p)
 
@@ -380,13 +363,13 @@ class Miner(object):
 
     def fork_choice_miniblock(self, round, rcvblock:NewBlocks):
         """
-        rcvblock与正在求解的miniblock连接同一个子问题，放弃当前求解
-        open_blocks中有区块与rcvblock连接到相同的问题，就不把rcvblock放入open_blocks中
+        rcvblock与正在求解的miniblock连接同一个子问题时, 放弃当前求解
+        open_blocks中有区块与rcvblock连接到相同的问题, 就不把rcvblock放入open_blocks中
 
-        如果求解树的状态有更新，将连接到fthmd_state的区块从待求解问题集中删去，
-        同时当前求解若连接到fthmd_state区块，也终止求解
+        如果求解树的状态有更新, 将连接到fthmd_state的区块从待求解问题集中删去,
+        同时当前求解若连接到fthmd_state区块, 也终止求解
 
-        param:  rcvblocks: 接收到的区块列表，其中应当只有一个miniblock
+        param:  rcvblocks: 接收到的区块列表, 其中应当只有一个miniblock
         return: new_update(bool): 本地链是否有更新
         """
         new_update = False
@@ -395,7 +378,7 @@ class Miner(object):
         rcv_mb = rcvblock.miniblock
         logger.info("round %s miner %s: rcv_mb %s fthmd state %s",
                     round, self.miner_id, rcv_mb.name, rcv_mb.get_fthmstat())
-        # 验证合法性
+        # 验证
         if not self.consensus.valid_block(self.local_chain, rcv_mb):
             return new_update
         # 添加到链上
@@ -405,23 +388,20 @@ class Miner(object):
         new_update = True
         self.consensus.check_again_mb_fthmd_state(copy_mb)
         key_id = copy_mb.get_keyid()
-        # 如果和当前求解的keyblock不一致，不进行更多操作
+        # 和当前求解的keyblock不一致，不进行更多操作
         if key_id != self.consensus.cur_keyid:
             return new_update
-        # 如果当前没有正在求解的keyblock，不进行更多操作
+        # 当前没有正在求解的keyblock，不进行更多操作
         if self.consensus.cur_keyblock is None:
             return new_update
-        # 如果当前keyblock已求解完，不进行更多操作
-        key_prblm = self.consensus.cur_keyblock.get_keyprblm()
+        # 当前keyblock已求解完，不进行更多操作
+        key_prblm = self.consensus.cur_keyblock.get_keyprblm_key()
         if key_prblm.fthmd_state is True:
             return new_update
-        # 如果和正在求解的区块连接的问题相同，放弃当前求解
+        # 和正在挖的区块连接的问题相同，放弃当前求解
         if self.consensus.pre_prblm is not None:
             if self.consensus.pre_prblm.pname == copy_mb.minifield.pre_pname:
                 unpub_num, unpubs = self.consensus.get_unpub_num(False, self.evaluation.recordSols)
-                # unpub_time = rcv_mb.get_block_time() if unpub_num > 0 else None
-                # logger.info("round %s, miner%s: unpub pair num %s, block time %s",
-                #             round, self.miner_id, unpub_num, unpub_time)
                 self.evaluation.record_unpub_pair(
                     self.consensus.cur_keyblock.name, unpub_num, 
                     unpub_subs = unpubs, miner_id= self.miner_id)
@@ -434,7 +414,7 @@ class Miner(object):
         logger.info("round %s miner %s: copy_mb %s fthmd state %s",
                     round, self.miner_id, copy_mb.name, copy_mb.get_fthmstat())
         # 更新状态树，重组
-        if copy_mb.get_fthmstat() and copy_mb.update_solve_tree_fthmd_state():
+        if copy_mb.get_fthmstat() and copy_mb.update_solve_tree_fthmd_state_mini():
             self.consensus.reorg_open_blocks()
             logger.info("%s: updating solve tree miniblock %s fathomed_state: %s, "
                         "keyblock fathomed: %s", self.LOG_PREFIX, copy_mb.name, 
@@ -482,7 +462,7 @@ class Miner(object):
             if add_success is False:
                 return new_update
             if copyblk.minifield.bfthmd_state:
-                copyblk.update_solve_tree_fthmd_state()
+                copyblk.update_solve_tree_fthmd_state_mini()
         # 再添加keyblock在链上
         copykb = copy.deepcopy(rcvkb)
         b2link = self.local_chain.search_forward_by_hash(rcvkb.blockhead.prehash)
@@ -507,7 +487,7 @@ class Miner(object):
         # 如果策略为'pow'
         if self.consensus.kb_strategy == 'pow':
             # 如果该keyblock的高度高于正在求解的keyblock，则切换到该问题
-            if copykb.get_keyheight() > self.consensus.cur_keyblock.get_keyheight():
+            if copykb.get_keyheight_key() > self.consensus.cur_keyblock.get_keyheight_key():
                 unpub_num, unpubs = self.consensus.get_unpub_num(True, self.evaluation.recordSols)
                 self.evaluation.record_unpub_pair(
                     self.consensus.cur_keyblock.name, unpub_num, 
@@ -523,27 +503,23 @@ class Miner(object):
         if add_success is False:
             return new_update
         if self.consensus.withmini_keycache is not None:
-            if (copykb.get_keyheight() >= 
-                self.consensus.withmini_keycache.get_keyheight()):
+            if copykb.get_keyheight_key() >= self.consensus.withmini_keycache.get_keyheight_key():
                 unpub_num, unpubs = self.consensus.get_unpub_num(True, self.evaluation.recordSols)
-                self.evaluation.record_unpub_pair(
-                    self.consensus.cur_keyblock.name, unpub_num, 
-                    unpub_subs = unpubs, miner_id= self.miner_id)
+                self.evaluation.record_unpub_pair(self.consensus.cur_keyblock.name, unpub_num, 
+                                                  unpub_subs = unpubs, miner_id= self.miner_id)
                 self.consensus.switch_key(copykb,round=round)
                 self.consensus.withmini_keycache = None
                 self.consensus.open_blocks.append(copy_mbwithkb)
         else:
-            if (copykb.get_keyheight() > 
-                self.consensus.cur_keyblock.get_keyheight()):
+            if copykb.get_keyheight_key() > self.consensus.cur_keyblock.get_keyheight_key():
                 unpub_num, unpubs = self.consensus.get_unpub_num(True, self.evaluation.recordSols)
-                self.evaluation.record_unpub_pair(
-                    self.consensus.cur_keyblock.name, unpub_num,
-                    unpub_subs = unpubs, miner_id= self.miner_id)
+                self.evaluation.record_unpub_pair(self.consensus.cur_keyblock.name, unpub_num,
+                                                  unpub_subs = unpubs, miner_id= self.miner_id)
                 self.consensus.switch_key(copykb,round=round)
                 self.consensus.open_blocks.append(copy_mbwithkb)
         
         if copy_mbwithkb.minifield.bfthmd_state:
-                copy_mbwithkb.update_solve_tree_fthmd_state()
+                copy_mbwithkb.update_solve_tree_fthmd_state_mini()
         
         return new_update
 
@@ -556,34 +532,7 @@ class Miner(object):
         newblocks, mine_success = self.mining(round)
         if mine_success:
             newblocks = newblocks
-        if update_index or mine_success:  # Cnew != C
+        if update_index or mine_success:
             return newblocks
         else:
-            return None  # 如果没有更新 返回None告诉environment回合结束
-
-if __name__ == "__main__":
-    class A(object):
-        def __init__(self) -> None:
-            self.aa = defaultdict(list[B])
-    class B(object):
-        def __init__(self, bb) -> None:
-            self.bb = bb
-        def __repr__(self) -> str:
-            return str(self.bb)
-    lowest_ops = [B(2),B(1),B(3),B(5),B(4)]
-    open_prblm = random.choice(lowest_ops)
-    pop_idx = lowest_ops.index(open_prblm)
-    s = str(None)
-    print(s, type(s))
-    # a = A()
-    # b = B(1)
-    # a.aa['a'].append(B(1))
-    # a.aa['a'].append(B(2))
-    # a.aa['b'].append(2)
-    # for fork, forkblocks in a.aa.items():
-    #     for fb in forkblocks:
-    #         print(fb.bb)
-    #     print(fork,forkblocks)
-    a = []
-     # print(a.aa, a.bb)
-    # print(b.aa)
+            return None

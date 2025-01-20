@@ -165,7 +165,7 @@ class default_attack_mode(metaclass = ABCMeta):
             attack_iter = 1
             for _ in range(attack_iter):
                 # 有多少attacker实施多少次攻击
-                mb_depth = honest_mb.get_soltree_depth()
+                mb_depth = honest_mb.get_solve_tree_depth()
                 self.evaluation.record_atk(True, mb_depth, honest_mb.name, attack_theory)
                 self.atklog_mbname[honest_mb.name] += 1
                 attack_success = False

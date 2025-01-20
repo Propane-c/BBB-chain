@@ -1,6 +1,7 @@
 import configparser
 import logging
 import multiprocessing as mp
+import os
 import time
 import traceback
 from pathlib import Path
@@ -93,8 +94,9 @@ def run(pool_path=None):
     background.set_var_num('maxsat')
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
-    background.set_miner_num(1)
-    background.set_bb_difficulty(3)
+    background.set_miner_num(5)
+    background.set_bb_difficulty(5)
+    background.set_total_gas(10000)
     background.set_openblock_strategy(bb.OB_RAND)
     background.set_openprblm_strategy(bb.OP_RAND)
     if pool_path is not None:
@@ -112,7 +114,12 @@ def run(pool_path=None):
     prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
     lp = prblm_pool[0]
     # lp = lpprblm.load_prblm_pool_from_json(
-    #     ".\Problem Pools\\problem pool1007_1805.json")[0]
+    #     ".\Problem Pools\\problem pool1007_1837.json")[0]
+    # lp = lpprblm.load_prblm_pool_from_json(
+    #     ".\Problem Pools\\1116\problem pool1116_105207.json")[0]
+    # lp = lpprblm.rand_01(50)
+    # spot_file_path = "E:\Files\A-blockchain\\branchbound\SPOT5\data\\54.spot"
+    # lp = lpprblm.spot_to_ilp(spot_file_path)
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\1109\problem pool1109_1508.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -125,10 +132,12 @@ def run(pool_path=None):
     # lpprblm.save_test_prblm_pool([lp], f'prblm {time.strftime("%m%d_%H%M%S")}', 
     #     background.get_result_path())
     # lp = lpprblm.test5()
-    background.set_test_prblm(lp)
-    quiet=False
+    background.set_genesis_prblm(lp)
+    background.init_gases([lp])
+    quiet=True
+    recordSols = False
     Z = Environment(background, t, q_ave, q_distr, target, 
-                    adversary_ids, network_param, None, True)
+                    adversary_ids, network_param, recordSols)
     # Z.env_load_prblm_pool([lp, lp2])
     total_round = Z.exec(quiet=quiet)
     
@@ -146,25 +155,18 @@ def run(pool_path=None):
     
     
 
-def single_process_shortchain(
-        repeat_num, iter_num, var_num, difficulties,
-        miner_nums, adversary_num, prblm_pool_method, 
-        safe_thre = 0.001, 
-        record_block_times = False, 
-        opblk_st:str = bb.OB_RAND, 
-        opprblm_st:str = bb.OP_RAND, 
-        
-        solve_prob = 0.5):
+def single_process_shortchain(gas, repeat_num, pool_size, var_num, 
+                              difficulties, miner_nums, adversary_num, prblm_pool_method, 
+                              safe_thre = 0.001, record_block_times = False, 
+                              opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND, solve_prob = 0.5):
     """ 短链仿真（单链只包含一个问题）"""
     try:
         _, environ_settings = load_config()
         background = set_background(environ_settings)
         set_logger(background)
-        simulation.short_simulation(
-            background, repeat_num, iter_num, var_num, difficulties, 
-            miner_nums, adversary_num, prblm_pool_method, 
-            record_block_times, safe_thre, solve_prob, opblk_st, 
-            opprblm_st)
+        simulation.short_simulation(background, repeat_num, pool_size, var_num, 
+                                    difficulties, miner_nums, adversary_num, prblm_pool_method, 
+                                    record_block_times, safe_thre, solve_prob, opblk_st, opprblm_st, gas)
     except Exception:
         print(traceback.print_exc())
         # 遇到错误，跳过当前迭代并保存错误信息
@@ -200,110 +202,62 @@ def single_process_longchain(
 
 if __name__ == '__main__':
     """参数设置"""
-    simu_type = "single_run"
+    # pool = lpprblm.prblm_pool_generator(200, 250, ZERO_ONE)
+    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "20250103", ZERO_ONE, False)
+
+    # simu_type = "single_run"
     # simu_type = "long"
-    # simu_type = "short"
-    multiProcessOn = False
+    simu_type = "short"
+    multiProcessOn = True
+    # multiProcessOn = False
     threadNum = 2
     """
-    short参数说明：
-    repeat_num, iter_num, var_num, difficulties, miner_nums, adversary_num, 
-    prblm_pool_method, opblk_st, opprblm_st, 
-    safe_thre, record_block_times, solve_prob
+    short参数说明:
+    gas | repeat_num | pool_size | var_num | difficulties | miner_nums | adversary_num | prblm_pool_metho| safe_thre |
+    record_block_times | opblk_st | opprblm_st | solve_prob
+    
     """
     rpt_num1 = 1
     rpt_num = 5
     args_list = [
-        # [rpt_num, 2500, 100, [3],  [20],0, 'load'],
-        # [rpt_num, 2500, 100, [5],  [20],0, 'load'],
-        # [rpt_num, 2500, 100, [8],  [20],0, 'load'],
-        # [rpt_num, 2500, 100, [10], [20],0, 'load'],
         
-        # [rpt_num, 2500, 100, [8],  [10],0, 'load'],
-        # [rpt_num, 2500, 100, [10], [10],0, 'load'],
-        # [rpt_num, 2500, 100, [3],  [10],0, 'load'],
-        # [rpt_num, 2500, 100, [5],  [10],0, 'load'],
+        # [8000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [9000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [10000, rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [500,   rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [1000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [1500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
 
-        # [rpt_num, 2500, 100, [3],  [1],0, 'load'],
-        # [rpt_num, 2500, 100, [5],  [1],0, 'load'],
-        # [rpt_num, 2500, 100, [8],  [1],0, 'load'],
-        # [rpt_num, 2500, 100, [10], [1],0, 'load'],
-
-        # [rpt_num, 2500, 100, [3],  [3],0, 'load'],
-        # [rpt_num, 2500, 100, [5],  [3],0, 'load'],
-        # [rpt_num, 2500, 100, [8],  [3],0, 'load'],
-        # [rpt_num, 2500, 100, [10], [3],0, 'load'],
+        [2000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [2500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [3000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [6000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [6500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [7000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [7500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [3500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [4000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [4500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [5000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        [5500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
         
-        [rpt_num1, 1, 100, [3],  [3],0, 'load', 0.001, True],
-        [rpt_num1, 1, 100, [5],  [3],0, 'load', 0.001, True],
-        [rpt_num1, 1, 100, [7],  [3],0, 'load', 0.001, True],
-        [rpt_num1, 1, 100, [9],  [3],0, 'load', 0.001, True],
 
-        [rpt_num, 1, 100, [9],  [3],0, 'load', 0.001, True],
-        [rpt_num, 1, 100, [3],  [10],0, 'load', 0.001, True],
-        [rpt_num, 1, 100, [5],  [10],0, 'load', 0.001, True],
-        [rpt_num, 1, 100, [7],  [10],0, 'load', 0.001, True],
-        [rpt_num, 1, 100, [9],  [10],0, 'load', 0.001, True],
+        # [500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
+        # [500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
+        # [500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
+        # [500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
+        # [500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
 
-        # [rpt_num, 1500, 50, [3],  [20], 0, 'load'],
-        # [rpt_num, 1500, 50, [5],  [20], 0, 'load'],
-        # [rpt_num, 1500, 50, [8],  [20], 0, 'load'],
-        # [rpt_num, 1500, 50, [10], [20], 0, 'load'],
-
-        # [rpt_num, 1500, 50, [3],  [15], 0, 'load'],
-        # [rpt_num, 1500, 50, [5],  [15], 0, 'load'],
-        # [rpt_num, 1500, 50, [8],  [15], 0, 'load'],
-        # [rpt_num, 1500, 50, [10], [15], 0, 'load'],
-
-        # [rpt_num, 1500, 50, [3],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 50, [5],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 50, [8],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 50, [10], [5], 0, 'load', True],
- 
-        # [rpt_num, 1500, 50, [3],  [10], 0, 'load'],
-        # [rpt_num, 1500, 50, [5],  [10], 0, 'load'],
-        # [rpt_num, 1500, 50, [8],  [10], 0, 'load'],
-        # [rpt_num, 1500, 50, [10], [10], 0, 'load'],
-
-        # [rpt_num, 1500, 50, [3],  [3], 0, 'load'],
-        # [rpt_num, 1500, 50, [5],  [3], 0, 'load'],
-        # [rpt_num, 1500, 50, [8],  [3], 0, 'load'],
-        # [rpt_num, 1500, 50, [10], [3], 0, 'load'],
-
-        # [rpt_num, 1500, 50, [3],  [1], 0, 'load'],
-        # [rpt_num, 1500, 50, [5],  [1], 0, 'load'],
-        # [rpt_num, 1500, 50, [8],  [1], 0, 'load'],
-        # [rpt_num, 1500, 50, [10], [1], 0, 'load'],
-
-        # [rpt_num, 1500, 20, [3],  [1], 0, 'load'],
-        # [rpt_num, 1500, 20, [5],  [1], 0, 'load'],
-        # [rpt_num, 1500, 20, [8],  [1], 0, 'load'],
-        # [rpt_num, 1500, 20, [10], [1], 0, 'load'],
-
-        # [rpt_num, 1500, 20, [3],  [3], 0, 'load'],
-        # [rpt_num, 1500, 20, [5],  [3], 0, 'load'],
-        # [rpt_num, 1500, 20, [8],  [3], 0, 'load'],
-        # [rpt_num, 1500, 20, [10], [3], 0, 'load'],
-
-        # [rpt_num, 1500, 20, [3],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 20, [5],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 20, [8],  [5], 0, 'load', True],
-        # [rpt_num, 1500, 20, [10], [5], 0, 'load', True],
- 
-        # [rpt_num, 1500, 20, [3],  [10], 0, 'load'],
-        # [rpt_num, 1500, 20, [5],  [10], 0, 'load'],
-        # [rpt_num, 1500, 20, [8],  [10], 0, 'load'],
-        # [rpt_num, 1500, 20, [10], [10], 0, 'load'],
-
-        # [rpt_num, 1500, 20, [3],  [15], 0, 'load'],
-        # [rpt_num, 1500, 20, [5],  [15], 0, 'load'],
-        # [rpt_num, 1500, 20, [8],  [15], 0, 'load'],
-        # [rpt_num, 1500, 20, [10], [15], 0, 'load'],
-
-        # [rpt_num, 1500, 20, [3],  [20], 0, 'load'],
-        # [rpt_num, 1500, 20, [5],  [20], 0, 'load'],
-        # [rpt_num, 1500, 20, [8],  [20], 0, 'load'],
-        # [rpt_num, 1500, 20, [10], [20], 0, 'load'],
 
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_RAND, bb.OP_BEST],
         # [rpt_num, 10, 50, [5], [10],  0, 'load', bb.OB_RAND, bb.OP_BEST],
@@ -332,25 +286,6 @@ if __name__ == '__main__':
         # [rpt_num, 10, 50, [5], [20],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [30],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_BREATH, bb.OP_RAND],
-
-        # [rpt_num, 10, 50, [3,5], [5], 0,'load' ],
-        # [rpt_num, 10, 50, [3,5], [10],0, 'load'],
-        # [rpt_num, 10, 50, [3,5], [15],0, 'load'],
-        # [rpt_num, 10, 50, [3,5], [20],0, 'load'],
-        # [rpt_num, 20, 50, [3], [1,3,30],0, 'load'],
-        # [rpt_num, 10, 50, [5], [1,3,30],0, 'load'],
-
-        # [rpt_num, 10, 50, [8], [5], 0,'load'],
-        # [rpt_num, 10, 50, [8], [10],0, 'load'],
-        # [rpt_num, 10, 50, [8], [15],0, 'load'],
-        # [rpt_num, 10, 50, [8], [20],0, 'load'],
-        # [rpt_num, 10, 50, [8], [1,3,30],0, 'load'],
-
-        # [rpt_num, 10, 50, [10], [5], 0, 'load'],
-        # [rpt_num, 10, 50, [10],[10], 0, 'load'],
-        # [rpt_num, 10, 50, [10],[15], 0, 'load'],
-        # [rpt_num, 10, 50, [10],[20], 0, 'load'],
-        # [rpt_num, 10, 50, [10], [1,3,30], 0, 'load'],
 
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.005 ],
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.001],
@@ -384,7 +319,6 @@ if __name__ == '__main__':
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0005],
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0003],
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0001],
-
     ]
     """
     long参数说明：
@@ -420,10 +354,20 @@ if __name__ == '__main__':
             """单次运行测试"""
         
             i = 0
+            json_files = []
+            for root, _, files in os.walk(Path.cwd() / "SPOT"/ "Origin"):
+                for file in files:
+                    if file.endswith('.json'):
+                        json_files.append(os.path.join(root, file))
+            print(json_files)
             # while not run():
             #     i+=1
             #     print(i)
-            run()    
+
+            json_files = ["E:\Files\gitspace\\bbb-github\SPOT\\Origin\\42.json"]
+            for file in reversed(json_files):
+                print(file)
+                run(file)    
                       
     else:
         """多进程仿真"""
@@ -431,12 +375,19 @@ if __name__ == '__main__':
         print(threadNum)
         res = []
         if simu_type == "single_run":
-            pool_paths = []
-            folder = Path("testMIPLIB2")
-            for file_path in folder.glob('*'):
-                pool_paths.append(file_path)
-            print(pool_paths)
-            for pool_path in pool_paths:
+            # pool_paths = []
+            # folder = Path("testMIPLIB2")
+            # for file_path in folder.glob('*'):
+            #     pool_paths.append(file_path)
+            # print(pool_paths)
+            json_files = []
+            for root, _, files in os.walk(Path.cwd() / "SPOT"/ "Generated"/ "1"):
+                for file in files:
+                    if file.endswith('.json'):
+                        json_files.append(os.path.join(root, file))
+            print(json_files)
+            for pool_path in json_files:
+                print(pool_path)
                 res.append(worker_pool.apply_async(single_run, [pool_path]))
         if simu_type == "short":
             for args in args_list:

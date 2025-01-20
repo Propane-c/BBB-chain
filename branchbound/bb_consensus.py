@@ -64,15 +64,6 @@ class SolvingPair(object):
         '''Try to solve the subprblms'''
         solve_finished = False
         p1, p2 = self.get_unsolved_prblms()
-        # # try to solve prblm1
-        # if p1 is not None:
-        #     self.success1 = lpprblm.solve_lp(p1, solve_prob)
-        # # try to solve prblm2
-        # if p2 is not None:
-        #     self.success2 = lpprblm.solve_lp(p2, solve_prob)
-        # if np.random.random() < solve_prob:
-        #     self.success1 = lpprblm.solve_lp(p1)
-        #     self.success2 = lpprblm.solve_lp(p2)
         if p1 is not None:
             self.success1 = lpprblm.solve_lp(
                 p1, self.key_lp.c, self.G_ub1, self.h_ub1, 
@@ -135,8 +126,7 @@ class BranchBound(object):
         self.opprblm_st = self.background.get_openprblm_strategy()
         self.var_st = VAR_RAND
         # do pow when generating a keyblock
-        self.key_pow_target = \
-            '000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+        self.key_pow_target = '000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
         self.key_pow_nonce = 0
         self.key_pow_hash = None
         self.key_assemble_pre_pname = None
@@ -171,24 +161,22 @@ class BranchBound(object):
                 unpubs.append(p)
         return unpub_num, unpubs
 
-    def mining_consensus(self, blockchain: Chain, miner_id,
-                         isAdversary=None, input=None,
-                         q=None, round=None, prblm_pool=None):
+    def mining_consensus(self, blockchain: Chain, miner_id, isAdversary=None, 
+                         input=None, q=None, round=None, prblm_pool=None):
         # TODO: 在回合开始时更新open blocks的状态，而不是取问题时更新
         mineSuccess = False
         if len(self.open_blocks):
             obs = [b.name for b in self.open_blocks]
             logger.info(f"{self.LOG_PREFIX}: open blocks {obs}")
-        # 没有可求解的keyblock
         
+        # 没有可求解的keyblock
         if self.cur_keyblock is None:
             self.wait_keyblock()
             return None, mineSuccess
 
         # 尝试产生key-block
-        if self.cur_keyblock.get_fthmstat():
-            newblocks, mineSuccess = self.mining_keyblock(
-                blockchain, miner_id, input, round, q, prblm_pool)
+        if self.cur_keyblock.get_fthmstat() or self.background.is_gas_used_up(self.cur_keyblock.get_keyprblm_key().fix_pid):
+            newblocks, mineSuccess = self.mining_keyblock(blockchain, miner_id, input, round, q, prblm_pool)
             return newblocks, mineSuccess
 
         # 若没有正在求解的问题对，尝试获取新问题来branch
@@ -222,20 +210,14 @@ class BranchBound(object):
 
     def mining_miniblock(self, miner_id, input, round):
         """
-        挖取miniblock，
+        挖取miniblock
         """
         mining_success = False
         # continue to solve current sub-problem pair
         solve_finished = self.solving_pair.try_solve_cur_prblms(round)
         if not solve_finished:
-            imsg = (f"{self.LOG_PREFIX}: solving "
-                    f"p1 {self.solving_pair.p1.pname} {self.solving_pair.success1}, "
-                    f"p2 {self.solving_pair.p2.pname} {self.solving_pair.success2}")
-            logger.info(imsg)
             return None, mining_success
-        logger.info(f"{self.LOG_PREFIX}: finished solving cur subpair")
-        # if current sub-problem pair is sloved
-        # check fathomed, prune, update the bound
+        # if current sub-problem pair is sloved, check fathomed, prune, update the bound
         p1 = self.solving_pair.p1
         p2 = self.solving_pair.p2
         self.prblmpair_assemble(p1, p2)
@@ -257,15 +239,12 @@ class BranchBound(object):
         if (self.kb_strategy != 'pow' and self.withmini_keycache is not None):
             newb = self.set_publish_kb(self.withmini_keycache, mined_mb)
             self.withmini_keycache = None
-            imsg = (f"{self.LOG_PREFIX}: publish a keyblock "
-                    f"{newb.keyblock.name} with a miniblock {newb.mb_with_kb.name}")
-            logger.info(imsg)
             return newb, mining_success
         # 安全性检查，不满足则存至miniblocks_unsafe
         self.check_mb_safety(mined_mb)
         newb = self.set_publish_mb(mined_mb)
         imsg = (f"{self.LOG_PREFIX}: mined a miniblock {newb.miniblock.name} "
-                f"containing {newb.miniblock.get_subpairs_name_in_mb()}")
+                f"containing {newb.miniblock.get_subpair_names_mini()}")
         logger.info(imsg)
         return newb, mining_success
 
@@ -295,8 +274,6 @@ class BranchBound(object):
         """
         当前子问题对求解完毕, 检查它们的fathomed状态, 更新bound，并写入
         """
-        # if p1.feasible and p2.feasible:
-        #     p1.feasible = False
         infeas1, wrs1, int_soln1, p1.fathomed = self.check_fathomed(p1)
         infeas2, wrs2, int_soln2, p2.fathomed = self.check_fathomed(p2)
         self.prune_and_update_bound(p1, infeas1, wrs1, int_soln1, 'cache')
@@ -306,11 +283,15 @@ class BranchBound(object):
         if wrs1:
             if self.optprblm_cache is not None:
                 p1.lb_prblm = self.optprblm_cache
+            elif len(self.opt_prblms) ==0:
+                print("xxx")
             else:
                 p1.lb_prblm = random.choice(self.opt_prblms)
         if wrs2:
             if self.optprblm_cache is not None:
                 p2.lb_prblm = self.optprblm_cache
+            elif len(self.opt_prblms) ==0:
+                print("xxx")
             else:
                 p2.lb_prblm = random.choice(self.opt_prblms)
         self.solved_pairs.append((p1, p2))
@@ -321,8 +302,7 @@ class BranchBound(object):
         尝试产生keyblock, 
         如果现在求解的keyblock的fathomed_state为True, 做PoW, 以产生keyblock
         """
-        # if not self.cur_keyblock.get_fthmstat():
-        #     return None, False
+        logger.info(f"{self.LOG_PREFIX}: trying to mine a keyblock")
         mined_kb, mining_success = self.keyblock_assemble(
             blockchain, miner_id, input, round, q, prblm_pool)
         if mining_success:
@@ -350,10 +330,6 @@ class BranchBound(object):
         将待发布的miniblock组合为`NewBlock`
         """
         if new_miniblock.iskeyblock:
-            wmsg = (f"{self.LOG_PREFIX}: "
-                    f"The block{new_miniblock.name} miner{self.miner_id} "
-                    f"trying to publish is not a miniblock")
-            logger.warning(wmsg)
             return None
         publishing_block = NewBlocks(False, new_miniblock, None, [], None)
         return publishing_block
@@ -364,9 +340,6 @@ class BranchBound(object):
         将待发布的keyblock与附带的其他miniblock组合为`NewBlock`
         """
         if not new_keyblock.iskeyblock:
-            wmsg = (f'The block{new_keyblock.name} miner{self.miner_id} '
-                    f'trying to publish is not a keyblock')
-            logger.warning(wmsg)
             return None
         newblock = NewBlocks(None, None, None, [], None)
         newblock.iskeyblock = True
@@ -381,48 +354,6 @@ class BranchBound(object):
                     f"{newblock.keyblock.name} with unsafe blocks "
                     f"{[mnb.name for mnb in newblock.mbs_unsafe]}")
         return newblock
-
-
-    def cal_attack_rate(self, block: Block):
-        """
-        `warning`:弃用, 使用简化版 cal_attack_rate_pref
-
-        计算攻击成功理论值
-        """
-        warnings.warn("cal_attack_rate is deprecated", DeprecationWarning)
-        attack_rate = 1
-
-        def get_prev_hprblm(cur_prblm: LpPrblm, block: Block):
-            """
-            获取该问题连接的前一个问题
-            """
-            (root1, _) = block.minifield.root_pair
-            if cur_prblm.pname == root1.pname:
-                return block.minifield.pre_p
-            for prblm in block:
-                if prblm.pname == cur_prblm.pre_pname:
-                    return prblm
-            return None
-
-        for (p1, _) in block.minifield:
-            prev_prblm = get_prev_hprblm(p1, block)
-            # 没有获取到前一个问题
-            if prev_prblm is None:
-                logger.warning(f"{self.LOG_PREFIX}: "
-                    f"Not found the previous problem {p1.pre_pname} "
-                    f"of problem{p1.pname} in {p1.name}!")
-                continue
-            # 前一个问题没有解
-            if prev_prblm.x_lp is None:
-                continue
-            non_int_idx = [idx for idx, x in enumerate(prev_prblm.x_lp)
-                           if not x.is_integer()]
-            # 前一个问题没有非整数解
-            if len(non_int_idx) == 0:
-                continue
-            # 计算safe_rate理论值
-            attack_rate *= (1 / len(non_int_idx))
-        return attack_rate
 
 
     def cal_attack_rate_pref(self, block: Block):
@@ -467,7 +398,7 @@ class BranchBound(object):
             # 小于dmin，保存至miniblocks_unsafe
             self.miniblocks_unsafe.append(block)
         """
-        prblm_layer_num = block.get_soltree_depth()
+        prblm_layer_num = block.get_solve_tree_depth()
         if prblm_layer_num >= self.diffculty:
             # 小于难度，必然求解完毕，不存至open_blocks
             self.open_blocks.append(block)
@@ -535,12 +466,9 @@ class BranchBound(object):
         open_block = self.get_open_block()
         if open_block is None:
             return None, []
-        # select a unfathomed and unsolved subprblm
-        # if self.pre_block.iskeyblock and len(self.pre_block.next):
-        #     self.pre_block = self.open_blocks.pop(0)
         possib_prblms = self.get_open_prblms_from_block_and_update_fstate(open_block)
         if not open_block.iskeyblock and open_block.get_fthmstat():
-            open_block.update_solve_tree_fthmd_state()
+            open_block.update_solve_tree_fthmd_state_mini()
             self.reorg_open_blocks()
             return None, []
         return open_block, possib_prblms
@@ -562,7 +490,7 @@ class BranchBound(object):
             ops = self.get_open_prblms_from_block_and_update_fstate(ob)
             # 更新solve tree状态
             if not ob.iskeyblock and ob.get_fthmstat():
-                ob.update_solve_tree_fthmd_state()
+                ob.update_solve_tree_fthmd_state_mini()
                 self.reorg_open_blocks()
                 continue
             # 获取最深的问题列表
@@ -598,7 +526,7 @@ class BranchBound(object):
             ops = self.get_open_prblms_from_block_and_update_fstate(ob)
             # 更新solve tree状态
             if (not ob.iskeyblock) and ob.minifield.bfthmd_state:
-                ob.update_solve_tree_fthmd_state()
+                ob.update_solve_tree_fthmd_state_mini()
                 continue
             # 获取最优的问题列表
             for p in ops:
@@ -726,21 +654,15 @@ class BranchBound(object):
         # updateFstat = False
         for p in unfthmd_prblms:
             _, wrs, _, fthmd = self.check_fathomed(p)
-            logger.info("%s: prblm %s fathomed %s", self.LOG_PREFIX, p.pname, fthmd)
             if fthmd and not p.fthmd_state:
                 # updateFstat = True
                 p.fthmd_state = fthmd
                 p.fathomed = fthmd
                 if wrs and self.optprblm_cache is not None:
                     p.lb_prblm = self.optprblm_cache
-                elif wrs and self.optprblm_cache is None:
+                elif wrs and self.optprblm_cache is None and len(self.opt_prblms) > 0 :
                     p.lb_prblm = random.choice(self.opt_prblms)
         block.minifield.update_fathomed_state()
-        logger.info("%s: updated %s fathomed state %s", 
-                    self.LOG_PREFIX, block.name, block.get_fthmstat())
-        # if block.get_fthmstat():
-        #     block.update_solve_tree_fthmd_state()
-        #     self.reorg_open_blocks()
         return block.get_fthmstat()
 
     def get_prblm_and_branch(self):
@@ -749,11 +671,10 @@ class BranchBound(object):
         """
         self.branching_prblm = self.prblms_to_branch.pop(0)
         idx = self.select_branch_var(self.branching_prblm)
-        new_p1, new_p2 = self.branch_lite(self.branching_prblm, idx)
+        new_p1, new_p2 = self.branch(self.branching_prblm, idx)
         # ready to solve the pair
-        self.solving_pair = SolvingPair(new_p1, new_p2, 
-                                        self.cur_keyblock.get_keyprblm(), 
-                                        self.solve_prob_init)
+        key_lp = self.cur_keyblock.get_keyprblm_key()
+        self.solving_pair = SolvingPair(new_p1, new_p2, key_lp, self.solve_prob_init)
 
 
     def select_branch_var(self, lp_prblm: LpPrblm):
@@ -780,7 +701,7 @@ class BranchBound(object):
         del_blocks = []
         for block in self.open_blocks:
             if not block.iskeyblock:
-                can_del = block.check_link_fthmd_prblm()
+                can_del = block.check_link2_fthmd_prblm()
                 if can_del:
                     del_blocks.append(block)
 
@@ -792,7 +713,7 @@ class BranchBound(object):
             if self.pre_prblm.fthmd_state:
                 self.cancel_solving_prblm()
             elif (not self.pre_block.iskeyblock and
-                  self.pre_block.check_link_fthmd_prblm()):
+                  self.pre_block.check_link2_fthmd_prblm()):
                 self.cancel_solving_prblm()
 
 
@@ -805,6 +726,7 @@ class BranchBound(object):
 
 
     def valid_block(self, block_chain: Chain, block: Block):
+        return True
         if block.iskeyblock:
             return self.valid_keyblock(block)
         # miniblock
@@ -827,7 +749,7 @@ class BranchBound(object):
 
     def valid_keyblock(self, keyblock:Block):
         if keyblock.keyfield.key_tx is not None:
-            self.prune_and_update_bound(keyblock.get_keyprblm(), updateUBCrtl = False)
+            self.prune_and_update_bound(keyblock.get_keyprblm_key(), updateLBCrtl = False)
             return True
         return True
     
@@ -843,7 +765,7 @@ class BranchBound(object):
         '''
         fthmdValid = False
         # 以lb_base为基准检查fathomed
-        lb_base =  -sys.maxsize if lpprblm.lb_prblm is None else lpprblm.lb_prblm.z_lp 
+        lb_base =  sys.maxsize if lpprblm.lb_prblm is None else lpprblm.lb_prblm.z_lp 
         infeas, wrs, int_soln, prblm_fthmd = self.check_fathomed(lpprblm, lb_base)
 
         if lpprblm.fathomed:
@@ -859,9 +781,7 @@ class BranchBound(object):
         # 如果验证通过，更新下界
         keyprblm_id = lpprblm.pname[0][0]
         if fthmdValid and keyprblm_id == self.cur_keyid:
-            self.prune_and_update_bound(lpprblm, infeas, wrs, int_soln, updateUBCrtl = False)
-            # if int_soln and update_lb_success:
-            #     self.opt_prblm = lpprblm 
+            self.prune_and_update_bound(lpprblm, infeas, wrs, int_soln, updateLBCrtl = False)
         return fthmdValid
 
 
@@ -977,16 +897,15 @@ class BranchBound(object):
             # get a prblm from the prblm pool, and assemble a keyblock
             if len(self.opt_prblms) == 0:
                 preKeyFeasible = False
-            key_tx, solveSuccess = self.get_slove_next_keytx(prblm_pool, pre_pname)
+            key_tx, solveSuccess = self.get_and_slove_next_keytx(prblm_pool, pre_pname)
             if not solveSuccess:
                 return None, genKeyblockSuccess
             accect_mbs = self.get_fathomed_prblms_by_chain()
             key_height = self.cur_keyblock.keyfield.key_height + 1
             keyblock.set_keyfield(
                 self.key_pow_hash, self.key_pow_nonce, key_height,
-                self.cur_keyblock, pre_pname,
-                preKeyFeasible, self.opt_prblms,
-                self.fathomed_prblms, key_tx, accect_mbs)
+                self.cur_keyblock, pre_pname, preKeyFeasible, self.opt_prblms,
+                self.fathomed_prblms, key_tx, accect_mbs, self.cur_keyblock.get_keyprblm_key().iz_pulp)
             self.key_pow_nonce = 0
             self.key_pow_hash = None
             self.key_assemble_pre_pname = None
@@ -1053,21 +972,21 @@ class BranchBound(object):
         if self.key_assemble_pre_pname is not None:
             return self.key_assemble_pre_pname
         if len(self.opt_prblms) > 0:
-            # 如果上个问题有整数解
-            # print([p.pname for p in self.opt_prblms])
-            mbs_for_prekey = chain.get_mbs_after_kb(self.cur_keyblock)
-            # print([b.name for b in mbs_for_prekey])
-            int_ps_for_prekey = []
-            for mb in mbs_for_prekey:
-                for (p1, p2) in mb.minifield:
-                    if p1.all_integer():
-                        int_ps_for_prekey.append(p1)
-                    if p2.all_integer():
-                        int_ps_for_prekey.append(p2)
-            # print([(p.pname, p.z_lp) for p in int_ps_for_prekey])
-            opt_prblms = [p for p in self.opt_prblms if p in int_ps_for_prekey]
-            # print([(p.pname, p.z_lp) for p in self.opt_prblms])
-            pre_pname = random.choice(opt_prblms).pname
+            # # 如果上个问题有整数解，防止该整数解没有被加到链上
+            # # print([p.pname for p in self.opt_prblms])
+            # mbs_for_prekey = chain.get_mbs_after_kb(self.cur_keyblock)
+            # # print([b.name for b in mbs_for_prekey])
+            # int_ps_for_prekey = []
+            # for mb in mbs_for_prekey:
+            #     for (p1, p2) in mb.minifield:
+            #         if p1.all_integer():
+            #             int_ps_for_prekey.append(p1)
+            #         if p2.all_integer():
+            #             int_ps_for_prekey.append(p2)
+            # # print([(p.pname, p.z_lp) for p in int_ps_for_prekey])
+            # opt_prblms = [p for p in self.opt_prblms if p in int_ps_for_prekey]
+            # # print([(p.pname, p.z_lp) for p in self.opt_prblms])
+            pre_pname = random.choice(self.opt_prblms).pname
         else:
             # 如果没有整数解的话, 随机选择末端miniblock中最深的问题
             deepest_subprblms = chain.lastblock.get_deepest_subprblms()
@@ -1075,7 +994,7 @@ class BranchBound(object):
         self.key_assemble_pre_pname = pre_pname
         return pre_pname
 
-    def get_slove_next_keytx(self, prblm_pool: TxPool, pre_pname:tuple):
+    def get_and_slove_next_keytx(self, prblm_pool: TxPool, pre_pname:tuple):
         """
         从prblm_pool中取一个原始问题tx, 以加入keyfield
         """
@@ -1098,7 +1017,7 @@ class BranchBound(object):
         keyprblm.pname = ((self.background.key_id_generator(), 0), 0)
         keyprblm.pre_pname = pre_pname
         # lpprblm.solve_ilp_by_pulp(keyprblm)
-        _, _, _, keyprblm.fathomed = self.check_fathomed(keyprblm, -sys.maxsize)
+        _, _, _, keyprblm.fathomed = self.check_fathomed(keyprblm, sys.maxsize)
         keyprblm.fthmd_state = keyprblm.fathomed
         keyprblm.timestamp = self.round
         return key_tx, solveSuccess
@@ -1184,37 +1103,10 @@ class BranchBound(object):
                 q.extend([b for b in block.next if b.iskeyblock is False])
         return allBranchesFthmd
 
-
+    
     def branch(self, pre_prblm: LpPrblm, idx):
         '''Branch the given problem and generate two subproblems.'''
         # new constraints
-        new_con1 = np.zeros(pre_prblm.G_ub.shape[1])
-        new_con1[idx] = -1
-        new_con2 = np.zeros(pre_prblm.G_ub.shape[1])
-        new_con2[idx] = 1
-        new_G_ub1 = np.append(pre_prblm.G_ub, new_con1[np.newaxis,:], axis=0)
-        new_G_ub2 = np.append(pre_prblm.G_ub, new_con2[np.newaxis,:], axis=0)
-        new_h_ub1 = np.append(pre_prblm.h_ub, np.array([-math.ceil(pre_prblm.x_lp[idx])]), axis=0)
-        new_h_ub2 = np.append(pre_prblm.h_ub, np.array([math.floor(pre_prblm.x_lp[idx])]), axis=0)
-        # gen new sub-problems
-        p_name0 = (self.cur_keyid,
-                   self.background.autoinc_prblm_id_generator(self.cur_keyid))
-        pre_rest_x = len([idx for idx, x in enumerate(pre_prblm.x_lp)
-                          if not x.is_integer()])
-        new_p1 = LpPrblm((p_name0, 1), pre_prblm.pname, pre_prblm.pheight + 1,
-                             -pre_prblm.c, new_G_ub1, new_h_ub1, pre_prblm.A_eq,
-                             pre_prblm.b_eq, pre_prblm.bounds, idx, pre_rest_x)
-        new_p2 = LpPrblm((p_name0, -1), pre_prblm.pname, pre_prblm.pheight + 1,
-                             -pre_prblm.c, new_G_ub2, new_h_ub2, pre_prblm.A_eq,
-                             pre_prblm.b_eq, pre_prblm.bounds, idx, pre_rest_x)
-        # lpprblm.solve_lp_by_pulp(new_p1)
-        # lpprblm.solve_lp_by_pulp(new_p2)
-        return new_p1, new_p2
-    
-    def branch_lite(self, pre_prblm: LpPrblm, idx):
-        '''Branch the given problem and generate two subproblems.'''
-        # new constraints
-
         inc_constr1 = copy.deepcopy(pre_prblm.inc_constrs)
         inc_constr2 = copy.deepcopy(pre_prblm.inc_constrs)
         inc_constr1.append(IncConstr(idx, -1, -math.ceil(pre_prblm.x_lp[idx])) )
@@ -1224,7 +1116,7 @@ class BranchBound(object):
                    self.background.autoinc_prblm_id_generator(self.cur_keyid))
         pre_rest_x = len([idx for idx, x in enumerate(pre_prblm.x_lp)
                           if not x.is_integer()])
-        key_pname = self.cur_keyblock.get_keypname()
+        key_pname = self.cur_keyblock.get_keypname_key()
         new_p1 = LpPrblm((p_name0, 1), pre_prblm.pname, pre_prblm.pheight + 1, 
                          key_pname=key_pname, x_nk = idx, pre_rest_x = pre_rest_x, 
                          inc_constrs = inc_constr1)
@@ -1248,13 +1140,9 @@ class BranchBound(object):
             raise ValueError(f"{self.LOG_PREFIX}: The problem{lp_prblm.pname} to"
                              "check fathomed is not solved yet")
         # 获取全局上界
-        if upperbound is not None:
-            ub = upperbound
-        else:
-            ub = self.upper_bound
-            if self.optprblm_cache is not None:
-                ub = (ub if ub <= self.optprblm_cache.z_lp 
-                      else self.optprblm_cache.z_lp)
+        ub = upperbound if upperbound is not None else self.upper_bound
+        if self.optprblm_cache is not None:
+            ub = ub if ub <= self.optprblm_cache.z_lp else self.optprblm_cache.z_lp
 
         infeas = False
         wrs = False
@@ -1263,12 +1151,11 @@ class BranchBound(object):
         if lp_prblm.feasible is False:
             infeas = True
             return infeas, wrs, int_soln, True
-        # The objective function is worse than the lowerbound.
+        # The objective function is worse than the upperbound.
         if lp_prblm.z_lp > ub:
             wrs = True
             return infeas, wrs, int_soln, True
-        # Integer solution and better than the lowerbound.
-        # if all(list(map(lambda f: f.is_integer(), lp_prblm.x_lp))):
+        # Integer solution and better than the upperbound.
         if lp_prblm.all_integer():
             int_soln = True
             return infeas, wrs, int_soln, True
@@ -1277,11 +1164,11 @@ class BranchBound(object):
 
     def prune_and_update_bound(
             self, lp_prblm: LpPrblm, 
-            infeas_fthmd: bool = None,
-            wrs_fthmd: bool = None, 
-            int_soln_fthmd: bool = None,
+            infeas: bool = None,
+            wrs: bool = None, 
+            int_soln: bool = None,
             opt_save_loc: str = None,
-            updateUBCrtl:bool = True):
+            updateLBCrtl:bool = True):
         """
         :If the solution is integer and better than the lowerbound, 
         the lower_bound is set to z_lp and appended to opt_prblms; 
@@ -1290,32 +1177,31 @@ class BranchBound(object):
         :param: opt_save_loc:'cache' or 'opt_prblms'
         :return: update_bound_success
         """
-        if infeas_fthmd is None or wrs_fthmd is None or int_soln_fthmd is None:
+        if infeas is None or wrs is None or int_soln is None:
             infeas, wrs, int_soln, _ = self.check_fathomed(lp_prblm)
-        else:
-            (infeas, wrs, int_soln) = (infeas_fthmd, wrs_fthmd, int_soln_fthmd)
         updateLB = False
         updateUB = False
         # update lowerbound
         opt_loc = 'opt_prblms' if opt_save_loc is None else opt_save_loc
         if int_soln:
-            self.update_lowerbound(opt_loc, lp_prblm)
-            updateLB = True
-        # update upperbound
-        if not infeas and not wrs and updateUBCrtl:
-            # if lp_prblm.z_lp > self.lower_bound:
-            self.lower_bound = lp_prblm.z_lp
+            self.update_upperbound(opt_loc, lp_prblm)
+            rest_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
+            # print(self.round, " ", lp_prblm.z_lp, " ", rest_gas)
             updateUB = True
-        return updateLB, updateUB
+        # update lowerbound
+        if not infeas and not wrs and updateLBCrtl:
+            self.lower_bound = lp_prblm.z_lp
+            updateLB = True
+        return updateUB, updateLB
 
 
-    def update_lowerbound(self, opt_save_loc: str, lp_prblm: LpPrblm):
+    def update_upperbound(self, opt_save_loc: str, lp_prblm: LpPrblm):
         """
         根据opt_save_loc更新下界,
         如果为`cache`就保存在opt_prblm_cache中
         如果为`opt_prblms`就保存在opt_prblms中
         """
-        # 如果大于lower_bound，直接更新最优解
+        # 如果小于upper_bound，直接更新最优解
         imsg = None
         if lp_prblm.z_lp < self.upper_bound:
             if opt_save_loc == 'opt_prblms':
@@ -1329,7 +1215,7 @@ class BranchBound(object):
                 imsg = (f"{self.LOG_PREFIX}: update opt_cache:"
                         f"{lp_prblm.pname} with z_lp {lp_prblm.z_lp}")
 
-        # 如果与lower_bound相等，将其附加到`opt_prblms`
+        # 如果与upper_bound相等，将其附加到`opt_prblms`
         elif (lp_prblm.z_lp == self.upper_bound and lp_prblm not in self.opt_prblms):
             if opt_save_loc == 'opt_prblms':
                 self.opt_prblms.append(lp_prblm)
@@ -1363,93 +1249,3 @@ class BranchBound(object):
                     f"{self.optprblm_cache.pname} with z_lp {self.optprblm_cache.z_lp}")
             logger.info(imsg)
         self.optprblm_cache = None
-
-
-# 变量统一
-# 一个Miniblock包含多个问题
-# bound验证
-# 不断产生，（问题板）
-# 画图block里subprblm
-# miniblock多个subprblm
-# miniblock指向一个问题
-
-"""if __name__ == '__main__':
-    # s = 'P0'
-    # s = int(re.sub('\D', '', s))
-    # print(s, type(s))
-
-    def test1():
-        c = np.array([3, 13, 12])
-        G_ub = np.array([[2, 9, 9], [11, -8, 0]])
-        h_ub = np.array([40, 82])
-        A_eq = None
-        b_eq = None
-        bounds = [(0, None), (0, None), (0, None)]
-        orig_prblm = LpPrblm(('P0', 0), None,0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-        return orig_prblm
-
-    def test2():
-        c = np.array([40, 90, 78, 34, 1])
-        G_ub = np.array([[9, 7, 6, 1, 32], [7, 20, 19, 90, 12], [2, 32, 43, 13, -1]])
-        h_ub = np.array([56, 70, 89])
-        A_eq = None
-        b_eq = None
-        bounds = [(0, None), (0, None), (0, None),(0, None), (0, None)]
-        orig_prblm = LpPrblm(('P0', 0), None,0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-        return orig_prblm
-
-    def test3():
-        c = np.array([3, 13, 12, 11, 1, 2, 4, 5])
-        G_ub = np.array([[2, 9, 9, 1, 1, 1, 1, 1], [11, -8, 0, 1, 1, 1, 1, 1]])
-        h_ub = np.array([40, 82])
-        A_eq = None
-        b_eq = None
-        bounds = [(0, None), (0, None), (0, None),(0, None), (0, None), 
-                    (0, None), (0, None), (0, None)]
-        orig_prblm = LpPrblm(('P0', 0), None,0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-        return orig_prblm
-
-    PRBLM_POOL:list[LpPrblm] = [test2()]
-    global_var.__init__()
-    global_var.set_blocksize(2)
-    con = BranchBound()
-    bc = Chain()
-    orig_prblm = test1()
-    con.solve_lp(orig_prblm)
-    bc.create_genesis_block(orig_prblm)
-    con.unresolved_blocks.append(bc.head)
-    con.keyblock_orig = bc.head
-    print(bc.head)
-    PRBLM_POOL.extend([test2(), test1(), test2(),test1(),test2(),test1()])
-    round = 1
-    while 1:
-        round = round + 1
-        new_block, mining_success = con.mining_consensus(bc, 1, q=5, round = round)
-        if new_block:
-            con.valid_block(bc, new_block)
-            block_to_link = bc.search_hash_forward(new_block.blockhead.prehash)
-            bc.add_block_direct(new_block, block_to_link)
-            print(bc.lastblock.name)
-            if new_block.iskeyblock:
-                global_var.reset_prblm_number()
-                print('-'*30 + f'block {new_block.name}' + '-'*30)
-                # print(new_block)
-                print('\n','lower_bound: ', con.lower_bound , '\n',
-                'upper_bound: ', con.upper_bound)
-                print('round: ', round)
-                print('-'*70)
-                if new_block.keyfield.origin_prblm is None:
-                    bc.printchain2txt()
-                    bc.ShowStructureWithGraphviz()
-                    break
-            else:
-                print('-'*20 + f'block {new_block.name}' + '-'*20)
-                
-            #     print(new_block)
-                print('\n','lower_bound: ', con.lower_bound , '\n',
-                    'upper_bound: ', con.upper_bound)
-                print([p.pname for p in con.fathomed_prblms])
-                print([b.name for b in con.unresolved_blocks])
-                print('round: ', round)
-            #     print('-'*70)
-                """

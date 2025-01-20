@@ -126,7 +126,9 @@ class Chain(object):
         infeasi_kbs = []
         for kb in kbs:
             # print(kb.name, kb.keyfield.pre_key_feasible)
-            if kb.keyfield.pre_key_feasible is False:
+            # if kb.keyfield.is_pre_key_feasible is False:
+            #     infeasi_kbs.append(kb.keyfield.pre_kb)
+            if kb.keyfield.pre_iz_pulp is None:
                 infeasi_kbs.append(kb.keyfield.pre_kb)
         feasi_kbs = [kb for kb in kbs if (kb not in infeasi_kbs 
                     and kb.keyfield.key_tx is not None)]
@@ -205,8 +207,8 @@ class Chain(object):
             ftmd_mbs:list[Block] =  []
             for b in block.next:
                 if not b.iskeyblock:
-                    if b.minifield.bfthmd_state:
-                        ftmd_mbs.append(b)
+                    # if b.minifield.bfthmd_state:
+                    ftmd_mbs.append(b)
             if len(ftmd_mbs)==0:
                 continue
             queue.extend(select_acp_mbs(ftmd_mbs))
@@ -223,9 +225,9 @@ class Chain(object):
         mbs = self.get_mbs_after_kb(keyblock)
         if len(mbs) == 0:
             return []
-        if len(keyblock.keyfield.accept_mbs) == 0:
+        if len(keyblock.keyfield.pre_accept_mbs) == 0:
             return []
-        return [mb for mb in mbs if mb.name in keyblock.keyfield.accept_mbs]
+        return [mb for mb in mbs if mb.name in keyblock.keyfield.pre_accept_mbs]
 
 
     def search_forward(self, block: Block, searchdepth=500):
@@ -469,10 +471,12 @@ class Chain(object):
                     <TABLE border="0" cellborder="1" cellspacing="0">        
                         <TR><TD>{block.name} M{block.blockhead.miner_id}</TD></TR>
                         <TR><TD>r{block.blockhead.timestamp}, x_nk{x_nk}</TD></TR>
-                        <TR><TD>heavy {block.get_heavy()}</TD></TR>
-                        <TR><TD>fthmd_state {block.get_fthmstat()}</TD></TR>
-                        <TR><TD><font color="red">theory_rate {theory_rate}</font></TD></TR>
+                        <TR><TD>fthmd_state {block.get_fthmstat()}</TD></TR>        
+                        <TR><TD>rest_gas {block.rest_gas}</TD></TR>
+                        <TR><TD>cur_opt {block.cur_opt }</TD></TR>
                     </TABLE>>''')
+                    # <TR><TD>heavy {block.get_heavy()}</TD></TR>
+                    # <TR><TD><font color="red">theory_rate {theory_rate}</font></TD></TR>
                 if attack_record is None else (f'''<
                     <TABLE border="0" cellborder="1" cellspacing="0">        
                         <TR><TD>{block.name} M{block.blockhead.miner_id}</TD></TR>
@@ -540,6 +544,7 @@ class Chain(object):
                         <TR><TD>{b.name} M{b.get_miner_id()} </TD></TR>
                         <TR><TD>r{b.blockhead.timestamp}, heavy {b.get_heavy()}</TD></TR>
                         <TR><TD>fthmd_state {b.get_fthmstat()}</TD></TR>
+                        <TR><TD>cur_opt {block.cur_opt }</TD></TR>
                     </TABLE>>''')
                 label = (f'''<
                     <TABLE border="0" cellborder="0" cellspacing="0">        
@@ -547,7 +552,7 @@ class Chain(object):
                     </TABLE>>''')
                 c.attr(label = label)
                 node_name = key_pname if key_pname != 'None' else b.name
-                color = 'red' if b.get_keyprblm() is not None and b.get_keyprblm().all_integer() else 'black'
+                color = 'red' if b.get_keyprblm_key() is not None and b.get_keyprblm_key().all_integer() else 'black'
                 c.node(node_name, f'''<
                         <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
                             <TR><TD PORT="f0"><font color="{color}">{key_pname}</font></TD></TR>
@@ -588,7 +593,7 @@ class Chain(object):
             
         def set_keyprblm_edges(block:Block):
             """建立keyprblm和前一子问题的连接"""
-            key_edge_color = 'red' if len(block.keyfield.opt_prblms)>0 else 'black'
+            key_edge_color = 'red' if len(block.keyfield.pre_opt_prblms)>0 else 'black'
             presub_label = None
             if block.keyfield.pre_pname is not None:
                 presub_label = get_subprblm_label(block.keyfield.pre_pname)
@@ -626,7 +631,7 @@ class Chain(object):
         # 生成矢量图,展示结果
         g_title = graph_title if graph_title is not None else "blockchain_visualization"
         g_path =graph_path if graph_path is not None else self.background.get_result_path()
-        bc_graph.render(directory=g_path / g_title, format='svg', view=False)
+        bc_graph.render(directory=g_path / g_title, format='svg', view=True)
 
     
     def printchain2txt(self, chain_data_path=None, file_name=None):

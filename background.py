@@ -6,11 +6,13 @@ import os
 import time
 from collections import defaultdict
 from pathlib import Path
+import data.lpprblm
 
 RESULT_PATH=Path.cwd() / 'Results' / time.strftime("%Y%m%d") / time.strftime("%H%M%S")
 
+
 class Background(object):
-    def __init__(self,):
+    def __init__(self):
         '''
         初始化
         '''
@@ -41,8 +43,7 @@ class Background(object):
         self._var_dict['LOG_LEVEL'] = logging.ERROR
         self._var_dict['Show_Fig'] = False
         self._var_dict['BB_Diffculty'] = 1
-        self._var_dict['Test_Prblm'] = None
-        self._var_dict['D_MIN'] = 1 # `warning` 弃用dmin
+        self._var_dict['Genesis_Prblm'] = None
         self._var_dict['SAFE_THRE'] = 1
         self._var_dict["VAR_NUM"] = 20
         self._var_dict['KEY_BLOCK_ST'] = 'pow'
@@ -50,8 +51,12 @@ class Background(object):
         self._var_dict['SOLVE_PROB'] = 0.5
         self._var_dict['OPEN_BLOCK_ST'] = "openblock_random"
         self._var_dict['OPEN_PROBLEM_ST'] = "openprblm_random"
+        self._var_dict['total_gas'] = 10000
+        self._var_dict['once_gas'] = 1
         # 管理问题自增id
         self._prblm_id_center = defaultdict(int)
+
+        self._gases = defaultdict(int)
     
     # 路径管理
     def get_result_path(self)->Path:
@@ -173,22 +178,15 @@ class Background(object):
     def get_solve_prob(self):
         return self._var_dict['SOLVE_PROB']
     # 设置创世块问题
-    def set_test_prblm(self, test_prblm):
-        self._var_dict['Test_Prblm'] = test_prblm
+    def set_genesis_prblm(self, test_prblm):
+        self._var_dict['Genesis_Prblm'] = test_prblm
     def get_genesis_prblm(self):
-        return self._var_dict['Test_Prblm']
+        return self._var_dict['Genesis_Prblm']
     # miniblock求解难度
     def set_bb_difficulty(self,bb_difficulty):
         self._var_dict['BB_Difficulty'] = bb_difficulty
     def get_bb_difficulty(self):
         return self._var_dict['BB_Difficulty']
-    # 最小miniblock高度  `warning`:弃用，改为攻击成功概率
-    def set_dmin(self,dmin):
-        """`warning`:弃用，改为攻击成功概率"""
-        self._var_dict['D_MIN'] = dmin
-    def get_dmin(self,):
-        """`warning`:弃用，改为攻击成功概率"""
-        return self._var_dict['D_MIN']
     # 安全性阈值
     def set_safe_thre(self,safe_thre):
         self._var_dict['SAFE_THRE'] = safe_thre
@@ -213,6 +211,16 @@ class Background(object):
         self._var_dict['OPEN_PROBLEM_ST'] = opprblm_st
     def get_openprblm_strategy(self):
         return self._var_dict['OPEN_PROBLEM_ST']
+    # gas
+    def set_total_gas(self, total_gas):
+        self._var_dict['total_gas'] = total_gas
+    def get_total_gas(self):
+        return self._var_dict['total_gas']
+    def set_once_gas(self, once_gas):
+        self._var_dict['once_gas'] = once_gas
+    def get_once_gas(self):
+        return self._var_dict['once_gas']
+
     # 全局自增prblm_id管理
     def key_id_generator(self):
         self._var_dict['KEY_PRBLM_NUMBER'] = self._var_dict['KEY_PRBLM_NUMBER'] + 1
@@ -223,3 +231,43 @@ class Background(object):
         return self._prblm_id_center[key_id] + 1
     def reset_id_center(self):
         self._prblm_id_center.clear()
+
+    # gas管理
+    def init_gases(self, prblm_pool:list[data.lpprblm.LpPrblm]):
+        if prblm_pool[0].fix_pid is None:
+            [setattr(prblm, 'fix_id', i) for i, prblm in enumerate(prblm_pool)]
+        for p in prblm_pool:
+            self._gases[p.fix_pid] = self.get_total_gas()
+    
+    def consume_gas_once(self, fix_pid:int):
+        """
+        :return: rest_gas(int) 该问题剩余的gas
+        :return: consume_success(bool) 是否成功获得gas奖励
+        """
+        current_gas = self._gases[fix_pid]
+        if current_gas <= 0:
+            return current_gas, False
+        
+        rest_gas = max(0, current_gas - self.get_once_gas())
+        self._gases[fix_pid] = rest_gas
+        return rest_gas, True
+    
+    def consume_gas_multi(self, fix_pid:int, prblm_count:int):
+        """
+        :return: rest_gas(int) 该问题剩余的gas
+        :return: consume_success(bool) 是否成功获得gas奖励
+        """
+        current_gas = self._gases[fix_pid]
+        if current_gas <= 0:
+            return current_gas, False
+        rest_gas = max(0, current_gas - self.get_once_gas() * prblm_count)
+        self._gases[fix_pid] = rest_gas
+        return rest_gas, True
+    
+    def get_rest_gas(self, fix_pid):
+        return self._gases[fix_pid]
+    
+    def is_gas_used_up(self, fix_pid:int):
+        return self._gases[fix_pid] <= 0
+
+BACKGROUND = Background()
