@@ -44,9 +44,9 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
     if m == 'load':
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
-        # pool_path = (Path.cwd()/"Problem Pools"/"01"/f"problem pool{var_num}.json")
+        pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
         # pool_path = Path(".\\testTSP\problem poolburma14.json")
-        pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
+        # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
         # pool_path = Path.cwd() / "SPOT" / f"Generated\\{var_num}_1.json"
@@ -194,7 +194,7 @@ def simudata_collect_to_json(sd_collect:res_final, file_path, file_name=None):
             p_json = json.dumps(filtered_dict)
             f.write(p_json + '\n')
 
-def short_simulation(background:Background,repeat_num:int,pool_size:int, var_num:int, 
+def short_simulation(background:Background, repeat_num:int,pool_size:int, var_num:int, 
                      difficulties:list = None, miner_nums:list = None,adversary_num = None, 
                      prblm_pool_method:str = None,recBlockTimes:bool = False, safe_thre = 1,
                      solve_prob = 0.5,opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND, gas = 10000):

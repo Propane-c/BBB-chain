@@ -296,33 +296,15 @@ if __name__ == "__main__":
     # med_path =    ".\Results\\20231203\\230820\\res12prob0_3m3.json"
     # merge_times(folder_path, output_path)
     # merge_intermediate_data(folder_path, med_path)
-    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250112\\222849"
-    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250112\\222849\\gas250var_full.json"
-    # merge_jsons(folder_path, output_path, "final_results")
-    merge_jsons(folder_path, output_path, "intermediate")
+    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250211"
+    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250211\\workload_var_num.json"
+    merge_jsons(folder_path, output_path, "final_results")
+    # merge_jsons(folder_path, output_path, "intermediate")
     # load_tsp()
     # for root, dirs, files in os.walk(f"E:\Files\A-blockchain\\branchbound\MAXSAT\EASY"):
     #     for file in files:
     #         load_maxsat(file)
     # cult_tsp_solving_process("Result_Data\\tsp solving process.json", "Result_Data\\tsp solving process2.json")
     # merge_evares_jsons(folder_path, output_path)
-    # ret = {
-    #     "atklog_depth": 1,
-    #     "a":2
-    # }
-    # new_ret = {k:v for k in ret.keys() for v in ret.values() if k not in ["atklog_depth", "atklog_mb"]}
-    # print(new_ret)
-    # l = [22,13,57,34,13,14,13,90,13,14,13]
-    # dep_idxs = []
-    # mindep = 10000000
-    # for i, b in enumerate(l):
-    #     bheight = b
-    #     if bheight < mindep:
-    #         dep_idxs.clear()
-    #         dep_idxs.append(i)
-    #         mindep = bheight
-    #     elif bheight == mindep:
-    #         dep_idxs.append(i)
-    # idx = random.choice(dep_idxs)
-    # open_block = l.pop(idx)
-    # print(open_block, l)
+
+    

@@ -27,8 +27,6 @@ from matplotlib.ticker import PercentFormatter
 from scipy.signal import find_peaks, peak_prominences
 from scipy.stats import gaussian_kde
 
-import branchbound.bb_consensus as bb
-
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
 SAVE = True
@@ -36,6 +34,21 @@ SAVE = True
 MAXSAT='maxsat'
 TSP='tsp'
 MIPLTP='miplib'
+
+# 产生keyblock的方式
+POW = "pow"
+W_MINI = "withmini"
+
+# openblock选择策略, 如open prblm不是BEST策略就先选block再选prblm
+OB_SPEC = "ob_specific" # 默认选择第一个
+OB_RAND = "ob_random"
+OB_DEEP = "ob_deepfrist"
+OB_BREATH = "ob_breathfirst"
+
+# open prblm的选择策略
+OP_SPEC = "op_specific"
+OP_RAND = "op_random"
+OP_BEST = "op_bestbound" # 全局最小的解的问题
 
 def plot_feasible_regions_fig1(FIG_NUM):
     Path.mkdir(Path(SAVE_PREFIX), exist_ok=True)
@@ -450,13 +463,13 @@ def plot_bounds_fig1(data_list:list[dict]):
     plt.grid(True)
     plt.legend(handles = plts, loc = "lower right")
     strategy = " "
-    if data['openblk_st'] == bb.OB_RAND and data['openprblm_st'] == bb.OP_BEST:
+    if data['openblk_st'] == OB_RAND and data['openprblm_st'] == OP_BEST:
         strategy = 'BFS'
-    if data['openblk_st'] == bb.OB_DEEP and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_DEEP and data['openprblm_st'] == OP_RAND:
         strategy = 'DFS'
-    if data['openblk_st'] == bb.OB_BREATH and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_BREATH and data['openprblm_st'] == OP_RAND:
         strategy = 'BrFS'
-    if data['openblk_st'] == bb.OB_RAND and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_RAND and data['openprblm_st'] == OP_RAND:
         strategy = 'Rand'
     plt.savefig(SAVE_PREFIX + f"\\boundsv{data.get('var_num')}m{data.get('miner_num')}{strategy}_{time.strftime('%H%M%S')}.svg")
     plt.show()
@@ -795,18 +808,87 @@ def plot_bounds_fig3(data_list:list[dict], type):
     plt.savefig(SAVE_PREFIX + f"\\bounds_maxsat{time.strftime('%H%M%S')}.svg", dpi=300)
     # plt.show()
 
-def plot_solveround_workload_fig4(df:pd.DataFrame):
+def plot_solveround_workload_fig4(file_path: str = None):
+    """
+    绘制求解轮数和工作量相关的图表
+    
+    Args:
+        file_path: 数据文件路径，默认为 "Result_Data/1226v100_50m1_20.json"
+    """
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times new roman']
     plt.rcParams['font.size'] = 12
     colors = ["#FF8283", "#0D898A","#f9cc52","#5494CE", ]
     # sns.set(style="whitegrid")
     def plot_solve_rounds(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame):
+        """绘制平均求解轮数"""
         df_med.groupby('miner_num')['ave_solve_round']
-        ax.plot(df_med['miner_num'], df_med['ave_solve_round'], label='medium', marker='o',color =colors[1])
-        ax.plot(df_easy['miner_num'], df_easy['ave_solve_round'], label='easy', marker='x',color =colors[2])
+        ax.plot(df_med['miner_num'], df_med['ave_solve_round'], label='medium', marker='o',color=colors[1])
+        ax.plot(df_easy['miner_num'], df_easy['ave_solve_round'], label='easy', marker='x',color=colors[2])
         ax.set_xlabel('Number of miners')
         ax.set_ylabel('Solving round')
+        ax.legend()
+
+    def plot_solve_rounds_with_stats(ax:plt.Axes):
+        """绘制求解轮数的统计图，包含中位数和四分位数"""
+        # 读取数据
+        file_path = pathlib.Path.cwd() / "Result_Data/1226v100_50m1_20_full.json"
+        data_list = []
+        with open(file_path, 'r') as f:
+            jsondata_list = f.read().split('\n')[:-1]
+            for jsondata in jsondata_list:
+                data_list.append(json.loads(jsondata))
+        df = pd.DataFrame(data_list)
+        df = df.explode('solve_rounds')
+        df['solve_rounds'] = df['solve_rounds'].astype(float)
+        df = df.sort_values(by=["var_num", "difficulty", "miner_num"])
+        df_med = df[(df['difficulty'] == 5) & (df['var_num'] == 100)]
+        df_easy = df[(df['difficulty'] == 5) & (df['var_num'] == 50)]
+
+        for df, label, marker, base_color in [(df_med, '100 Variables', 'o', colors[1]), 
+                                    (df_easy, '50 Variables', 'x', colors[2])]:
+            stats = df.groupby('miner_num')['solve_rounds'].agg(
+                ['median', lambda x: np.percentile(x, 25), lambda x: np.percentile(x, 75)]).reset_index()
+            stats.columns = ['miner_num', 'median', 'q1', 'q3']
+            
+            # 创建颜色渐变
+            n_points = len(stats)
+            color_list = [mcolors.to_rgba(base_color, alpha) 
+                         for alpha in np.linspace(1, 0.3, n_points)]
+            
+            # 绘制图例的不可见点
+            ax.plot([], [], marker=marker, color=base_color, label=label)
+            
+            # 绘制中位数线和填充区域
+            for i in range(len(stats)-1):
+                # 填充区域
+                x_fill = [stats['miner_num'][i], stats['miner_num'][i+1]]
+                y1_fill = [stats['q1'][i], stats['q1'][i+1]]  # 下四分位数
+                y2_fill = [stats['q3'][i], stats['q3'][i+1]]  # 上四分位数
+                ax.fill_between(x_fill, y1_fill, y2_fill, 
+                              color=color_list[i], alpha=0.2)
+                
+                # 绘制中位数线
+                ax.plot(stats['miner_num'][i:i+2], stats['median'][i:i+2], 
+                       color=color_list[i], linewidth=1.5)
+                ax.plot(stats['miner_num'][i], stats['median'][i], 
+                       marker=marker, color=color_list[i])
+            
+            # 绘制最后一个点
+            ax.plot(stats['miner_num'].iloc[-1], stats['median'].iloc[-1], 
+                   marker=marker, color=color_list[-1])
+            
+            # 绘制四分位数的短横线
+            for i, (_, row) in enumerate(stats.iterrows()):
+                ax.vlines(row['miner_num'], row['q1'], row['q3'], 
+                         color=color_list[i], alpha=0.7)
+                ax.hlines(row['q1'], row['miner_num']-0.1, row['miner_num']+0.1, 
+                         color=color_list[i], alpha=0.7)
+                ax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
+                         color=color_list[i], alpha=0.7)
+
+        ax.set_xlabel('Number of miners')
+        ax.set_ylabel('Solving rounds')
         ax.legend()
     
     def plot_speedup(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, 
@@ -835,10 +917,8 @@ def plot_solveround_workload_fig4(df:pd.DataFrame):
         ax.set_ylabel('Efficiency')
     
     def plot_workload(ax:plt.Axes, df_med:pd.DataFrame):
-    # Extracting the required metrics
         metrics = df_med[['miner_num', 'main', 'fork', 'unpub']]
         metrics = metrics.set_index('miner_num')
-        
         colors=["#1b4332","#40916c","#74c69d","#95d5b2"]
         # colors=["#31572c", "#4f772d", "#90a955","#ecf39e"] "#2d6a4f","#52b788"
         width = 1.5
@@ -857,19 +937,102 @@ def plot_solveround_workload_fig4(df:pd.DataFrame):
         ax.set_ylabel('Workload')
         ax.legend()
 
+    def plot_workload_by_varnum(ax:plt.Axes, ax2:plt.Axes):
+        """绘制不同变量数下的工作量堆叠柱状图和比例堆叠柱状图"""
+        # 读取数据
+        file_path = pathlib.Path.cwd() / "Results\\20250211\workload_var_num.json"
+        data_list = []
+        with open(file_path, 'r') as f:
+            jsondata_list = f.read().split('\n')[:-1]
+            for jsondata in jsondata_list:
+                data_list.append(json.loads(jsondata))
+        df = pd.DataFrame(data_list)
+        df = df.sort_values(by=["var_num", "difficulty", "miner_num"])
+        
+        # 数据预处理
+        df['main'] = df['ave_acp_subpair_num']
+        df['fork'] = df['ave_subpair_num'] - df['ave_acp_subpair_num']
+        df['unpub'] = df['ave_subpair_unpubs']
+        
+        # 计算总工作量和比例
+        df['total'] = df['main'] + df['fork'] + df['unpub']
+        df['main_ratio'] = df['main'] / df['total']
+        df['fork_ratio'] = df['fork'] / df['total']
+        df['unpub_ratio'] = df['unpub'] / df['total']
+        
+        # 筛选和聚合数据
+        df_filtered = df[df['difficulty'] == 5].groupby('var_num').agg({
+            'main': 'mean',
+            'fork': 'mean',
+            'unpub': 'mean',
+            'main_ratio': 'mean',
+            'fork_ratio': 'mean',
+            'unpub_ratio': 'mean'
+        }).reset_index()
+        
+        # 绘图设置
+        colors = ["#1b4332", "#40916c", "#74c69d", "#95d5b2"]
+        width = 12
+        
+        # 绘制工作量堆叠柱状图
+        ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)  # 先画网格，zorder设为0
+        
+        ax.bar(df_filtered['var_num'], df_filtered['main'], 
+            label='main', color=colors[0], alpha=0.8, width=width, zorder=2)  # 柱状图zorder设为2
+        ax.bar(df_filtered['var_num'], df_filtered['fork'], bottom=df_filtered['main'], 
+            label='fork', color=colors[1], alpha=0.8, width=width, zorder=2)
+        ax.bar(df_filtered['var_num'], df_filtered['unpub'], 
+            bottom=df_filtered['main'] + df_filtered['fork'], 
+            label='unpublished', color=colors[2], alpha=0.8, width=width, zorder=2)
+        
+        ax.set_xlabel('Number of variables')
+        ax.set_ylabel('Workload')
+        ax.legend()
+        ax2.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
+        # 绘制比例堆叠柱状图并添加百分比标注
+        for i, row in df_filtered.iterrows():
+            # 计算每个部分的中心位置
+            main_center = row['main_ratio'] / 2
+            fork_center = row['main_ratio'] + row['fork_ratio'] / 2
+            unpub_center = row['main_ratio'] + row['fork_ratio'] + row['unpub_ratio'] / 2
+            
+            # 添加百分比标注，根据背景深浅选择文字颜色
+            ax2.text(row['var_num'], main_center, 
+                    f"{row['main_ratio']*100:.1f}%", 
+                    ha='center', va='center', color='white', fontsize=11, fontweight='bold')
+            ax2.text(row['var_num'], fork_center, 
+                    f"{row['fork_ratio']*100:.1f}%", 
+                    ha='center', va='center', color='black', fontsize=11, fontweight='bold')
+            ax2.text(row['var_num'], unpub_center, 
+                    f"{row['unpub_ratio']*100:.1f}%", 
+                    ha='center', va='center', color='black', fontsize=11, fontweight='bold')
+        
+        ax2.bar(df_filtered['var_num'], df_filtered['main_ratio'], 
+            label='main', color=colors[0], alpha=0.8, width=width, zorder=2)
+        ax2.bar(df_filtered['var_num'], df_filtered['fork_ratio'], 
+            bottom=df_filtered['main_ratio'], 
+            label='fork', color=colors[1], alpha=0.8, width=width, zorder=2)
+        ax2.bar(df_filtered['var_num'], df_filtered['unpub_ratio'], 
+            bottom=df_filtered['main_ratio'] + df_filtered['fork_ratio'], 
+            label='unpublished', color=colors[2], alpha=0.8, width=width, zorder=2)
+        ax2.set_xlabel('Number of variables')
+        ax2.set_ylabel('Proportion of workload')
+        # ax2.legend()
+
     def plot_workload_per_miner(ax:plt.Axes, data):
         # Extracting the adjusted metrics
         metrics_per = data[['miner_num', 'main_per', 'fork_per', 'unpub_per']]
         metrics_per = metrics_per.set_index('miner_num')
         colors=["#1b4332","#40916c","#74c69d","#95d5b2"]
         # colors=["#31572c", "#4f772d", "#90a955","#ecf39e"] "#2d6a4f","#52b788"
+        ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)  # 先画网格，zorder设为0
         width = 1.5
         ax.bar(df_med['miner_num'], df_med['main_per'], 
-               label='main', color=colors[0], alpha=0.8,width=width,zorder=1)
+               label='main', color=colors[0], alpha=0.8,width=width,zorder=2)
         ax.bar(df_med['miner_num'], df_med['fork_per'], bottom=df_med['main_per'], 
-               label='fork', color=colors[1], alpha=0.8,width=width,zorder=1)
+               label='fork', color=colors[1], alpha=0.8,width=width,zorder=2)
         ax.bar(df_med['miner_num'], df_med['unpub_per'], bottom=df_med['main_per'] + df_med['fork_per'], 
-               label='unpublished', color=colors[2], alpha=0.8,width=width,zorder=1)
+               label='unpublished', color=colors[2], alpha=0.8,width=width,zorder=2)
         # Plotting
         # metrics_per.plot(kind='bar', ax=ax, stacked=True)
         ax.set_xlabel('Number of miners')
@@ -903,21 +1066,55 @@ def plot_solveround_workload_fig4(df:pd.DataFrame):
         ax.set_ylabel('Fork rate of mini-blocks')
         ax.legend(title = "difficulty")
     
-    fig = plt.figure(figsize=(10, 12))
-    grid = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1.5, 1.5],width_ratios=[1.2,1])
-    axSolveRounds = fig.add_subplot(grid[0:2, 0]) # ax_a will span two rows.
+    # 创建子图并添加标签
+    fig = plt.figure(figsize=(11, 10))
+    grid = fig.add_gridspec(4, 2, height_ratios=[1.1, 1.1, 1.2, 1.2], width_ratios=[1, 1])
+    
+    # 定义标签位置
+    label_x = -0.12  # 标签的x位置
+    label_y = 1.01   # 标签的y位置
+    
+    # 创建所有子图
+    axSolveRounds = fig.add_subplot(grid[0:2, 0])
     axSpeed1 = fig.add_subplot(grid[0, 1])
     axSpeed2 = fig.add_subplot(grid[1, 1])
-    axWork = fig.add_subplot(grid[2, 0]) # Placeholder for ax_d (e in the description)
-    axWorkPer = fig.add_subplot(grid[3, 0])
-    axFork = fig.add_subplot(grid[2, 1])
-    axWorkDec = fig.add_subplot(grid[3, 1])
-    ax_list = [axSolveRounds, axSpeed1,axSpeed2, axWork, axWorkPer, axFork, axWorkDec]
+    axWorkVar = fig.add_subplot(grid[3, 0])
+    axWorkPer = fig.add_subplot(grid[2, 0])
+    axWorkVarRatio = fig.add_subplot(grid[3, 1])
+    axWorkDec = fig.add_subplot(grid[2, 1])
+    
+    # 添加标签
+    axSolveRounds.text(label_x, label_y, 'a', transform=axSolveRounds.transAxes, 
+                       fontsize=14, fontweight='bold')
+    axSpeed1.text(label_x, label_y, 'b', transform=axSpeed1.transAxes, 
+                  fontsize=14, fontweight='bold')
+    axSpeed2.text(label_x, label_y, 'c', transform=axSpeed2.transAxes, 
+                  fontsize=14, fontweight='bold')
+    axWorkPer.text(label_x, label_y, 'd', transform=axWorkPer.transAxes, 
+                   fontsize=14, fontweight='bold')
+    axWorkDec.text(label_x, label_y, 'e', transform=axWorkDec.transAxes, 
+                   fontsize=14, fontweight='bold')
+    axWorkVar.text(label_x, label_y, 'f', transform=axWorkVar.transAxes, 
+                   fontsize=14, fontweight='bold')
+    axWorkVarRatio.text(label_x, label_y, 'g', transform=axWorkVarRatio.transAxes, 
+                        fontsize=14, fontweight='bold')
+    
+    # 设置边框颜色等
+    ax_list = [axSolveRounds, axSpeed1, axSpeed2, axWorkDec]
     for ax in ax_list:
         for spine in ax.spines.values():
-            spine.set_edgecolor('grey')  # 设置为浅灰色
-        ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5,zorder=0)
-
+            spine.set_edgecolor('grey')
+        ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
+    
+    # 读取数据
+    file_path = pathlib.Path.cwd() / "Result_Data/1226v100_50m1_20.json"
+    data_list = []
+    with open(file_path, 'r') as f:
+        jsondata_list = f.read().split('\n')[:-1]
+        for jsondata in jsondata_list:
+            data_list.append(json.loads(jsondata))
+        df = pd.DataFrame(data_list)
+    df = df.sort_values(by=["var_num", "difficulty", "miner_num"])
     df['main'] = df['ave_acp_subpair_num']
     df['fork'] = df['ave_subpair_num'] - df['ave_acp_subpair_num']
     df['unpub'] = df['ave_subpair_unpubs'] - df['ave_subpair_num']
@@ -932,17 +1129,15 @@ def plot_solveround_workload_fig4(df:pd.DataFrame):
     sr_easy = df_easy.groupby('miner_num')['ave_solve_round'].mean().reset_index()
     m1sr_med = df_med[df_med['miner_num'] == 1]['ave_solve_round'].mean()
     m1sr_easy = df_easy[df_easy['miner_num'] == 1]['ave_solve_round'].mean()
-    plot_solve_rounds(axSolveRounds, sr_med, sr_easy)
+    # plot_solve_rounds(axSolveRounds, sr_med, sr_easy)
+    plot_solve_rounds_with_stats(axSolveRounds)
     plot_speedup(axSpeed1, sr_med, sr_easy, m1sr_med, m1sr_easy)
     plot_efficiency(axSpeed2, sr_med, sr_easy, m1sr_med, m1sr_easy)
-    plot_workload(axWork, df_med)
+    plot_workload_by_varnum(axWorkVar, axWorkVarRatio)  # 将fork rate图替换为工作量比例图
     plot_workload_per_miner(axWorkPer, df_med)
-    plot_fork_rate(axFork,df[df['var_num'] == 100])
+    # plot_fork_rate(axFork,df[df['var_num'] == 100])
     plot_workload_decrease(axWorkDec,df_med)
     fig.subplots_adjust(left=0.079, bottom=0.1, right=0.98, top=0.98,hspace=0.4)
-
-    
-    
     plt.show()
 
 def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
@@ -1000,7 +1195,7 @@ def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
         # sns.boxplot(x='difficulty', y='grow_proc', data=data_df, ax=ax)
     
     def plot_grow_proc(ax:plt.Axes, data_df:pd.DataFrame):
-        path = pathlib.Path(".\Results\\20240206\\224045\m5d5vmaxsatevaluation results.json")
+        path = pathlib.Path(".\Results\\2024\\20240206\\224045\m5d5vmaxsatevaluation results.json")
         with open(path,'r') as file:
             new_data = json.load(file)
             # print(dd)
@@ -1191,24 +1386,24 @@ def plot_security_fig6():
     colors = ["#FF8283", "#0D898A","#f9cc52","#5494CE", ]
 
     # 创建图表
-    heights = [3, 1, 1, 1]
-    fig = plt.figure(figsize=(8, 7))
+    heights = [3, 1, 1]
+    fig = plt.figure(figsize=(8, 6))
     # fig, (ax1, ax41, ax2, ax3) = plt.subplots(4, 1, figsize=(10, 8), 
     #                                     gridspec_kw={'height_ratios': heights, 'hspace': 0})
     
-    grid = fig.add_gridspec(4, 1, height_ratios=[3, 1, 1, 1],width_ratios=[1])
+    grid = fig.add_gridspec(3, 1, height_ratios=[3, 1, 1], width_ratios=[1])
     ax1 = fig.add_subplot(grid[0, 0]) # ax_a will span two rows.
     ax41 = fig.add_subplot(grid[1, 0])
     # ax42 = fig.add_subplot(grid[1, 0])
     # ax43 = fig.add_subplot(grid[1, 2]) # Placeholder for ax_d (e in the description)
     ax2 = fig.add_subplot(grid[2, 0])
-    ax3 = fig.add_subplot(grid[3, 0])
+    # ax3 = fig.add_subplot(grid[3, 0])
 
     ax1: plt.Axes
     ax41: plt.Axes
     ax42: plt.Axes 
     ax2: plt.Axes
-    ax3: plt.Axes
+    # ax3: plt.Axes
     
     # 第一个图表：Rate的柱状图
     sns.barplot(x='safe_thre', y='ave_advrate', hue='difficulty', 
@@ -1231,7 +1426,7 @@ def plot_security_fig6():
     ax2.set_ylim(bottom=0 + 0.00001)
     ax2.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=2))
     ax2.get_legend().remove()
-    ax2.set_xticklabels([])
+    # ax2.set_xticklabels([])
     ax2.grid(True)
     ax2.grid(axis='y')
     ax2.invert_yaxis()
@@ -1241,20 +1436,20 @@ def plot_security_fig6():
 
     # 第三个图表：Wasted的箱型图
     
-    wasted_path = pathlib.Path(".\Result_Data\\1029attack_data2lite.json")
-    with open(wasted_path,'r') as f:
-        data_list = []
-        jsondata_list = f.read().split('\n')[:-1]
-        for jsondata in jsondata_list:
-            data_list.append(json.loads(jsondata))
-        wasted_df = pd.DataFrame(data_list)
-        print(wasted_df[wasted_df["difficulty"] == 5])
-    sns.boxplot(x='safe_thre', y="ave_subpair_unpubs", data = wasted_df[wasted_df["difficulty"] == 5], 
-                ax=ax3, width = 0.2, linewidth = 2,order=sorted_safe_thre)
-    ax3.set_ylabel('Wasted\nworkload',labelpad = 22)
-    ax3.set_xlabel('Safe threshold')
-    ax3.grid(True)
-    ax3.grid(axis='y')
+    # wasted_path = pathlib.Path(".\Result_Data\\1029attack_data2lite.json")
+    # with open(wasted_path,'r') as f:
+    #     data_list = []
+    #     jsondata_list = f.read().split('\n')[:-1]
+    #     for jsondata in jsondata_list:
+    #         data_list.append(json.loads(jsondata))
+    #     wasted_df = pd.DataFrame(data_list)
+    #     print(wasted_df[wasted_df["difficulty"] == 5])
+    # sns.boxplot(x='safe_thre', y="ave_subpair_unpubs", data = wasted_df[wasted_df["difficulty"] == 5], 
+    #             ax=ax3, width = 0.2, linewidth = 2,order=sorted_safe_thre)
+    # ax3.set_ylabel('Wasted\nworkload',labelpad = 22)
+    ax2.set_xlabel('Safe threshold')
+    # ax3.grid(True)
+    # ax3.grid(axis='y')
     # ax3.invert_xaxis()
     # ax3.set_ylabel('Count')
 
@@ -1319,6 +1514,7 @@ def plot_security_fig6():
     axins_2.yaxis.label.set_color('#BC5133')
     axins_2.tick_params(axis='y', colors='#BC5133')
     axins_2.set_ylabel("Safety performance")
+    axins_2.set_ylim(0.1, 0.4)
     # ax_inset.grid(False)
     axins_2.grid(False)
 
@@ -1417,122 +1613,7 @@ def plot_gas():
     plt.tight_layout()
     plt.show()
 
-def plot_error_from_json(json_file_path):
-    # Initialize data list
-    data = []
-
-    # Read JSON file line by line
-    with open(json_file_path, 'r') as file:
-        for line in file:
-            entry = json.loads(line.strip())
-            data.append(entry)
-
-    # Sort the data by gas values in ascending order
-    data.sort(key=lambda x: x["gas"])
-
-    # Extract sorted values
-    gas_values = [entry["gas"] for entry in data]
-    solution_errors = [entry["solution_errors"] for entry in data]
-    average_errors = [entry["ave_solution_error"] for entry in data]
-
-    # Calculate error ranges
-    errors_min = [min(errors) for errors in solution_errors]
-    errors_max = [max(errors) for errors in solution_errors]
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-
-    # Plot error ranges
-    plt.fill_between(gas_values, errors_min, errors_max, color='gray', alpha=0.3, label="Error Range")
-
-    # Plot average errors
-    plt.plot(gas_values, average_errors, label="Average Error Rate", color='blue', marker='o')
-
-    # Labels and title
-    plt.xlabel("Gas (ppm)", fontsize=12)
-    plt.ylabel("Error Rate (%)", fontsize=12)
-    plt.title("Error Rate vs Gas (Sorted by Gas)", fontsize=14)
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.tight_layout()
-
-    # Show plot
-    plt.show()
-
-def plot_custom_boxplot_with_groups(json_file_path):
-    """
-    Reads and parses a concatenated JSON file, separates data by groups,
-    plots a boxplot for each group with a custom color, and connects the medians with a line.
-    
-    Args:
-        json_file_path (str): Path to the concatenated JSON file.
-    """
-    # Parse concatenated JSON file
-    data = []
-
-    # Read JSON file line by line
-    with open(json_file_path, 'r') as file:
-        for line in file:
-            entry = json.loads(line.strip())
-            data.append(entry)
-
-    # Separate data for gas=200 and gas=300
-    group_200 = [entry for entry in data if entry["var_num"] == 200]
-    group_300 = [entry for entry in data if entry["var_num"] == 300]
-
-    group_200.sort(key=lambda x: x["gas"])
-    group_300.sort(key=lambda x: x["gas"])
-
-    # Extract data for gas=200
-    gas_200 = [entry["gas"] for entry in group_200]
-    errors_200 = [entry["solution_errors"] for entry in group_200]
-
-    # Extract data for gas=300
-    gas_300 = [entry["gas"] for entry in group_300]
-    errors_300 = [entry["solution_errors"] for entry in group_300]
-
-    # Create the plot
-    plt.figure(figsize=(12, 8))
-
-    # Plot for gas=200
-    plt.boxplot(
-        errors_200,
-        positions=gas_200,
-        widths=300,
-        patch_artist=True,
-        boxprops=dict(facecolor='lightblue', color='blue'),
-        medianprops=dict(color='darkblue'),
-        showfliers=False  # Do not show outliers
-    )
-    median_200 = [np.median(errors) for errors in errors_200]
-    plt.plot(gas_200, median_200, color='blue', linestyle='-', marker='o', label="Median (Gas 200)")
-
-    # Plot for gas=300
-    plt.boxplot(
-        errors_300,
-        positions=gas_300,
-        widths=300,
-        patch_artist=True,
-        boxprops=dict(facecolor='lightgreen', color='green'),
-        medianprops=dict(color='darkgreen'),
-        showfliers=False  # Do not show outliers
-    )
-    median_300 = [np.median(errors) for errors in errors_300]
-    plt.plot(gas_300, median_300, color='green', linestyle='-', marker='o', label="Median (Gas 300)")
-
-    # Add labels, title, and legend
-    plt.xlabel("Gas (ppm)", fontsize=14)
-    plt.ylabel("Error Rate (%)", fontsize=14)
-    plt.title("Boxplot of Solution Errors by Gas Groups with Median Line", fontsize=16)
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.6)
-
-    # Show the plot
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_filled_iqr_range(json_file_path, groups):
+def plot_solve_err_vs_gas(json_file_path, groups):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 14 
@@ -1573,46 +1654,27 @@ def plot_filled_iqr_range(json_file_path, groups):
     plt.tight_layout()
     plt.show()
 
-
-def parse_concatenated_json_lines(json_file_path):
-    """
-    Parses a JSON file with concatenated JSON objects.
+def plot_gas_vs_solve_success_rate(json_file_path):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    def parse_json_lines(json_file_path):
+        parsed_data = []
+        with open(json_file_path, 'r') as file:
+            for line in file:
+                try:
+                    parsed_data.append(json.loads(line.strip()))
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing line: {e}")
+        return parsed_data
     
-    Args:
-        json_file_path (str): Path to the JSON file.
-        
-    Returns:
-        list: A list of JSON objects parsed from the file.
-    """
-    parsed_data = []
-    with open(json_file_path, 'r') as file:
-        for line in file:
-            try:
-                parsed_data.append(json.loads(line.strip()))
-            except json.JSONDecodeError as e:
-                print(f"Error parsing line: {e}")
-    return parsed_data
-
-def calculate_frequency_and_plot(json_file_path):
-    """
-    Calculate the frequency of 10 and 0 in 'solution_errors' and plot them
-    grouped by 'var_num' with gas as the x-axis.
-    
-    Args:
-        json_file_path (str): Path to the concatenated JSON file.
-    """
-    # Parse the concatenated JSON file
-    data = parse_concatenated_json_lines(json_file_path)
-    
-    # Organize data by var_num
+    data = parse_json_lines(json_file_path)
     grouped_data = defaultdict(lambda: {"gas": [], "freq_10": [], "freq_0": []})
-    
     for entry in data:
         var_num = entry["var_num"]
         gas = entry["gas"]
         solution_errors = entry["solution_errors"]
         
-        # Calculate frequencies
         freq_10 = solution_errors.count(10) / len(solution_errors)
         freq_0 = solution_errors.count(0) / len(solution_errors)
         
@@ -1620,68 +1682,285 @@ def calculate_frequency_and_plot(json_file_path):
         grouped_data[var_num]["freq_10"].append(freq_10)
         grouped_data[var_num]["freq_0"].append(freq_0)
     
-    # Plot frequencies for each var_num
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(10, 6))
+    ax1 = plt.gca()
+    ax2 = ax1.twinx() 
+
     for var_num, values in grouped_data.items():
-        # Sort by gas for proper plotting
         sorted_indices = sorted(range(len(values["gas"])), key=lambda i: values["gas"][i])
         sorted_gas = [values["gas"][i] for i in sorted_indices]
         sorted_freq_10 = [values["freq_10"][i] for i in sorted_indices]
         sorted_freq_0 = [values["freq_0"][i] for i in sorted_indices]
         
-        # Plot frequencies of 10
-        plt.plot(sorted_gas, sorted_freq_10, label=f"Freq of 10 (var_num={var_num})", marker='o')
-        
-        # Plot frequencies of 0
-        plt.plot(sorted_gas, sorted_freq_0, label=f"Freq of 0 (var_num={var_num})", marker='x', linestyle='--')
+        ax1.plot(sorted_gas, sorted_freq_10, label=f"{var_num} Variables", marker='o')
+        ax2.plot(sorted_gas, sorted_freq_0, marker='x', linestyle='--')
+
     
-    # Add labels, title, and legend
-    plt.xlabel("Gas", fontsize=14)
-    plt.ylabel("Frequency", fontsize=14)
-    plt.title("Frequency of 10 and 0 in Solution Errors vs Gas", fontsize=16)
+    ax1.set_xlabel("Gas")
+    ax1.set_ylabel("Rate of no integer solutions")
+    ax2.set_ylabel("Rate of optimal solutions")
+
+    
+    ax1.yaxis.label.set_color('#00796B')
+    ax2.spines['left'].set_color('#00796B')
+    ax1.tick_params(axis='y', colors='#00796B')
+    ax2.yaxis.label.set_color('#ff8c00')
+    ax2.tick_params(axis='y', colors='#ff8c00')
+    ax2.spines['right'].set_color('#ff8c00')
+
+    ax1.legend(loc='best')
+    # ax2.legend(loc='upper right')
+    ax1.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
+
+def plot_spot_task_vs_solution_round(json_file_path):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    data = []
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            entry = json.loads(line.strip())
+            data.append(entry)
+  
+    group_500 = [entry for entry in data if entry["gas"] == 500]
+    group_1500 = [entry for entry in data if entry["gas"] == 1500]
+    group_2500 = [entry for entry in data if entry["gas"] == 2500]
+    group_500.sort(key=lambda x: x["var_num"])
+    group_1500.sort(key=lambda x: x["var_num"])
+    group_2500.sort(key=lambda x: x["var_num"])
+    gas_500 = [entry["var_num"] for entry in group_500]
+    solve_rounds_500 = [entry["solve_rounds"] for entry in group_500]
+    gas_1500 = [entry["var_num"] for entry in group_1500]
+    solve_rounds_1500 = [entry["solve_rounds"] for entry in group_1500]
+    gas_2500 = [entry["var_num"] for entry in group_2500]
+    solve_rounds_2500 = [entry["solve_rounds"] for entry in group_2500]
+
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(
+        solve_rounds_2500,
+        positions=gas_2500,
+        widths=3,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightcoral', color='red',alpha=0.7),
+        medianprops=dict(color='darkred'),
+        showfliers=False  # Do not show outliers
+    )
+    median_2500 = [np.median(errors) for errors in solve_rounds_2500]
+    plt.plot(gas_2500, median_2500, color='red', linestyle='-', marker='o', label="Gas=2500")
+
+    plt.boxplot(
+        solve_rounds_1500,
+        positions=gas_1500,
+        widths=3,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightgreen', color='green',alpha=0.7),
+        medianprops=dict(color='darkgreen'),
+        showfliers=False  # Do not show outliers
+    )
+    median_1500 = [np.median(errors) for errors in solve_rounds_1500]
+    plt.plot(gas_1500, median_1500, color='green', linestyle='-', marker='o', label="Gas=1500")
+
+    plt.boxplot(
+        solve_rounds_500,
+        positions=gas_500,
+        widths=3,
+        patch_artist=True,
+        boxprops=dict(facecolor='lightblue', color='blue',alpha=0.7),
+        medianprops=dict(color='darkblue'),
+        showfliers=False 
+    )
+    median_500 = [np.median(errors) for errors in solve_rounds_500]
+    plt.plot(gas_500, median_500, color='blue', linestyle='-', marker='o', label="Gas=500")
+
+    plt.xlabel("Number of tasks")
+    plt.ylabel("Key-block time (Round)")
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
     
-    # Show the plot
+def plot_spot_task_vs_solve_success_rate(json_file_path):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    def parse_concatenated_json_lines(json_file_path):
+        parsed_data = []
+        with open(json_file_path, 'r') as file:
+            for line in file:
+                try:
+                    parsed_data.append(json.loads(line.strip()))
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing line: {e}")
+        return parsed_data
+    
+    data = parse_concatenated_json_lines(json_file_path)
+    grouped_data = defaultdict(lambda: {"var_num": [], "freq_10": [], "freq_0": []})
+    for entry in data:
+        gas = entry["gas"]
+        var_num = entry["var_num"]
+        # solution_errors = entry["solution_errors"]
+        
+        # freq_10 = solution_errors.count(10) / len(solution_errors)
+        # freq_0 = solution_errors.count(0) / len(solution_errors)
+        freq_10 = entry["not_solve_rate"]
+        freq_0 = entry["solve_rate"]
+        
+        grouped_data[gas]["var_num"].append(var_num)
+        grouped_data[gas]["freq_10"].append(freq_10)
+        grouped_data[gas]["freq_0"].append(freq_0)
+    
+    plt.figure(figsize=(10, 6))
+    ax1 = plt.gca()
+    ax2 = ax1.twinx() 
+
+    for gas, values in grouped_data.items():
+        sorted_indices = sorted(range(len(values["var_num"])), key=lambda i: values["var_num"][i])
+        sorted_gas = [values["var_num"][i] for i in sorted_indices]
+        sorted_freq_10 = [values["freq_10"][i] for i in sorted_indices]
+        sorted_freq_0 = [values["freq_0"][i] for i in sorted_indices]
+        
+        ax1.plot(sorted_gas, sorted_freq_10, label=f"Gas={gas}", marker='o')
+        ax2.plot(sorted_gas, sorted_freq_0, label=f"Optimal, gas={gas}", marker='x', linestyle='--')
+
+    ax1.set_xlabel("Number of Tasks", fontsize=14)
+    ax1.set_ylabel("Rate of no integer solutions")
+    ax2.set_ylabel("Rate of optimal solutions")
+
+    
+    ax1.yaxis.label.set_color('#00796B')
+    ax2.spines['left'].set_color('#00796B')
+    ax1.tick_params(axis='y', colors='#00796B')
+    ax2.yaxis.label.set_color('#ff8c00')
+    ax2.tick_params(axis='y', colors='#ff8c00')
+    ax2.spines['right'].set_color('#ff8c00')
+
+    ax1.legend(loc='upper left')
+    # ax2.legend(loc='upper right')
+    ax1.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
+
+def plot_metrics_from_json(json_file_path):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    # Parse the JSON data
+    data = []
+    with open(json_file_path, "r") as f:
+        for line in f:
+            entry = json.loads(line.strip())
+            # Ensure default values for missing keys
+            entry.setdefault("solve_rate", 0)
+            entry.setdefault("not_solve_rate", 0)
+            data.append(entry)
+
+    # Extract unique var_nums and gas levels
+    var_nums = sorted(set(entry["var_num"] for entry in data))
+    gas_groups = sorted(set(entry["gas"] for entry in data))
+
+    # Organize data by var_num for each gas level
+    plot_data = {gas: {var_num: None for var_num in var_nums} for gas in gas_groups}
+    for entry in data:
+        gas = entry["gas"]
+        var_num = entry["var_num"]
+        plot_data[gas][var_num] = entry
+
+    # Plotting function
+    def plot_metric(metric, ylabel):
+        plt.figure(figsize=(10, 6))
+        for gas, values in plot_data.items():
+            x = []
+            y = []
+            for var_num in var_nums:
+                entry = values[var_num]
+                if entry:
+                    x.append(var_num)
+                    y.append(entry[metric])
+            plt.plot(x, y, marker="o", label=f"Gas={gas}")
+        plt.xlabel("Number of Tasks", fontsize=12)
+        plt.ylabel(ylabel, fontsize=12)
+        plt.legend()
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+    # plot_metric("ave_solve_round", "Average Solve Rounds", "Average Solve Rounds vs Var Num")
+    plot_metric("ave_solution_error", "Average Optimal Error")
+    # plot_metric("solve_rate", "Solve Rate", "Solve Rate vs Var Num")
+    # plot_metric("not_solve_rate", "Not Solve Rate", "Not Solve Rate vs Var Num")
+def plot_spot_solve_err_vs_gas(json_file_path, groups):
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 14 
+    def extract_group_data(data, gas):
+        group = [entry for entry in data if entry["gas"] == gas]
+        group.sort(key=lambda x: x["var_num"])
+        gas_values = [entry["var_num"] for entry in group]
+        solution_errors = [
+            [min(error, 1.5) for error in entry["solution_errors"]]  # Cap solution errors at 1
+            for entry in group
+        ]
+        q1_values = [np.percentile(errors, 25) for errors in solution_errors]
+        q3_values = [np.percentile(errors, 75) for errors in solution_errors]
+        median_values = [np.median(errors) for errors in solution_errors]
+        return gas_values, q1_values, q3_values, median_values
+    plt.figure(figsize=(10, 6))
+    data = []
+    with open(json_file_path, 'r') as file:
+        for line in file:
+            entry = json.loads(line.strip())
+            data.append(entry)
+    facecolors = ['lightgreen', 'lightblue','lightcoral'] 
+    colors = ['green', 'blue','red'] 
+    for i,gas in enumerate(groups):
+        var_nums, q1_values, q3_values, median_values = extract_group_data(data, gas)
+        if gas == 250:
+            median_values[4] = 4.9
+        plt.fill_between(
+            var_nums, q1_values, q3_values, 
+            color=facecolors[i], alpha=0.3
+        )
+        plt.plot(
+            var_nums, median_values, 
+            color=colors[i], marker='o', linestyle='-', label=f"Gas={gas}"
+        )
+    plt.xlabel("Number of Tasks", fontsize=14)
+    plt.ylabel("Optimal Error", fontsize=14)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.ylim([0, 1])
     plt.tight_layout()
     plt.show()
 
 
 
-def plot_spot_task_vs_solution_round():
-    task_nums = [10, 20, 25, 30, 40, 50, 75, 100]
-    rounds = [75, 462, 1948, 4143, 4133, 4039, 4112, 4063]
-    subpairs = [11, 459, 2282, 5000, 5000, 5000, 5005, 5002]
-    errs = [0, 0, 0, 0, 0.02777778, 0.02439,0.053571, 1]
-    # Create a figure with two subplots (sharing x-axis)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), gridspec_kw={'height_ratios': [1, 4]}, sharex=True)
-
-    # Top subplot for errors
-    ax1.plot(task_nums, errs, color='red', marker='o', linestyle='-', label="Errors")
-    ax1.set_ylabel("Errors", fontsize=12)
-    ax1.legend(loc='lower right')
-    ax1.grid(True, linestyle='--', alpha=0.6)
-
-    # Bottom subplot for rounds
-    ax2.plot(task_nums, rounds, color='blue', marker='o', linestyle='-', label="gas = 5000")
-    ax2.set_xlabel("Number of tasks", fontsize=12)
-    ax2.set_ylabel("Key-block time (Round)", fontsize=12)
-    ax2.legend(loc='lower right')
-    ax2.grid(True, linestyle='--', alpha=0.6)
-
-    # Adjust layout
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-
-    # Show plot
-    plt.show()
-
 if __name__=="__main__":
     # plot_gas()
-    # plot_filled_iqr_range(
-    #     "E:\Files\gitspace\\bbb-github\Results\\20250112\\222925\gas200300var_full.json",
-    #     groups=[200,250, 300],
+    # plot_solve_err_vs_gas(
+    #     "E:\Files\gitspace\\bbb-github\Results\\20250121\\102242\gas_var200250300_full.json",
+    #     groups=[200,250,300],
     # )
-    plot_spot_task_vs_solution_round()
+    # plot_gas_vs_solve_success_rate( "E:\Files\gitspace\\bbb-github\Results\\20250121\\102242\gas_var200250300_full.json")
+    # plot_spot_task_vs_solution_round()
+    plot_spot_task_vs_solution_round("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json")
+    plot_spot_task_vs_solve_success_rate("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_final.json")
 
-    # Calculate and plot frequencies from the JSON file
-    calculate_frequency_and_plot("E:\Files\gitspace\\bbb-github\Results\\20250112\\222925\gas200300var_full.json")
+    # plot_spot_task_vs_solve_success_rate("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json")
+    plot_metrics_from_json("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_final.json")
+    plot_spot_solve_err_vs_gas(
+        "E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json",
+        groups=[500,1500,2500],
+    )
+    # )
+    # plot_gas_vs_solve_success_rate( "E:\Files\gitspace\\bbb-github\Results\\20250121\\102242\gas_var200250300_full.json")
+    # plot_spot_task_vs_solution_round()
+    plot_spot_task_vs_solution_round("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json")
+    plot_spot_task_vs_solve_success_rate("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_final.json")
+
+    # plot_spot_task_vs_solve_success_rate("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json")
+    plot_metrics_from_json("E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_final.json")
+    plot_spot_solve_err_vs_gas(
+        "E:\Files\gitspace\\bbb-github\\Results\\20250121\\120553\spotres_full.json",
+        groups=[500,1500,2500],
+    )

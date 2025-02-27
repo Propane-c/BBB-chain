@@ -51,7 +51,7 @@ class Background(object):
         self._var_dict['SOLVE_PROB'] = 0.5
         self._var_dict['OPEN_BLOCK_ST'] = "openblock_random"
         self._var_dict['OPEN_PROBLEM_ST'] = "openprblm_random"
-        self._var_dict['total_gas'] = 10000
+        self._var_dict['total_gas'] = 1000000000000
         self._var_dict['once_gas'] = 1
         # 管理问题自增id
         self._prblm_id_center = defaultdict(int)
@@ -213,7 +213,8 @@ class Background(object):
         return self._var_dict['OPEN_PROBLEM_ST']
     # gas
     def set_total_gas(self, total_gas):
-        self._var_dict['total_gas'] = total_gas
+        # self._var_dict['total_gas'] = total_gas
+        self._var_dict['total_gas'] = 1000000000000
     def get_total_gas(self):
         return self._var_dict['total_gas']
     def set_once_gas(self, once_gas):

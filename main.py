@@ -202,15 +202,15 @@ def single_process_longchain(
 
 if __name__ == '__main__':
     """参数设置"""
-    # pool = lpprblm.prblm_pool_generator(200, 250, ZERO_ONE)
-    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "20250103", ZERO_ONE, False)
+    pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
+    lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01", ZERO_ONE, False)
 
     # simu_type = "single_run"
     # simu_type = "long"
     simu_type = "short"
     multiProcessOn = True
     # multiProcessOn = False
-    threadNum = 2
+    threadNum = 5
     """
     short参数说明:
     gas | repeat_num | pool_size | var_num | difficulties | miner_nums | adversary_num | prblm_pool_metho| safe_thre |
@@ -218,45 +218,57 @@ if __name__ == '__main__':
     
     """
     rpt_num1 = 1
-    rpt_num = 5
+    rpt_num = 1
     args_list = [
         
         # [8000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
         # [9000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [10000, rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [500,   rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [1000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [1500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [10000, rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [1000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
 
-        [2000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [2500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [3000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [6000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [6500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [7000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [7500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [3500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [4000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [4500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [5000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
-        [5500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [2000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [3000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [6000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [6500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [7000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [7500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [3500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [4000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [4500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [5000,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
+        # [5500,  rpt_num, 50, 300, [5],  [5], 0, 'load', 0.001],
         
+        # [500,   rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
+        # [1500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
+        # [2500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
 
-        # [500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
-        # [500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
-        # [500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
-        # [500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
-        # [500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 50, 30, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 50, 40, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 50, 50, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 50, 75, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 50, 100, [5],  [5], 0, 'load', 0.001],
+        [500,   rpt_num, 10, 50, [5],  [5], 0, 'load', 0.001],
+        [500,   rpt_num, 10, 80, [5],  [5], 0, 'load', 0.001],
+        [500,   rpt_num, 10, 120, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 10, 100, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 10, 150, [5],  [5], 0, 'load', 0.001],
+        # [500,   rpt_num, 10, 200, [5],  [5], 0, 'load', 0.001],
 
 
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_RAND, bb.OP_BEST],
@@ -265,53 +277,44 @@ if __name__ == '__main__':
         # [rpt_num, 10, 50, [5], [20],  0, 'load', bb.OB_RAND, bb.OP_BEST],
         # [rpt_num, 10, 50, [5], [30],  0, 'load', bb.OB_RAND, bb.OP_BEST],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_RAND, bb.OP_BEST],
-
         # [rpt_num, 50, 50, [5], [5],  0, 'load', bb.OB_DEEP, bb.OP_RAND],
         # [rpt_num, 50, 50, [5], [10],  0, 'load', bb.OB_DEEP, bb.OP_RAND],
         # [rpt_num, 50, 50, [5], [15],  0, 'load', bb.OB_DEEP, bb.OP_RAND],
         # [rpt_num, 50, 50, [10], [5],  0, 'load', bb.OB_DEEP, bb.OP_RAND],
         # [rpt_num, 50, 50, [10], [10],  0, 'load', bb.OB_DEEP, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_DEEP, bb.OP_RAND],
-
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_RAND, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [10],  0, 'load', bb.OB_RAND, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [15],  0, 'load', bb.OB_RAND, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [20],  0, 'load', bb.OB_RAND, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [30],  0, 'load', bb.OB_RAND, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_RAND, bb.OP_RAND],
-
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [10],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [15],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [20],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [30],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_BREATH, bb.OP_RAND],
-
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.005 ],
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.001],
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.0005],
         # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.0001],
-
         # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.005 ],
         # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.001],
         # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.0005],
         # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.0001],
-
         # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.005],
         # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.001],
         # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.0005],
         # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.0001],
-
         # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.005],
         # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.001],
         # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.0005],
         # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.0001],
-
         # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.005],
         # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.001],
         # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.0005],
         # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.0001],
-
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.005],
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.003],
         # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.001],

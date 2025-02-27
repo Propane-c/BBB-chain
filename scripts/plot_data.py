@@ -2,9 +2,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import sys
 import pandas as pd
+sys.path.append("E:\Files\gitspace\\bbb-github")
 
-from branchbound import bb_consensus as bb
+import branchbound.bb_consensus as bb
 import myplot
 import myplot2
 
@@ -321,9 +323,9 @@ if __name__ == "__main__":
     # format_str = LBUB
     # data = load_json_file(Path.cwd()/"Result_Data"/ "1210short_data测试不同st.json", format_str)Results\20240104\Results\
     # data = load_json_file(Path.cwd()/"Result_Data\\tsp solving process.json", format_str)
-    data = load_json_file(Path.cwd()/"Result_Data\\0131tspm135mbtimes2.json", format_str)
+    # data = load_json_file(Path.cwd()/"Result_Data\\0131tspm135mbtimes2.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\m1d5vmaxsatevaluation results.json", format_str)
-    # data = load_json_file(Path.cwd()/"Result_Data\\1226v100_50m1_20.json", format_str)
+    data = load_json_file(Path.cwd()/"Result_Data\\1226v100_50m1_20.json", format_str)
     # data = load_json_file(Path.cwd()/"Result_Data\maxsatfig3\m1d5vmaxsatevaluation results.json", format_str)
     # print(data)Result_Data\1226v100m1_20.jsonResults\
     """画图"""
@@ -391,12 +393,9 @@ if __name__ == "__main__":
         myplot2.plot_bounds_fig3(data, MAXSAT)
 
     elif format_str ==DATAFRAME:
-        myplot2.plot_mbtime_grow_fig5()
-        # myplot2.plot_solveround_workload_fig4(data)
+        # myplot2.plot_mbtime_grow_fig5()
+        myplot2.plot_solveround_workload_fig4()  # 使用默认路径
         # myplot2.plot_security_fig6()
-    
-    
-    
 
     
 
