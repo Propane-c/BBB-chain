@@ -6,7 +6,6 @@ import sys
 import pandas as pd
 sys.path.append("E:\Files\gitspace\\bbb-github")
 
-import branchbound.bb_consensus as bb
 import myplot
 import myplot2
 
@@ -22,6 +21,21 @@ LBUB = "lower upper bounds"
 MAXSAT='maxsat'
 TSP='tsp'
 MIPLTP='miplib'
+
+# 产生keyblock的方式
+POW = "pow"
+W_MINI = "withmini"
+
+# openblock选择策略, 如open prblm不是BEST策略就先选block再选prblm
+OB_SPEC = "ob_specific" # 默认选择第一个
+OB_RAND = "ob_random"
+OB_DEEP = "ob_deepfrist"
+OB_BREATH = "ob_breathfirst"
+
+# open prblm的选择策略
+OP_SPEC = "op_specific"
+OP_RAND = "op_random"
+OP_BEST = "op_bestbound" # 全局最小的解的问题
 
 def load_json_file(filename, format):
     """根据指定的格式加载json文件为字典"""
@@ -85,13 +99,13 @@ def create_data_list_searchst(json_data_list):
     data_dict = defaultdict()
     data_list = []
     for entry in json_data_list:
-        if entry['openblk_st'] == bb.OB_RAND and entry['openprblm_st'] == bb.OP_BEST:
+        if entry['openblk_st'] == OB_RAND and entry['openprblm_st'] == OP_BEST:
             strategy = 'BFS'
-        if entry['openblk_st'] == bb.OB_DEEP and entry['openprblm_st'] == bb.OP_RAND:
+        if entry['openblk_st'] == OB_DEEP and entry['openprblm_st'] == OP_RAND:
             strategy = 'DFS'
-        if entry['openblk_st'] == bb.OB_BREATH and entry['openprblm_st'] == bb.OP_RAND:
+        if entry['openblk_st'] == OB_BREATH and entry['openprblm_st'] == OP_RAND:
             strategy = 'BrFS'
-        if entry['openblk_st'] == bb.OB_RAND and entry['openprblm_st'] == bb.OP_RAND:
+        if entry['openblk_st'] == OB_RAND and entry['openprblm_st'] == OP_RAND:
             strategy = 'Rand'
         var_num = entry['var_num']
         difficulty = entry['difficulty']

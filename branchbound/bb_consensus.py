@@ -15,6 +15,7 @@ from data import Block, BlockHead, Chain, NewBlocks  # noqa: E402
 from functions import hashsha256  # noqa: E402, F401
 from data.lpprblm import IncConstr, LpPrblm  # noqa: E402
 from data.txpool import TxPool  # noqa: E402
+from evaluation import Evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +88,11 @@ class SolvingPair(object):
 
 
 class BranchBound(object):
-    def __init__(self, background: Background, chain: Chain, miner_id=None):
+    def __init__(self, background: Background, chain: Chain, miner_id=None, evaluation:Evaluation = None):
         self.local_chain = chain
         self.background = background
         self.miner_id = miner_id
+        self.evaluation = evaluation
         self.round = 0
         self.LOG_PREFIX = f"round {self.round} miner {self.miner_id}"
         # the keyblock being solved
@@ -283,17 +285,21 @@ class BranchBound(object):
         if wrs1:
             if self.optprblm_cache is not None:
                 p1.lb_prblm = self.optprblm_cache
-            elif len(self.opt_prblms) ==0:
-                print("xxx")
-            else:
+            elif len(self.opt_prblms) > 0:
                 p1.lb_prblm = random.choice(self.opt_prblms)
         if wrs2:
             if self.optprblm_cache is not None:
                 p2.lb_prblm = self.optprblm_cache
-            elif len(self.opt_prblms) ==0:
-                print("xxx")
-            else:
+            elif len(self.opt_prblms) > 0:
                 p2.lb_prblm = random.choice(self.opt_prblms)
+        if self.evaluation.recordGasSolErrs:
+            sol = None
+            sol = p1.z_lp if int_soln1 and not wrs1 else sol
+            sol = p2.z_lp if int_soln2 and not wrs2 else sol
+            if sol is not None:
+                consume_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
+                self.evaluation.get_round_gas_solution(self.round, consume_gas, sol, self.cur_keyblock.get_keyprblm_key().iz_pulp)
+        
         self.solved_pairs.append((p1, p2))
 
 
@@ -726,7 +732,6 @@ class BranchBound(object):
 
 
     def valid_block(self, block_chain: Chain, block: Block):
-        return True
         if block.iskeyblock:
             return self.valid_keyblock(block)
         # miniblock
@@ -791,6 +796,7 @@ class BranchBound(object):
         该问题被声明为fathomed, 如果是infeas或int_soln, 验证通过；
         如果是wrs, 还需要检查提供的指定lowerbound的问题是否存在
         """
+        return True
         fthmd_vali = False
         # 未检查出fathomed，不通过
         if not prblm_fthmd:
@@ -803,8 +809,8 @@ class BranchBound(object):
             fthmd_vali = True
             return fthmd_vali
         # 检查出wrs且给出下界的问题本身包含在区块里
-        if lpprblm.lb_prblm in cur_block:
-            fthmd_vali = True
+        if lpprblm.lb_prblm is None:
+            fthmd_vali = True if lpprblm.z_lp > self.cur_keyblock.get_keyprblm_key().init_iz else False
             return fthmd_vali
         # 没有的话从链里面找
         vali_keyid = lpprblm.pname[0][0]
@@ -901,6 +907,8 @@ class BranchBound(object):
             if not solveSuccess:
                 return None, genKeyblockSuccess
             accect_mbs = self.get_fathomed_prblms_by_chain()
+            logger.info(f"{self.LOG_PREFIX}: opt_prblms: {[p.pname for p in self.opt_prblms]}, opt_z:{[p.z_lp for p in self.opt_prblms]} "
+                        f"optprblm_cache:{self.optprblm_cache.z_lp if self.optprblm_cache is not None else None}")
             key_height = self.cur_keyblock.keyfield.key_height + 1
             keyblock.set_keyfield(
                 self.key_pow_hash, self.key_pow_nonce, key_height,
@@ -1025,9 +1033,8 @@ class BranchBound(object):
 
     def switch_key(self, keyblock: Block, kb_from="outer", round=None):
         """
-        切换到新的keyblock进行求解
-        （相当于切换到新的状态，需要清理掉旧状态的信息，
-        但有些信息如`self.miniblocks_unsafe`需要视情况保留）
+        切换到新的keyblock进行求解, 相当于切换到新的状态，需要清理掉旧状态的信息，
+        但有些信息如`self.miniblocks_unsafe`需要视情况保留。
         :param keyblock: 将要切换到的keyblock
         :param kb_from: 该keyblock的来源，"outer"：从外界接收的，"inner"：自己产生的
         """
@@ -1060,9 +1067,12 @@ class BranchBound(object):
             raise ValueError('The block is not a keyblock !')
         if keyblock.keyfield.key_tx is not None:
             self.cur_keyblock = keyblock
-            self.cur_keyid = keyblock.keyfield.key_tx.data.pname[0][0]
+            kp = keyblock.keyfield.key_tx.data
+            self.cur_keyid = kp.pname[0][0]
             if len(keyblock.next) == 0:
                 self.open_blocks.append(keyblock)
+            if kp.init_iz is not None:
+                self.upper_bound = kp.init_iz
         else:
             self.cur_keyid = -1
             self.cur_keyblock = None
@@ -1186,7 +1196,10 @@ class BranchBound(object):
         if int_soln:
             self.update_upperbound(opt_loc, lp_prblm)
             rest_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
-            # print(self.round, " ", lp_prblm.z_lp, " ", rest_gas)
+            # 将输出写入文件
+            # logger.info(f"{self.LOG_PREFIX}: rest_gas:{rest_gas}; x_lp:{lp_prblm.x_lp}; z_lp:{lp_prblm.z_lp}; "
+            #         f"upper_bound:{self.upper_bound}; init_ix:{lp_prblm.init_ix}; init_iz:{lp_prblm.init_iz};\n")
+            self.evaluation.get_round_gas_solution(self.round, rest_gas, lp_prblm.z_lp, self.cur_keyblock.get_keyprblm_key().iz_pulp)
             updateUB = True
         # update lowerbound
         if not infeas and not wrs and updateLBCrtl:

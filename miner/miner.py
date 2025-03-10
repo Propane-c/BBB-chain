@@ -28,7 +28,7 @@ class Miner(object):
         self.local_chain = Chain(background, self.miner_id)  # 本地维护的区块链
         self.forkviews:list[ForkView] = []
         # 共识相关
-        self.consensus = BranchBound(background, self.local_chain, self.miner_id)
+        self.consensus = BranchBound(background, self.local_chain, self.miner_id, evaluation)
         self.consensus.setparam(target)  # 设置共识参数
         # 输入内容相关
         self.input = 0  # 要写入新区块的值
@@ -468,7 +468,7 @@ class Miner(object):
         b2link = self.local_chain.search_forward_by_hash(rcvkb.blockhead.prehash)
         if b2link is None:
             logger.warning("%s: add key-block %s failed, not found %s",
-                           rcvkb.name, rcvkb.blockhead.prehash)
+                           self.LOG_PREFIX, rcvkb.name, rcvkb.blockhead.prehash)
             return new_update
         # 建立keyblock间的连接
         pre_kb = rcvkb.keyfield.pre_kb

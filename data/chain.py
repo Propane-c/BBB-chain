@@ -126,10 +126,12 @@ class Chain(object):
         infeasi_kbs = []
         for kb in kbs:
             # print(kb.name, kb.keyfield.pre_key_feasible)
-            if kb.keyfield.is_pre_key_feasible is False:
-                infeasi_kbs.append(kb.keyfield.pre_kb)
-            # if kb.keyfield.pre_iz_pulp is None:
-            #     infeasi_kbs.append(kb.keyfield.pre_kb)
+            if self.background.get_enable_gas():
+                if kb.keyfield.pre_iz_pulp is None and self.background.get_enable_gas():
+                    infeasi_kbs.append(kb.keyfield.pre_kb)
+            else:
+                if kb.keyfield.is_pre_key_feasible is False:
+                    infeasi_kbs.append(kb.keyfield.pre_kb)
         feasi_kbs = [kb for kb in kbs if (kb not in infeasi_kbs 
                     and kb.keyfield.key_tx is not None)]
         # print("feasi_kbs", [kb.name for kb in feasi_kbs])
@@ -207,14 +209,13 @@ class Chain(object):
             ftmd_mbs:list[Block] =  []
             for b in block.next:
                 if not b.iskeyblock:
-                    if b.minifield.bfthmd_state:
+                    if b.minifield.bfthmd_state or self.background.get_enable_gas():
                         ftmd_mbs.append(b)
             if len(ftmd_mbs)==0:
                 continue
             queue.extend(select_acp_mbs(ftmd_mbs))
         # 记录主链上所有的miniblock
-        logger.info("Miner %s accept miniblocks: %s", self.miner_id, 
-                    [b.name for b in acp_mbs])
+        logger.info("Miner %s accept miniblocks: %s", self.miner_id, [b.name for b in acp_mbs])
         self.main_chain[keyblock.name].extend(acp_mbs)
         return acp_mbs
 

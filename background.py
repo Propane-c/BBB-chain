@@ -8,23 +8,23 @@ from collections import defaultdict
 from pathlib import Path
 import data.lpprblm
 
-RESULT_PATH=Path.cwd() / 'Results' / time.strftime("%Y%m%d") / time.strftime("%H%M%S")
-
+RESULT_PATH=Path.cwd() / 'Results' / time.strftime("%Y%m%d") / time.strftime("%H%M%S")  
 
 class Background(object):
     def __init__(self):
         '''
         初始化
         '''
-        if not os.path.exists(RESULT_PATH):
-            print(f"loading background with ROOT PATH: {RESULT_PATH}")
-            RESULT_PATH.mkdir(parents=True, exist_ok=True)
-        NET_RESULT_PATH=RESULT_PATH / 'Network Results'
-        if not os.path.exists(NET_RESULT_PATH):
-            NET_RESULT_PATH.mkdir(parents=True, exist_ok=True)
-        CHAIN_DATA_PATH=RESULT_PATH / 'Chain Data'
-        if not os.path.exists(CHAIN_DATA_PATH):
-            CHAIN_DATA_PATH.mkdir(parents=True, exist_ok=True)
+        self.RESULT_PATH=RESULT_PATH
+        if not os.path.exists(self.RESULT_PATH):
+            print(f"loading background with ROOT PATH: {self.RESULT_PATH}")
+            self.RESULT_PATH.mkdir(parents=True, exist_ok=True)
+        self.NET_RESULT_PATH=self.RESULT_PATH / 'Network Results'
+        if not os.path.exists(self.NET_RESULT_PATH):
+            self.NET_RESULT_PATH.mkdir(parents=True, exist_ok=True)
+        self.CHAIN_DATA_PATH=self.RESULT_PATH / 'Chain Data'
+        if not os.path.exists(self.CHAIN_DATA_PATH):
+            self.CHAIN_DATA_PATH.mkdir(parents=True, exist_ok=True)
         self._var_dict = {}
         self._var_dict['MINER_NUM']=0
         self._var_dict['POW_TARFET']=''
@@ -35,9 +35,9 @@ class Background(object):
         self._var_dict['BLOCK_NUMBER'] = 0
         self._var_dict['PRBLM_NUMBER'] = 0
         self._var_dict['KEY_PRBLM_NUMBER'] = 0
-        self._var_dict['RESULT_PATH'] = RESULT_PATH
-        self._var_dict['NET_RESULT_PATH'] = NET_RESULT_PATH
-        self._var_dict['CHAIN_DATA_PATH'] = CHAIN_DATA_PATH
+        self._var_dict['RESULT_PATH'] = self.RESULT_PATH
+        self._var_dict['NET_RESULT_PATH'] = self.NET_RESULT_PATH
+        self._var_dict['CHAIN_DATA_PATH'] = self.CHAIN_DATA_PATH
         self._var_dict['Attack'] = False
         self._var_dict['Blocksize'] = 2
         self._var_dict['LOG_LEVEL'] = logging.ERROR
@@ -53,6 +53,7 @@ class Background(object):
         self._var_dict['OPEN_PROBLEM_ST'] = "openprblm_random"
         self._var_dict['total_gas'] = 1000000000000
         self._var_dict['once_gas'] = 1
+        self._var_dict['enable_gas'] = False
         # 管理问题自增id
         self._prblm_id_center = defaultdict(int)
 
@@ -60,11 +61,12 @@ class Background(object):
     
     # 路径管理
     def get_result_path(self)->Path:
+        print("get", self.RESULT_PATH)
         return self._var_dict['RESULT_PATH']
     def set_result_path(self, result_path):
         self._var_dict['RESULT_PATH'] = result_path
         if not os.path.exists(result_path):
-            print(f"loading background with ROOT PATH: {result_path}")
+            print(f"loading background with ROOT PATH2: {result_path}")
             result_path.mkdir(parents=True, exist_ok=True)
         self.set_net_result_path(result_path / 'Network Results')
         self.set_chain_data_path(result_path / 'Chain Data')
@@ -139,7 +141,8 @@ class Background(object):
         self._var_dict['Show_Fig'] = show_fig
     def get_show_fig(self):
         return self._var_dict['Show_Fig']
-
+    
+    
     def save_configuration(self):
         '''将self._var_dict中的内容保存到configuration.txt中'''
         with open(self._var_dict['RESULT_PATH'] / "configuration.txt",
@@ -212,16 +215,23 @@ class Background(object):
     def get_openprblm_strategy(self):
         return self._var_dict['OPEN_PROBLEM_ST']
     # gas
+    def set_enable_gas(self, enable_gas):
+        self._var_dict['enable_gas'] = enable_gas
+        if not enable_gas:
+            self._var_dict['total_gas'] = 10000000000000
+    def get_enable_gas(self):
+        return self._var_dict['enable_gas']
     def set_total_gas(self, total_gas):
-        # self._var_dict['total_gas'] = total_gas
-        self._var_dict['total_gas'] = 1000000000000
+        self._var_dict['total_gas'] = total_gas
+        if not self.get_enable_gas():
+            self._var_dict['total_gas'] = 10000000000000
     def get_total_gas(self):
         return self._var_dict['total_gas']
     def set_once_gas(self, once_gas):
         self._var_dict['once_gas'] = once_gas
     def get_once_gas(self):
         return self._var_dict['once_gas']
-
+   
     # 全局自增prblm_id管理
     def key_id_generator(self):
         self._var_dict['KEY_PRBLM_NUMBER'] = self._var_dict['KEY_PRBLM_NUMBER'] + 1

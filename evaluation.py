@@ -63,6 +63,12 @@ class EvaResult:
     solutions_by_pulp:list
     solutions_by_bbb:list
     solution_errors:list
+    # 每个矿工的工作量
+    miner_chains:dict
+    miner_mains:dict
+    miner_unpubs:dict
+    # 求解误差
+    gas_round_sol_errs:list
 
 @dataclass
 class UbData():
@@ -77,11 +83,19 @@ class UbData():
     allInteger:bool
     isFork:bool
 
+@dataclass
+class GasSolution():
+    round:int
+    cur_gas:int
+    solution_bbb:float
+    solution_error:float
+
 class Evaluation(object):
-    def __init__(self, background:Background, recordSols:bool = False):
+    def __init__(self, background:Background, recordSols:bool = False, recordGasSolErrs:bool = False):
         self.background = background
         self.result:EvaResult = None
         self.recordSols = recordSols
+        self.recordGasSolErrs = recordGasSolErrs
         self.feasi_kbs = []
         # fig 1 solving process
         self.cur_rlxsol = 0 
@@ -134,6 +148,12 @@ class Evaluation(object):
         self.solutions_by_pulp = []
         self.solutions_by_bbb = []
         self.solution_errors = []
+        # 每个矿工的工作量
+        self.miner_chains = defaultdict(int)
+        self.miner_mains = defaultdict(int)
+        self.miner_unpubs = defaultdict(int)
+        # 记录gas和求解solution
+        self.gas_round_sol_errs:list[tuple] = []
     
     
 
@@ -155,11 +175,19 @@ class Evaluation(object):
             opt_ps = next_kb.keyfield.pre_opt_prblms
             if opt_ps is not None and len(opt_ps) != 0:
                 solution_bbb = opt_ps[0].z_lp
+            elif (kp := next_kb.keyfield.pre_kb.get_keyprblm_key()) is not None and kp.init_iz is not None:
+                solution_bbb = kp.init_iz
             self.solutions_by_bbb.append(solution_bbb)
             solution_pulp = next_kb.keyfield.pre_iz_pulp
             self.solutions_by_pulp.append(solution_pulp)
             solution_error = 10 if solution_bbb is None else np.abs((solution_pulp-solution_bbb)/solution_pulp)
             self.solution_errors.append(solution_error)
+
+    def get_round_gas_solution(self, round, gas, solution_bbb, solution_pulp):
+        
+        solution_error = 10 if solution_bbb is None else np.abs((solution_pulp-solution_bbb)/solution_pulp)
+        self.gas_round_sol_errs.append(astuple(GasSolution(round, gas, solution_bbb, solution_error)))
+
 
     def get_mb_block_times(self, chain:Chain):
         """
@@ -222,8 +250,8 @@ class Evaluation(object):
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            # if not kb.get_fthmstat():
-            #     continue
+            if not kb.get_fthmstat() and not self.background.get_enable_gas():
+                continue
             kp = kb.get_keyprblm_key()
             kub = UbData(kb.get_miner_id(), kb.name, kp.timestamp, 
                          kb.get_timestamp(), kp.pname, "None", kp.z_lp,
@@ -260,8 +288,8 @@ class Evaluation(object):
         for kb in feasi_kbs:
             if len(kb.keyfield.next_kbs)==0 :
                 continue
-            # if not kb.get_fthmstat():
-            #     continue
+            if not kb.get_fthmstat() and not self.background.get_enable_gas():
+                continue
             solve_round = kb.get_kb_time_with_next_key()
             self.solve_rounds.update({kb.name:solve_round})
             self.kb_block_times.append(solve_round)
@@ -288,8 +316,10 @@ class Evaluation(object):
             acp_subpair_num = 0
             for mb in mbs:
                 subpair_num += len(mb.minifield.subprblm_pairs)
+                self.miner_chains[mb.get_miner_id()] += len(mb.minifield.subprblm_pairs)
             for acpmb in acp_mbs:
                 acp_subpair_num += len(acpmb.minifield.subprblm_pairs)
+                self.miner_mains[acpmb.get_miner_id()] += len(acpmb.minifield.subprblm_pairs)
             self.subpair_nums.update({kb.name: subpair_num})
             self.acp_subpair_nums.update({kb.name: acp_subpair_num})
         return self.subpair_nums, self.acp_subpair_nums
@@ -311,6 +341,7 @@ class Evaluation(object):
         记录已算出但未发布出来的sub-problem数量
         """
         self.subpair_unpub[key_name] += subpair_unpub
+        self.miner_unpubs[miner_id] += subpair_unpub
         if unpub_pair_time is not None:
             self.unpub_times.append(unpub_pair_time)
         if not self.recordSols:
@@ -346,8 +377,8 @@ class Evaluation(object):
                 continue
             if kb.keyfield.key_tx is None:
                 continue
-            # if kb.keyfield.key_tx.data.fthmd_state is False:
-            #     continue
+            if kb.keyfield.key_tx.data.fthmd_state is False and not self.background.get_enable_gas():
+                continue
             mbs = chain.get_mbs_after_kb(kb)
             acp_mbs = chain.get_acpmbs_after_kb_and_label_forks(kb)
             total_mb_num += len(mbs)
@@ -423,12 +454,14 @@ class Evaluation(object):
                 continue
             if kb.keyfield.key_tx is None:
                 continue
-            if kb.keyfield.key_tx.data.fthmd_state is False:
+            if kb.keyfield.key_tx.data.fthmd_state is False and not self.background.get_enable_gas():
                 continue
             advblock_num = 0
             accept_advblock_num = 0
             mbs = chain.get_mbs_after_kb(kb)
             accepted_mbs = chain.get_acpmbs_after_kb_and_label_forks(kb)
+            if len(mbs) == 0 or len(accepted_mbs) == 0:
+                continue
             for mb in mbs:
                 if mb.isAdversary:
                     advblock_num += 1
@@ -506,7 +539,11 @@ class Evaluation(object):
             # 求解误差
             solutions_by_pulp = self.solutions_by_pulp,
             solutions_by_bbb=self.solutions_by_bbb,
-            solution_errors = self.solution_errors
+            solution_errors = self.solution_errors,
+            miner_chains = dict(self.miner_chains),
+            miner_mains = dict(self.miner_mains),
+            miner_unpubs = dict(self.miner_unpubs),
+            gas_round_sol_errs=self.gas_round_sol_errs
         )
         return self.result
 

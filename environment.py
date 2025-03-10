@@ -36,9 +36,10 @@ class Environment(object):
             target:str = None, 
             adversary_ids:tuple = None, 
             network_param:dict = None, 
-            recordSols:bool = False):
+            recordSols:bool = False,
+            recordGasSolErrs:bool = False):
         self.background = background
-        self.evaluation = Evaluation(self.background, recordSols)
+        self.evaluation = Evaluation(self.background, recordSols, recordGasSolErrs)
         #environment parameters
         self.miner_num = self.background.get_miner_num()  # number of miners
         self.max_adversary = t  # maximum number of adversary
@@ -157,8 +158,13 @@ class Environment(object):
         for miner in self.miners:
             miner.local_chain.create_genesis_block(copy.deepcopy(genesis_prblm))
             miner.consensus.cur_keyblock = miner.local_chain.head
-            miner.consensus.open_blocks.append(miner.local_chain.head)
+            # miner.consensus.open_blocks.append(miner.local_chain.head)
+            miner.consensus.switch_key(miner.local_chain.head, "outer", 0)
             miner.consensus.cur_keyid = 0
+        if self.evaluation.recordGasSolErrs:
+            init_z = genesis_prblm.init_iz if genesis_prblm.init_iz is not None else 0
+            self.evaluation.get_round_gas_solution(0, 0, init_z, genesis_prblm.iz_pulp)
+            
 
     def add_miniblock_to_global_chain(self, new_mb:Block):
         """
@@ -244,7 +250,6 @@ class Environment(object):
                 if miner.isAdversary:
                     self.attack_execute()
                     continue
-                    
                 # 执行挖矿程序
                 newblock = miner.backbone_protocol(round)
                 miner.input_tape = []
@@ -298,14 +303,14 @@ class Environment(object):
         with open(ERROR_PATH / file_name, "a+") as f:
             prblm = self.background.get_genesis_prblm()
             p_json = json.dumps({
-                'c': (-prblm.c).tolist(),
+                'c': prblm.c.tolist(),
                 'G_ub':prblm.G_ub.tolist(),
                 'h_ub':prblm.h_ub.tolist()})
             f.write(p_json + '\n')
 
 
 
-    def view(self, quiet = True, pool_path=None):
+    def view(self, quiet = True, pool_path=None, ERROR_PATH=None):
         # 展示一些仿真结果
         # print('\n')
         # # for miner_i in range(self.miner_num):
@@ -318,8 +323,10 @@ class Environment(object):
         if self.view_miner is None:
             self.view_miner = self.miners[0]
         evaluation_result = self.evaluation.collect_evaluation_results(self.view_miner.local_chain)
+        # if self.background.get_enable_gas() and evaluation_result.solution_errors[0] > 0.5 and ERROR_PATH is not None:
+        #     self.save_err_prblm(ERROR_PATH, "a_bad_prblms.json")
         if not quiet:
-            print(f"view miner: {self.view_miner.miner_id}")
+            print(f"view miner: {self.view_miner.miner_id} {evaluation_result.solutions_by_bbb}")
             self.evaluation.save_results_to_json(pool_path)
             # self.global_chain.printchain2txt()
             # self.view_miner.local_chain.printchain2txt()

@@ -86,6 +86,8 @@ class LpPrblm(object):
         self.inc_constrs:list[IncConstr] = inc_constrs
         if inc_constrs is None:
             self.inc_constrs = []
+        self.init_ix = None # keyblock 初始化的整数解
+        self.init_iz = None # keyblock 初始化的目标值
         # index of the variable branched out
         self.x_nk = x_nk
         self.pre_rest_x = pre_rest_x
@@ -413,8 +415,10 @@ def save_prblm_pool(prblm_pool:list[LpPrblm], save_dir, prblm_type:str = ZERO_ON
     """ 保存产生的问题池 """
 
     def swich_to_list(x):
-        if x is not None:
+        if isinstance(x, np.ndarray):
             return x.tolist()
+        elif isinstance(x, list):
+            return x
         return []
     
     if not os.path.exists(save_dir):
@@ -443,6 +447,11 @@ def save_prblm_pool(prblm_pool:list[LpPrblm], save_dir, prblm_type:str = ZERO_ON
                 })
             if saveBounds:
                 p_dict.update({'bounds':prblm.bounds})  
+            if prblm.init_ix is not None:
+                p_dict.update({
+                    'init_ix':swich_to_list(prblm.init_ix),
+                    'init_iz':prblm.init_iz
+                })
             p_json = json.dumps(p_dict)
             f.write(p_json + '\n')
 
@@ -460,7 +469,9 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
             G_ub = np.array(p_data['G_ub'])
             h_ub = np.array(p_data['h_ub'])
             A_eq = np.array(p_data['A_eq']) if 'A_eq' in p_data.keys() else None
-            b_eq = np.array(p_data['b_eq']) if 'B_eq' in p_data.keys() else None
+            b_eq = np.array(p_data['b_eq']) if 'b_eq' in p_data.keys() else None
+            init_ix = p_data['init_ix'] if 'init_ix' in p_data.keys() else None
+            init_iz = p_data['init_iz'] if 'init_iz' in p_data.keys() else None
 
             if 'bounds' in p_data.keys():
                 bounds = [tuple(bound) for bound in p_data['bounds']]
@@ -471,6 +482,8 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
             p = LpPrblm(((0, 0), 0), None, 0, copy.deepcopy(c), copy.deepcopy(G_ub), 
                         copy.deepcopy(h_ub), copy.deepcopy(A_eq),copy.deepcopy(b_eq), bounds)
             p.conti_vars = p_data['conti_vars'] if 'conti_vars' in p_data.keys() else []
+            p.init_ix = init_ix
+            p.init_iz = init_iz
             
             if 'ix_pulp' in p_data.keys() :
                 p.ix_pulp = p_data['ix_pulp']
@@ -478,6 +491,7 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
                 p.iz_pulp = p_data['iz_pulp']
             else:
                 solve_ilp_by_pulp(p)
+            
             solve_lp(p)
             p.fathomed = False
             p.fthmd_state = False
@@ -557,535 +571,3 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     prblm.iz_pulp = obj_value
     prblm.ix_pulp = [v.varValue for v in ilp.variables()]
     return obj_value
-
-def load_MPS(file_path):
-    """
-    读取MPS文件成`LpPrblm`类型
-    """
-    file_path = Path(file_path)
-    # variables_dict, lp= pulp.LpProblem.fromMPS("academictimetablesmall.mps", pulp.LpMinimize)
-    variables_dict, lp= pulp.LpProblem.fromMPS(file_path, pulp.LpMinimize)
-    c = []
-    A_eq = []
-    b_eq = []
-    G_ub = []
-    h_ub = []
-    conti_vars =  []
-    for i, var in enumerate(variables_dict.values()):
-        c.append(lp.objective.get(var) if lp.objective.get(var) is not None else 0)
-        if var.cat == pulp.LpContinuous:
-            conti_vars.append(i)
-    constraint:pulp.LpConstraint
-    for constraint in lp.constraints.values():
-        coeff = [constraint.get(var) if constraint.get(var) is not None else 0 
-                 for var in variables_dict.values()]
-        if constraint.sense == pulp.LpConstraintEQ: # "="
-            A_eq.append(coeff)
-            b_eq.append(-constraint.constant)
-        elif constraint.sense == pulp.LpConstraintLE: # "<="
-            G_ub.append(coeff)
-            h_ub.append(-constraint.constant)
-        elif constraint.sense == pulp.LpConstraintGE: # ">="
-            # 将'>='约束转化为'<=', 例如: ax >= b 为 -ax <= -b
-            G_ub.append([-c for c in coeff])
-            h_ub.append(constraint.constant)
-
-    bounds = [(var.lowBound, var.upBound) for var in lp.variables()]
-    c = -np.array(c)
-    A_eq = np.array(A_eq)
-    b_eq = np.array(b_eq)
-    G_ub = np.array(G_ub)
-    h_ub = np.array(h_ub)
-    prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    prblm.conti_vars = conti_vars
-    # solve_lp(prblm)
-    prblm.fathomed = False
-    prblm.fthmd_state = False
-    save_prblm_pool([prblm], f"var{c.size}_{file_path}", Path.cwd() / "MIPLIB_POOL", prblm_type = NORMAL,saveBounds = True,
-                         file_name=f"int{c.size-len(conti_vars)}_conti{len(conti_vars)}_ub{h_ub.size}_eq{b_eq.size}_{file_path.stem}.json")
-    # solve_ilp_by_pulp(prblm)
-    return prblm
-
-def load_maxsat(file_path:str=None):
-    file_path = Path(file_path)
-    with open(file_path, 'r') as file:
-        file_content = file.readlines()
-    hard_clauses = []
-    soft_clauses = []
-    for line in file_content:
-        if line.startswith('c'):
-            continue
-        elif line.startswith('p'): 
-            continue
-        elif line.startswith('h'): 
-            hard_clauses.append([int(x) for x in line.split()[1:-1]])
-        elif line.startswith('1'):
-            soft_clauses.append([int(x) for x in line.split()[1:-1]])
-
-    var_num = len(set(abs(var) for clause in (hard_clauses + soft_clauses) for var in clause))
-    c = np.zeros(len(soft_clauses)+var_num)
-    c[:len(soft_clauses)] = 1
-    G_ub = np.zeros((len(soft_clauses+ hard_clauses), len(soft_clauses)+var_num))
-    h_ub = np.zeros(len(soft_clauses+ hard_clauses))
-    for i, clause in enumerate(soft_clauses):
-        G_ub[i,i] = 1
-        for var in clause:
-            G_ub[i, len(soft_clauses)+ abs(var)-1]  = -1 if var >0 else 1
-        h_ub[i] = len([var for var in clause if var < 0])
-        print(i, h_ub[i])
-    for i , clause in enumerate(hard_clauses):
-        for var in clause:
-            G_ub[i+len(soft_clauses), len(soft_clauses)+ abs(var)-1] = -1 if var>0 else 1
-        h_ub[i+len(soft_clauses)] = -1+ len([var for var in clause if var < 0])
-    bounds = [(0,1) for _ in range(len(soft_clauses)+var_num)]
-    prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, None, None, bounds)
-    save_prblm_pool([prblm], f"var{len(soft_clauses)+var_num}_{file_path}", 
-                         Path.cwd() / "testMAXSAT", prblm_type = ZERO_ONE, 
-                         file_name=f"var{len(soft_clauses)+var_num}_soft{len(soft_clauses)}_con{h_ub.size}_{file_path.stem}.json")
-    # lp.solve_ilp_by_pulp(prblm)
-
-
-def load_tsp(file_path=None):
-    file_path = "E:\Files\A-blockchain\\branchbound\\tsp\\tsp\\burma14.xml"
-    # file_path = "E:\Files\A-blockchain\\branchbound\\tsp\\tsp\hk48.xml"
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-    graph_section = root.find('graph')
-
-    n = len(graph_section)
-    distance_matrix = [[0 for _ in range(n)] for _ in range(n)]
-    for i, vertex in enumerate(graph_section):
-        for edge in vertex:
-            id = int(edge.text) 
-            distance_matrix[i][id] = float(edge.attrib['cost'])
-
-    c = np.array(distance_matrix).flatten()
-    A_eq = np.zeros((2 * n, n ** 2))
-    for i in range(n):
-        A_eq[i, i*n:(i+1)*n] = 1  # leaving
-        A_eq[n + i, i::n] = 1     # entering
-    new_A_eq = np.zeros((2 * n, n ** 2 + n))
-    new_A_eq[:, :n ** 2] = A_eq
-
-    b_eq = np.ones(2 * n)
-
-    bounds = [(0, 1) for _ in range(n ** 2)]
-
-    for i in range(n):
-        bounds[i*n + i] = (0, 0)
-
-    # 子循环排除辅助变量u_i
-    c = np.append(c, [0 for _ in range(n)])
-    u_bounds = [(1, n-1) for _ in range(n)]
-    bounds.extend(u_bounds)
-    # 构造子循环排除约束
-    num_subtour_constraints = (n-1) * (n-1)
-    G_ub = np.zeros((num_subtour_constraints, n**2 + n))
-    h_ub = np.full(num_subtour_constraints, n - 1)
-    k = 0
-    for i in range(1, n):
-        for j in range(1, n):
-            if i == j:
-                continue
-            G_ub[k, i*n + j] = n
-            G_ub[k, n**2 + i] = 1
-            G_ub[k, n**2 + j] = -1
-            k += 1
-    
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, new_A_eq, b_eq, bounds)
-    save_prblm_pool([orig_prblm],'burma14',Path.cwd() / "testTSP", TSP, True)
-    # lp.solve_ilp_by_pulp(orig_prblm)
-
-    import random
-import xml.etree.ElementTree as ET
-
-def generate_random_tsp_xml(node_count, file_name="random_tsp.xml"):
-    # 创建 XML 文件的根结构
-    root = ET.Element("travellingSalesmanProblemInstance")
-
-    # 添加相关元数据
-    name = ET.SubElement(root, "name")
-    name.text = f"random_{node_count}_nodes"
-    source = ET.SubElement(root, "source")
-    source.text = "Generated"
-    description = ET.SubElement(root, "description")
-    description.text = f"{node_count}-Nodes Random TSP Problem"
-    double_precision = ET.SubElement(root, "doublePrecision")
-    double_precision.text = "15"
-    ignored_digits = ET.SubElement(root, "ignoredDigits")
-    ignored_digits.text = "5"
-    
-    # 创建图部分
-    graph = ET.SubElement(root, "graph")
-
-    # 生成节点和边的距离
-    for i in range(node_count):
-        vertex = ET.SubElement(graph, "vertex")
-        
-        # 为每个节点生成与其他节点的随机距离
-        for j in range(node_count):
-            if i != j:
-                # 随机生成一个 100 到 1000 之间的距离值
-                cost = random.uniform(100, 1000)
-                edge = ET.SubElement(vertex, "edge", cost=f"{cost:.15e}")
-                edge.text = str(j)
-    
-    # 将 XML 数据写入文件
-    tree = ET.ElementTree(root)
-    tree.write(file_name, encoding="UTF-8", xml_declaration=True)
-
-def spot_to_ilp(spot_file_path, task_num):
-    with open(spot_file_path, 'r') as file:
-        lines = file.readlines()
-
-    n_tasks = int(lines[0].strip())
-    task_lines = lines[1:n_tasks + 1]
-    tasks = [list(map(int, line.strip().split())) for line in task_lines]
-    n_constraints = int(lines[n_tasks + 1].strip())
-    constraint_lines = lines[n_tasks + 2:]
-    constraints = [list(map(int, line.strip().split())) for line in constraint_lines]
-
-    c = []
-    A_eq = []
-    b_eq = []
-    G_ub = [] 
-    h_ub = []
-    bounds = []
-
-    variable_index = 0
-    task_to_variables = [] 
-
-    for task in tasks:
-        task_id = task[0]
-        weight = task[1]
-        domain_size = task[2]
-        variables_for_task = []
-        for i in range(domain_size):
-            c.append(weight)
-            variables_for_task.append(variable_index)
-            bounds.append((0, 1))
-            variable_index += 1
-        task_to_variables.append(variables_for_task)
-    
-        row = [0] * variable_index
-        for var_idx in variables_for_task:
-            row[var_idx] = 1
-        G_ub.append(row)
-        h_ub.append(1)
-    
-    total_variables = len(c) 
-    for row in G_ub:
-        if len(row) < total_variables:
-            row.extend([0] * (total_variables - len(row)))
-    
-    for constraint in constraints:
-        constraint_type = constraint[0]
-
-        if constraint_type == 2:
-            task1, task2 = constraint[1], constraint[2]
-            forbidden_values = constraint[3:]
-
-            for i in range(0, len(forbidden_values), 2):
-                val1, val2 = forbidden_values[i], forbidden_values[i + 1]
-                if val1 > len(task_to_variables[task1]):
-                    vars1 = task_to_variables[task1][0] 
-                else:
-                    vars1 = task_to_variables[task1][val1 - 1]
-                if val2 > len(task_to_variables[task2]):
-                    vars2 = task_to_variables[task2][0]
-                else:
-                    vars2 = task_to_variables[task2][val2 - 1]
-                row = [0] * len(c)
-                row[vars1] = 1
-                row[vars2] = 1
-                G_ub.append(row)
-                h_ub.append(1)
-
-        elif constraint_type == 3: 
-            task1, task2, task3 = constraint[1], constraint[2], constraint[3]
-            forbidden_values = constraint[4:]
-            for i in range(0, len(forbidden_values), 3):
-                val1, val2, val3 = forbidden_values[i:i + 3]
-                if val1 > len(task_to_variables[task1]):
-                    vars1 = task_to_variables[task1][0]
-                else:
-                    vars1 = task_to_variables[task1][val1 - 1]
-                if val2 > len(task_to_variables[task2]):
-                    vars2 = task_to_variables[task2][0]
-                else:
-                    vars2 = task_to_variables[task2][val2 - 1]
-                if val3 > len(task_to_variables[task3]):
-                    vars3 = task_to_variables[task3][0]
-                else:
-                    vars3 = task_to_variables[task3][val3 - 1]
-                row = [0] * len(c)
-                row[vars1] = 1
-                row[vars2] = 1
-                row[vars3] = 1
-                G_ub.append(row)
-                h_ub.append(2) 
-
-    c = np.array(c)
-    G_ub = np.array(G_ub) if G_ub else None
-    h_ub = np.array(h_ub) if h_ub else None
-    A_eq = None
-    b_eq = None
-    print(c)
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, -c, G_ub, h_ub, A_eq, b_eq, bounds)
-    # solve_lp(orig_prblm)
-    orig_prblm.fathomed = False
-    orig_prblm.fthmd_state = False 
-    # orig_prblm.iz_pulp = -19125
-    solve_ilp_by_pulp(orig_prblm)
-    save_prblm_pool([orig_prblm], Path.cwd() / "SPOT" / "Generated", NORMAL, True, f"{task_num}_1.json")
-    return orig_prblm
-
-def extract_new_spot(n_reduced_variables, file_id, instance):
-    # instance = 5
-    # n_reduced_variables = 10
-
-    path = Path('E:\Files\A-blockchain\\branchbound\SPOT5\data', f'{instance}.spot')
-    with open(path) as f:
-        lines = f.readlines()
-    
-    lines = [list(map(int, line.strip().split(' '))) for line in lines]
-    n_variables = lines[0][0]
-    n_constraints = lines[n_variables+1][0]
-    l_variables = lines[1:n_variables+1]
-    l_constraints = lines[n_variables+2:len(lines)]
-    l_reduced_variables = random.sample(l_variables, n_reduced_variables)
-    l_reduced_constraints = []
-    l_ID = []
-    for i in range(len(l_reduced_variables)):
-        l_ID.append(l_reduced_variables[i][0])
-    for i in range(n_constraints):
-        insert = True
-        if(l_constraints[i][0]==2):
-            for j in 1,2:
-                if l_constraints[i][j] not in l_ID:
-                    insert = False
-        else:
-            for j in 1,2,3:
-                if l_constraints[i][j] not in l_ID:
-                    insert = False
-        if insert == True:
-            l_reduced_constraints.append(l_constraints[i])
-
-    print(f'Number of variables: {n_variables}')
-    print(f'Number of constraints: {n_constraints}')
-
-    save_dir = Path(f'e:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{n_reduced_variables}')
-    if not os.path.exists(save_dir):
-        save_dir.mkdir(parents=True)
-    path = Path(save_dir, f'{n_reduced_variables}_{instance}_{file_id}.spot')
-
-    with open(path, "w+") as f:
-        f.write(str(n_reduced_variables))
-        f.write("\n")
-        for i in range(len(l_reduced_variables)):
-            l_reduced_variables[i][0] = i
-            f.write(str(l_reduced_variables[i]).replace("[", "").replace("]", "").replace(",",""))
-            f.write("\n")
-        f.write(str(len(l_reduced_constraints)))
-        f.write("\n")
-        for i in range(len(l_reduced_constraints)):
-            if (l_reduced_constraints[i][0] == 2):
-                l_reduced_constraints[i][1] = l_ID.index(l_reduced_constraints[i][1])
-                l_reduced_constraints[i][2] = l_ID.index(l_reduced_constraints[i][2])
-            else:
-                l_reduced_constraints[i][1] = l_ID.index(l_reduced_constraints[i][1])
-                l_reduced_constraints[i][2] = l_ID.index(l_reduced_constraints[i][2])
-                l_reduced_constraints[i][3] = l_ID.index(l_reduced_constraints[i][3])
-            f.write(str(l_reduced_constraints[i]).replace("[", "").replace("]", "").replace(",",""))
-            f.write("\n")
-
-def smart_grid_pulp():
-    from pulp import LpProblem, LpMinimize, LpVariable, lpSum
-    hours = 24  # 24-hour scheduling
-    num_appliances = 7  # Total appliances in the system
-    P_t = {
-        5: np.array([1, 0.5] + [0] * (hours - 2)),  # Washing Machine: 1kWh first hour, 0.5kWh second hour
-        6: np.array([0.8] + [0] * (hours - 1))  # Dishwasher: 0.8kWh for 1 hour
-    }
-    model = LpProblem("Home_Energy_Optimization", LpMinimize)
-    x = {(a, h): LpVariable(f"x_{a}_{h}", lowBound=0) for a in range(num_appliances) for h in range(hours)}
-    s = {t: [LpVariable(f"s_{t}_{h}", cat="Binary") for h in range(hours)] for t in [5, 6]}
-    L = LpVariable("Peak_Load", lowBound=0)
-    daily_requirements = np.array([2, 5, 2.88, 3, 5, 1.5, 0.8])  # From Table I
-    model += L
-    for h in range(hours):
-        model += lpSum(x[a, h] for a in range(num_appliances)) <= L
-    for h in range(1, hours+1):
-        if h in [19, 20]:
-            model += x[0, h-1] >= 1
-
-        if h in [3, 4, 5, 21, 22]:
-            model += x[1, h-1] >= 1
-        model += x[2, h-1] == 0.12
-        model += x[3, h-1] <= 1.5
-
-        if 20 <= h or h <= 8:
-            model += x[4, h-1] <= 3
-            model += x[4, h-1] >= 0.1
-        else:
-            model += x[4, h-1] == 0 
-    for t in [5, 6]:
-        model += lpSum(s[t][h] for h in range(hours)) == 1 
-    # Ensure power allocation follows P_t for time-shiftable appliances
-    for t in [5, 6]:
-        for h in range(hours):
-            model += x[t, h] == lpSum(P_t[t][(h - start_h) % hours] * s[t][start_h] for start_h in range(hours))
-    for a in range(num_appliances):
-        model += lpSum(x[a, h] for h in range(hours)) == daily_requirements[a]
-    model.solve()
-    optimized_schedule = [sum(x[a, h].varValue for a in range(num_appliances)) for h in range(hours)]
-    plt.figure(figsize=(10, 5))
-    plt.bar(range(1, 25), optimized_schedule, label="Optimized Load")
-    plt.xlabel("Time (Hour)")
-    plt.ylabel("Power Consumption (kWh)")
-    plt.ylim(0, 1.5)
-    # plt.title("Optimized Hourly Power Consumption")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    individual_schedules = {a: [x[a, h].varValue for h in range(hours)] for a in range(num_appliances)}
-    apps = ["Oven", "Heater", "Fridge", "Water Boiler", "EV Charger", "Washing Machine", "Dishwasher"]
-    colors = ["b", "g", "r", "c", "m", "y", "k"] 
-    linestyles = [":", ":", ":", "--", "--", "-", "-"]  
-    markers = ["o", "s", "D", "^", "v", "<", ">"] 
-    plt.figure(figsize=(12, 6))
-    for a, schedule in individual_schedules.items():
-        plt.plot(range(1, 25), schedule, color=colors[a], linestyle=linestyles[a], marker=markers[a], label=f"{apps[a]}")
-    plt.xlabel("Time (Hour)")
-    plt.ylabel("Power Consumption (kWh)")
-    # plt.title("Optimized Power Consumption Schedule for Each Appliance")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    
-
-def smart_grid():
-    hours = 24
-    num_appliances = 7
-    P_t = {
-        5: np.array([[1, 0.5] + [0] * (hours - 2)] * hours),
-        6: np.array([[0.8] + [0] * (hours - 1)] * hours)
-    }
-
-    daily_requirements = np.array([1, 3, 2.88, 3, 5, 1.5, 0.8])
-    c = np.zeros(hours * num_appliances + 1)
-    c[-1] = 1
-    G_ub = np.zeros((hours, len(c)))  # 只需要保留峰值负载约束
-    h_ub = np.zeros(hours)
-    A_eq = np.zeros((num_appliances + hours * 2, len(c)))  # 保留每日能量需求和时间可调设备的约束
-    b_eq = np.zeros(num_appliances + hours * 2)
-    bounds = [(0, None) for _ in range(hours * num_appliances)] + [(0, None)]
-    conti_vars = []
-
-    # 定义决策变量和边界
-    for a in range(num_appliances):
-        for h in range(hours):
-            if a == 0 and h in [18, 19]:  # Hob & Oven (19-20时段)
-                bounds[a * hours + h] = (1, None)
-            elif a == 1 and h in [2, 3, 4, 20, 21]:  # Heater (3-5时段和21-22时段)
-                bounds[a * hours + h] = (1, None)
-            elif a == 2:  # Fridge & Freezer (固定0.12kWh)
-                bounds[a * hours + h] = (0.12, 0.12)
-            elif a == 3:  # Water Boiler (0-1.5kWh)
-                bounds[a * hours + h] = (0, 1.5)
-            elif a == 4:  # EV Charger
-                if 19 <= h or h <= 7:  # 20-8时段
-                    bounds[a * hours + h] = (0.1, 3)
-                else:
-                    bounds[a * hours + h] = (0, 0)
-            elif a in [5, 6]:  # 时间可调设备（洗衣机和洗碗机）
-                bounds[a * hours + h] = (0, 1)
-            else:
-                bounds[a * hours + h] = (0, None)
-                conti_vars.append(a * hours + h)
-    
-    # 峰值负载变量的边界
-    bounds.append((0, None))
-    conti_vars.append(len(c)-1)
-
-    for t in [5, 6]:
-        for h in range(hours):
-            for start_h in range(hours):
-                A_eq[num_appliances + t * hours + h, t * hours + h] += P_t[t][(h - start_h) % hours]
-
-    for a in range(num_appliances):
-        for h in range(hours):
-            A_eq[a, a * hours + h] = 1
-        b_eq[a] = daily_requirements[a]
-
-    # 添加设备特定的约束
-    for h in range(1, hours + 1):
-        # Hob & Oven
-        if h in [19, 20]:
-            G_ub[h - 1, 0 * hours + h - 1] = -1
-            h_ub[h - 1] = -1
-        # Heater
-        if h in [3, 4, 5, 21, 22]:
-            G_ub[h - 1, 1 * hours + h - 1] = -1
-            h_ub[h - 1] = -1
-        # Fridge & Freezer
-        A_eq[2, 2 * hours + h - 1] = 1
-        b_eq[2] = 0.12 * hours
-        # Water Boiler
-        G_ub[h - 1, 3 * hours + h - 1] = 1.5
-        # EV Charger
-        if 20 <= h or h <= 8:
-            G_ub[h - 1, 4 * hours + h - 1] = 1  # 上界约束
-            G_ub[h - 1, 5 * hours + h - 1] = -1  # 下界约束
-            h_ub[h - 1] = 3  # 下界值
-        else:
-            A_eq[3, 4 * hours + h - 1] = 1
-            b_eq[3] = 0
-    # 添加峰值负载约束
-    for h in range(hours):
-        G_ub[h, h::hours] = 1  # 每小时的总功耗
-        G_ub[h, -1] = -1  # 减去峰值负载变量
-        h_ub[h] = 0
-    orig_prblm = LpPrblm(((0, 0), 0), None, 0, c, G_ub, h_ub, A_eq, b_eq, bounds)
-    orig_prblm.conti_vars=conti_vars
-
-    print(orig_prblm)
-    solve_ilp_by_pulp(orig_prblm)
-
-    optimized_schedule = [sum(orig_prblm.ix_pulp[i] for i in range(hours * num_appliances))] * hours
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, 25), optimized_schedule, marker="o", linestyle="-", label="Optimized Load")
-    plt.xlabel("Time (Hour)")
-    plt.ylabel("Power Consumption (kWh)")
-    plt.title("Optimized Hourly Power Consumption")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-if __name__ == "__main__":
-    id = 100
-    
-    # Convert the content into ILP problem form
-    # task_nums = [10,20,30,40,50,60,70,80,90,100]
-    # instances = [5, 414, 509]
-    # for task_num in task_nums:
-    #     for i in range(50):
-    #         # spot_file_path = f"E:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{task_num}\\{task_num}_{i}.spot"
-    #         # lp = spot_to_ilp(spot_file_path, task_num)
-    #         for instance in instances:
-    #             extract_new_spot(task_num, i,instance)
-
-    #     for i in range(50):
-    #         for instance in instances:
-    #             extract_new_spot(task_num, i,instance)
-    #             spot_file_path = f"E:\Files\A-blockchain\\branchbound\SPOT5\generated_data\\news\\{task_num}\\{task_num}_{instance}_{i}.spot"
-    #             lp = spot_to_ilp(spot_file_path, task_num)
-    #             # extract_new_spot(task_num, i)
-    #             print(len(lp.c), len(lp.h_ub))
-
-
-    # # Import required libraries
-    # import numpy as np
-    

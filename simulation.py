@@ -49,7 +49,7 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
         # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
-        # pool_path = Path.cwd() / "SPOT" / f"Generated\\{var_num}_1.json"
+        # pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
         prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path, pool_save_path)
     elif m == 'rand':
         prblm_pool = lpprblm.prblm_pool_generator(pool_size, var_num, lpprblm.ZERO_ONE)
@@ -118,11 +118,16 @@ class res_intermediate_full:
     fork_times: list = field(default_factory=list)
     grow_proc: list = field(default_factory=list)
     ## 求解误差
+    solutions_by_bbb: list = field(default_factory=list)
+    solutions_by_pulp: list = field(default_factory=list)
     solution_errors: list = field(default_factory=list)
     ave_solution_error: float = 0.0
     solve_rate:float = 0.0
     not_solve_rate:float = 0.0
-    
+    # 每个矿工的工作量
+    miner_chains:dict = field(default_factory=dict)
+    miner_mains:dict = field(default_factory=dict)
+    miner_unpubs:dict = field(default_factory=dict)
 
 @dataclass
 class res_lite:
@@ -164,6 +169,10 @@ class res_lite:
     ave_solution_error:float
     solve_rate:float
     not_solve_rate:float
+    # 每个矿工的工作量
+    miner_chains:dict
+    miner_mains:dict
+    miner_unpubs:dict
 
 @dataclass
 class res_final:
@@ -214,7 +223,7 @@ def short_simulation(background:Background, repeat_num:int,pool_size:int, var_nu
     background.set_var_num(var_num)
     background.set_total_gas(gas)
     prblm_pool = get_prblm_pool(pool_size, var_num, prblm_pool_method, RESULT_PATH)
-    final_res = res_final([])
+    lite_res = res_final([])
 
     for difficulty in difficulties:
         logger.info(f"var_num:{var_num}, difficulty: {difficulty}")
@@ -241,8 +250,8 @@ def short_simulation(background:Background, repeat_num:int,pool_size:int, var_nu
                     rep_cnt, pool_size, miner_num, difficulty, var_num, adversary_num, med_res, background, 
                     prblm_pool, recBlockTimes, ERROR_PATH, safe_thre, solve_prob, opblk_st, opprblm_st
                 )
-            cal_average_save_med_res(med_res, final_res, RESULT_PATH, CACHE_PATH)
-    simudata_collect_to_json(final_res, RESULT_PATH)
+            cal_average_save_med_res(med_res, lite_res, RESULT_PATH, CACHE_PATH)
+    simudata_collect_to_json(lite_res, RESULT_PATH)
     
 def merge_intermediate_res(data_list: list[res_intermediate_full]) -> res_intermediate_full:
     """
@@ -353,9 +362,8 @@ def short_sim_iter(rep_cnt, pool_size, miner_num, difficulty, var_num,
                 gc.collect()
                 time.sleep(10)
                 continue
-            eva_res = Evn.view()
-            del Evn
-            gc.collect()
+            eva_res = Evn.view(ERROR_PATH = ERROR_PATH)
+
         except Exception:
             # 遇到错误，跳过当前迭代并保存错误信息
             with open(ERROR_PATH / f"error_iter{i}.txt", "w+") as f:
@@ -363,7 +371,6 @@ def short_sim_iter(rep_cnt, pool_size, miner_num, difficulty, var_num,
             print("Error encountered. Skipping...")
             # sys.exit()
             continue
-
         # 如果有内容则更新中间结果
         if eva_res is not None and len(eva_res.mb_nums) > 0:
             record_med_res(sd_spec, eva_res, recBlockTimes)
@@ -424,6 +431,11 @@ def record_med_res(med_res:res_intermediate_full, eva_res:EvaResult,recBlockTime
             med_res.accept_adv_rates.append(acp_advrate)
     for se in eva_res.solution_errors:
         med_res.solution_errors.append(se)
+    for sol in eva_res.solutions_by_bbb:
+        med_res.solutions_by_bbb.append(sol)
+    for sol in eva_res.solutions_by_pulp:
+        med_res.solutions_by_pulp.append(sol)
+
     # 出块时间
     if recBlockTimes:
         # miniblock出块时间
@@ -433,6 +445,11 @@ def record_med_res(med_res:res_intermediate_full, eva_res:EvaResult,recBlockTime
         med_res.unpub_times.extend(eva_res.unpub_times)
         med_res.fork_times.extend(eva_res.fork_times)
         med_res.grow_proc.extend(eva_res.mb_grow_proc)
+    # 矿工工作量
+    for miner in eva_res.miner_chains:
+        med_res.miner_chains[miner] = med_res.miner_chains.get(miner, 0) + eva_res.miner_chains.get(miner, 0)
+        med_res.miner_mains[miner] = med_res.miner_mains.get(miner, 0) + eva_res.miner_mains.get(miner, 0)
+        med_res.miner_unpubs[miner] = med_res.miner_unpubs.get(miner, 0) + eva_res.miner_unpubs.get(miner, 0)
     # 动态平均值（收敛情况）
     # if len(simudata.solve_rounds) > 0:
     #     avesr = sum(simudata.solve_rounds)/len(simudata.solve_rounds)
@@ -488,6 +505,11 @@ def cal_average_save_med_res(med_res:res_intermediate_full, res_collect:res_fina
             med_res.ave_solution_error = cal_average(med_res.solution_errors)
             med_res.solve_rate = med_res.solution_errors.count(0) / len(med_res.solution_errors)
             med_res.not_solve_rate = med_res.solution_errors.count(10) / len(med_res.solution_errors)
+        # 每个矿工的工作量
+        for miner_id in med_res.miner_chains.keys():
+            med_res.miner_chains[miner_id] = med_res.miner_chains[miner_id] / len(med_res.solve_rounds)
+            med_res.miner_mains[miner_id] = med_res.miner_mains[miner_id] / len(med_res.solve_rounds)
+            med_res.miner_unpubs[miner_id] = med_res.miner_unpubs[miner_id] / len(med_res.solve_rounds)
     
     file_name = f'intermediate_m{m}d{d}v{v}.json'
     with open(result_path / file_name, 'w+') as f:

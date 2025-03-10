@@ -26,8 +26,22 @@ from scipy.signal import find_peaks, peak_prominences
 from scipy.spatial import ConvexHull
 from scipy.stats import gaussian_kde
 
-import background
-import branchbound.bb_consensus as bb
+# 产生keyblock的方式
+POW = "pow"
+W_MINI = "withmini"
+
+# openblock选择策略, 如open prblm不是BEST策略就先选block再选prblm
+OB_SPEC = "ob_specific" # 默认选择第一个
+OB_RAND = "ob_random"
+OB_DEEP = "ob_deepfrist"
+OB_BREATH = "ob_breathfirst"
+
+# open prblm的选择策略
+OP_SPEC = "op_specific"
+OP_RAND = "op_random"
+OP_BEST = "op_bestbound" # 全局最小的解的问题
+
+# import branchbound.bb_consensus as bb
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -644,13 +658,13 @@ def plot_bounds2(data_list:list[dict]):
     plt.grid(True)
     plt.legend(handles = plts, loc = "lower right")
     strategy = " "
-    if data['openblk_st'] == bb.OB_RAND and data['openprblm_st'] == bb.OP_BEST:
+    if data['openblk_st'] == OB_RAND and data['openprblm_st'] == OP_BEST:
         strategy = 'BFS'
-    if data['openblk_st'] == bb.OB_DEEP and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_DEEP and data['openprblm_st'] == OP_RAND:
         strategy = 'DFS'
-    if data['openblk_st'] == bb.OB_BREATH and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_BREATH and data['openprblm_st'] == OP_RAND:
         strategy = 'BrFS'
-    if data['openblk_st'] == bb.OB_RAND and data['openprblm_st'] == bb.OP_RAND:
+    if data['openblk_st'] == OB_RAND and data['openprblm_st'] == OP_RAND:
         strategy = 'Rand'
     plt.savefig(SAVE_PREFIX + f"\\boundsv{data.get('var_num')}m{data.get('miner_num')}{strategy}_{time.strftime('%H%M%S')}.svg")
     plt.show()
@@ -688,7 +702,7 @@ def plot_average_convergence(data_list, ylabel, label_list, ylim):
     # handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles = plts, loc='lower right')
     plt.show()
-    result_path =  background.get_result_path()
+    result_path =  result_path
     plt.savefig(result_path / f'{ylabel}_{label_list[0]}.svg')
     plt.close()
 

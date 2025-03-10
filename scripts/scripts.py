@@ -285,6 +285,58 @@ def cult_tsp_solving_process(file_path, out_path):
         jd = json.dumps(out_data)
         fo.write(jd)
 
+def remove_duplicates(main_file_path: str, reference_file_path: str, output_file_path: str):
+    """
+    从main_file中删除在reference_file中出现过的条目（只比较第一个字段）
+    
+    Args:
+        main_file_path: 需要处理的主文件路径
+        reference_file_path: 参考文件路径，用于检查重复
+        output_file_path: 输出文件路径
+    
+    Returns:
+        tuple: (总行数, 删除的行数)
+    """
+    # 读取参考文件中的所有条目的第一个字段
+    reference_first_fields = set()
+    with open(reference_file_path, 'r') as f:
+        for line in f:
+            if line.strip():  # 忽略空行
+                try:
+                    json_obj = json.loads(line.strip())
+                    # 获取第一个字段的值
+                    first_field = next(iter(json_obj.values()))
+                    reference_first_fields.add(str(first_field))
+                except (json.JSONDecodeError, StopIteration):
+                    continue
+    
+    # 处理主文件，只保留不重复的条目
+    total_lines = 0
+    kept_lines = 0
+    with open(main_file_path, 'r') as f_in, open(output_file_path, 'w') as f_out:
+        for line in f_in:
+            if line.strip():  # 只统计非空行
+                total_lines += 1
+                try:
+                    json_obj = json.loads(line.strip())
+                    # 获取第一个字段的值
+                    first_field = next(iter(json_obj.values()))
+                    if str(first_field) not in reference_first_fields:
+                        f_out.write(line)
+                        kept_lines += 1
+                except (json.JSONDecodeError, StopIteration):
+                    # 如果解析失败，保留该行
+                    f_out.write(line)
+                    kept_lines += 1
+
+    removed_lines = total_lines - kept_lines
+    print(f"处理完成。输出文件已保存到: {output_file_path}")
+    print(f"总行数: {total_lines}")
+    print(f"删除行数: {removed_lines}")
+    print(f"保留行数: {kept_lines}")
+    
+    return total_lines, removed_lines
+
 
 
 
@@ -296,8 +348,8 @@ if __name__ == "__main__":
     # med_path =    ".\Results\\20231203\\230820\\res12prob0_3m3.json"
     # merge_times(folder_path, output_path)
     # merge_intermediate_data(folder_path, med_path)
-    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250211"
-    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250211\\workload_var_num.json"
+    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250309\\230617"
+    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250309\\230617\\final_results.json"
     merge_jsons(folder_path, output_path, "final_results")
     # merge_jsons(folder_path, output_path, "intermediate")
     # load_tsp()
@@ -307,4 +359,9 @@ if __name__ == "__main__":
     # cult_tsp_solving_process("Result_Data\\tsp solving process.json", "Result_Data\\tsp solving process2.json")
     # merge_evares_jsons(folder_path, output_path)
 
+    # 使用示例
+    # main_file = "E:\Files\gitspace\\bbb-github\Problem Pools\SPOT\Generated2\\30_1.json"  # 替换为您的主文件路径
+    # reference_file = "E:\Files\gitspace\\bbb-github\Results\\20250305\\235103\short_g5000v30m[5]d[5]--003356-44616\errorlogs_v30d5m5a0\\a_bad_prblms.json"  # 替换为您的参考文件路径
+    # output_file = "E:\Files\gitspace\\bbb-github\Problem Pools\SPOT\Generated2\\30_1_filtered.json"  # 替换为您想要的输出文件路径
     
+    # remove_duplicates(main_file, reference_file, output_file)
