@@ -44,12 +44,12 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
     if m == 'load':
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
-        pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
+        # pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
         # pool_path = Path(".\\testTSP\problem poolburma14.json")
         # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
-        # pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
+        pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
         prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path, pool_save_path)
     elif m == 'rand':
         prblm_pool = lpprblm.prblm_pool_generator(pool_size, var_num, lpprblm.ZERO_ONE)
@@ -203,16 +203,18 @@ def simudata_collect_to_json(sd_collect:res_final, file_path, file_name=None):
             p_json = json.dumps(filtered_dict)
             f.write(p_json + '\n')
 
-def short_simulation(background:Background, repeat_num:int,pool_size:int, var_num:int, 
+def short_simulation(background:Background, enableGas:int, repeat_num:int,pool_size:int, var_num:int, 
                      difficulties:list = None, miner_nums:list = None,adversary_num = None, 
                      prblm_pool_method:str = None,recBlockTimes:bool = False, safe_thre = 1,
                      solve_prob = 0.5,opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND, gas = 10000):
     # 结果保存路径
     ROOT_PATH = background.get_result_path()
-    if adversary_num >0:
-        RESULT_PATH = ROOT_PATH / f"attack_v{var_num}m{miner_nums}d{difficulties}a{adversary_num}-{mp.current_process().pid}"
+    suffix = f"v{var_num}m{miner_nums}d{difficulties}--{time.strftime('%H%M%S')}-{mp.current_process().pid}"
+    if adversary_num > 0:
+        RESULT_PATH = ROOT_PATH / f"attack_{suffix}a{adversary_num}"
     else:
-        RESULT_PATH = ROOT_PATH / f"short_g{gas}v{var_num}m{miner_nums}d{difficulties}--{time.strftime('%H%M%S')}-{mp.current_process().pid}"
+        gas_prefix = f"short_{enableGas}g{gas}" if enableGas in [1, 2] else "short"
+        RESULT_PATH = ROOT_PATH / f"{gas_prefix}_{suffix}"
     RESULT_PATH.mkdir(parents=True)
     CACHE_PATH = RESULT_PATH / 'result_cache'
     CACHE_PATH.mkdir(parents=True)
@@ -221,14 +223,17 @@ def short_simulation(background:Background, repeat_num:int,pool_size:int, var_nu
     prblm_pool_method = 'rand' if prblm_pool_method is None else prblm_pool_method
         
     background.set_var_num(var_num)
-    background.set_total_gas(gas)
     prblm_pool = get_prblm_pool(pool_size, var_num, prblm_pool_method, RESULT_PATH)
-    lite_res = res_final([])
+    res = res_final([])
 
     for difficulty in difficulties:
         logger.info(f"var_num:{var_num}, difficulty: {difficulty}")
         for miner_num in miner_nums:
             # 保存错误日志
+            if enableGas == 1:
+                background.set_total_gas(gas)
+            elif enableGas == 2:
+                background.set_total_gas(gas*miner_num)
             error_dir = f"errorlogs_v{var_num}d{difficulty}m{miner_num}a{adversary_num}"
             ERROR_PATH = RESULT_PATH / error_dir
             ERROR_PATH.mkdir(parents=True)
@@ -247,11 +252,11 @@ def short_simulation(background:Background, repeat_num:int,pool_size:int, var_nu
             # 进行迭代仿真
             for rep_cnt in range(repeat_num): 
                 short_sim_iter(
-                    rep_cnt, pool_size, miner_num, difficulty, var_num, adversary_num, med_res, background, 
-                    prblm_pool, recBlockTimes, ERROR_PATH, safe_thre, solve_prob, opblk_st, opprblm_st
+                    rep_cnt, pool_size, miner_num, difficulty, var_num, adversary_num, med_res, 
+                    background, prblm_pool, recBlockTimes, ERROR_PATH, safe_thre, solve_prob, opblk_st, opprblm_st
                 )
-            cal_average_save_med_res(med_res, lite_res, RESULT_PATH, CACHE_PATH)
-    simudata_collect_to_json(lite_res, RESULT_PATH)
+            cal_average_save_med_res(med_res, res, RESULT_PATH, CACHE_PATH)
+    simudata_collect_to_json(res, RESULT_PATH)
     
 def merge_intermediate_res(data_list: list[res_intermediate_full]) -> res_intermediate_full:
     """
@@ -330,7 +335,7 @@ def record_memory_exceed_err(iteration, outer_evn:Environment, outer_evn_size,
         f.write(p_json + '\n')
 
 def short_sim_iter(rep_cnt, pool_size, miner_num, difficulty, var_num, 
-                   adversary_num, sd_spec, background, prblm_pool, 
+                   adversary_num, med_res, background, prblm_pool, 
                    recBlockTimes, ERROR_PATH, safe_thre = 1, solve_prob = 0.5,
                    opblk_st:str = bb.OB_RAND, opprblm_st:str = bb.OP_RAND):
     # 开始迭代
@@ -373,7 +378,7 @@ def short_sim_iter(rep_cnt, pool_size, miner_num, difficulty, var_num,
             continue
         # 如果有内容则更新中间结果
         if eva_res is not None and len(eva_res.mb_nums) > 0:
-            record_med_res(sd_spec, eva_res, recBlockTimes)
+            record_med_res(med_res, eva_res, recBlockTimes)
 
 
 def record_med_res(med_res:res_intermediate_full, eva_res:EvaResult,recBlockTimes:bool):

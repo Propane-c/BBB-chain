@@ -170,10 +170,12 @@ def single_process_shortchain(enableGas, gas, repeat_num, pool_size, var_num,
         _, environ_settings = load_config()
         background = set_background(environ_settings)
         set_logger(background)
-        background.set_enable_gas(enableGas)
-        if not enableGas:
-            gas = 10000000000000
-        simulation.short_simulation(background, repeat_num, pool_size, var_num, 
+        if enableGas != 0:
+            background.set_enable_gas(True)
+        if enableGas == 0:
+            background.set_enable_gas(False)
+            gas = 1000000000000
+        simulation.short_simulation(background, enableGas, repeat_num, pool_size, var_num, 
                                     difficulties, miner_nums, adversary_num, prblm_pool_method, 
                                     record_block_times, safe_thre, solve_prob, opblk_st, opprblm_st, gas)
     except Exception:
@@ -216,22 +218,23 @@ if __name__ == '__main__':
     # pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
     # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
 
-    simu_type = "single_run"
+    # simu_type = "single_run"
     # simu_type = "long"
-    # simu_type = "short"
+    simu_type = "short"
     multiProcessOn = True
     # multiProcessOn = False
     threadNum = 1
-    # enGas = True
-    enGas = False
+    # enGas = 2
+    enGas = 1
+    # enGas = 0 # 0不启用gas，1 总gas，2 gas/miner
     """
     short参数说明:
-    enGas | gas | repeat_num | pool_size | var_num | difficulties | miner_nums | adversary_num | prblm_pool_metho| safe_thre |
+    enGas | gas_per_miner | repeat_num | pool_size | var_num | difficulties | miner_nums | adversary_num | prblm_pool_metho| safe_thre |
     record_block_times | opblk_st | opprblm_st | solve_prob
     
     """
     rpt_num1 = 1
-    rpt_num = 5
+    rpt_num = 3
     args_list = [
         # [500,   rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
         # [500,   rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
@@ -275,21 +278,23 @@ if __name__ == '__main__':
         # [enGas, 2500,  rpt_num, 50, 150, [5],  [1, 20], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 50, 200, [5],  [1,5,10,15,20], 0, 'load', 0.001],
 
-        [enGas, 2500,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 70, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 30, 70, [5],  [5], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 30, 70, [5],  [10], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 30, 70, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
         
-        [enGas, 5000,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 70, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
-        [enGas, 5000,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 70, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 5000,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
 
 
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_RAND, bb.OP_BEST],
