@@ -6,6 +6,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import data.lpprblm as lp
+import tsplib95
 
 def load_exist_tsp(load_file_path=None):
     G, pos, n, distance_matrix = read_tsp_from_xml(load_file_path)
@@ -66,10 +67,13 @@ def get_tsp_lpprblm(n, distance_matrix):
     init_ix[(n-1)*n + 0] = 1 
     for i in range(1, n):
         init_ix[n**2 + i] = i
+    print(111)
+    lp.solve_ilp_by_pulp(orig_prblm)
+    print(111)
     init_iz = np.dot(c, init_ix)
     orig_prblm.init_ix = init_ix
     orig_prblm.init_iz = init_iz
-    lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'burma14.json')
+    lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'berlin52.json')
     return orig_prblm
 
 def read_tsp_from_xml(file_path):
@@ -91,17 +95,40 @@ def read_tsp_from_xml(file_path):
             cost = float(edge.attrib["cost"])
             distance_matrix[i][id] = cost
             G.add_edge(i, id, weight = cost)
+            
     if len(pos) == 0:
-        pos = nx.spring_layout(G, seed=42)
-        for i, vertex in enumerate(graph_section):
-            pos_x, pos_y = pos[i]
-            pos_x_rounded = round(pos_x, 2)
-            pos_y_rounded = round(pos_y, 2)
-            x_elem = ET.SubElement(vertex, 'x')
-            x_elem.text = str(pos_x_rounded)
-            y_elem = ET.SubElement(vertex, 'y')
-            y_elem.text = str(pos_y_rounded)
-        tree.write(file_path)
+        # 尝试从tsplib读取坐标
+        tsp_name = Path(file_path).stem
+        tsp_file = Path.cwd() / "tsp_origin" / "tsp" / "sourcesSymmetricTSP" / f"{tsp_name}.tsp"
+        if tsp_file.exists():
+            problem = tsplib95.load(tsp_file)
+            coords = problem.node_coords
+            if coords:
+                pos = {i-1: (coords[i][0], coords[i][1]) for i in coords}
+                # 将坐标写入XML文件
+                for i, vertex in enumerate(graph_section):
+                    pos_x, pos_y = pos[i]
+                    x_elem = ET.SubElement(vertex, 'x')
+                    x_elem.text = str(pos_x)
+                    y_elem = ET.SubElement(vertex, 'y')
+                    y_elem.text = str(pos_y)
+                tree.write(file_path)
+        
+        # 如果仍然没有坐标，使用spring_layout
+        if len(pos) == 0:
+            pos = nx.spring_layout(G, seed=42)
+            for i, vertex in enumerate(graph_section):
+                pos_x, pos_y = pos[i]
+                pos_x_rounded = round(pos_x, 2)
+                pos_y_rounded = round(pos_y, 2)
+                x_elem = ET.SubElement(vertex, 'x')
+                x_elem.text = str(pos_x_rounded)
+                y_elem = ET.SubElement(vertex, 'y')
+                y_elem.text = str(pos_y_rounded)
+            tree.write(file_path)
+            
+    global _pos
+    _pos = pos
     return G, pos, n, distance_matrix
 
 def draw_tsp_graph(G, pos, save_dir):

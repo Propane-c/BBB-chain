@@ -69,6 +69,7 @@ class EvaResult:
     miner_unpubs:dict
     # 求解误差
     gas_round_sol_errs:list
+    gas_consumes:list
 
 @dataclass
 class UbData():
@@ -89,6 +90,7 @@ class GasSolution():
     cur_gas:int
     solution_bbb:float
     solution_error:float
+    ix:list
 
 class Evaluation(object):
     def __init__(self, background:Background, recordSols:bool = False, recordGasSolErrs:bool = False):
@@ -154,6 +156,7 @@ class Evaluation(object):
         self.miner_unpubs = defaultdict(int)
         # 记录gas和求解solution
         self.gas_round_sol_errs:list[tuple] = []
+        self.gas_consumes:list[tuple] = []
     
     
 
@@ -183,11 +186,18 @@ class Evaluation(object):
             solution_error = 10 if solution_bbb is None else np.abs((solution_pulp-solution_bbb)/solution_pulp)
             self.solution_errors.append(solution_error)
 
-    def get_round_gas_solution(self, round, gas, solution_bbb, solution_pulp):
-        
+    def get_round_gas_solution(self, round, gas, solution_bbb, solution_pulp, ix=None):
+        def swich_to_list(x):
+            if isinstance(x, np.ndarray):
+                return x.tolist()
+            return []
+        if ix is not None:
+            ix = swich_to_list(ix)
         solution_error = 10 if solution_bbb is None else np.abs((solution_pulp-solution_bbb)/solution_pulp)
-        self.gas_round_sol_errs.append(astuple(GasSolution(round, gas, solution_bbb, solution_error)))
+        self.gas_round_sol_errs.append(astuple(GasSolution(round, gas, solution_bbb, solution_error, ix)))
 
+    def get_gas_consume(self, round, gas):
+        self.gas_consumes.append((round, gas))
 
     def get_mb_block_times(self, chain:Chain):
         """
@@ -543,7 +553,8 @@ class Evaluation(object):
             miner_chains = dict(self.miner_chains),
             miner_mains = dict(self.miner_mains),
             miner_unpubs = dict(self.miner_unpubs),
-            gas_round_sol_errs=self.gas_round_sol_errs
+            gas_round_sol_errs=self.gas_round_sol_errs,
+            gas_consumes=self.gas_consumes
         )
         return self.result
 

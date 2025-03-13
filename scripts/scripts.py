@@ -348,10 +348,10 @@ if __name__ == "__main__":
     # med_path =    ".\Results\\20231203\\230820\\res12prob0_3m3.json"
     # merge_times(folder_path, output_path)
     # merge_intermediate_data(folder_path, med_path)
-    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148"
-    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148\\gas_solve_res.json"
-    merge_jsons(folder_path, output_path, "results")
-    # merge_jsons(folder_path, output_path, "intermediate")
+    folder_path = "E:\Files\gitspace\\bbb-github\Results\\20250311\\164919"
+    output_path = "E:\Files\gitspace\\bbb-github\Results\\20250311\\164919\\med_res.json"
+    # merge_jsons(folder_path, output_path, "results")
+    merge_jsons(folder_path, output_path, "intermediate")
     # load_tsp()
     # for root, dirs, files in os.walk(f"E:\Files\A-blockchain\\branchbound\MAXSAT\EASY"):
     #     for file in files:

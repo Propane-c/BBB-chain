@@ -246,7 +246,7 @@ class Background(object):
     # gas管理
     def init_gases(self, prblm_pool:list[data.lpprblm.LpPrblm]):
         if prblm_pool[0].fix_pid is None:
-            [setattr(prblm, 'fix_id', i) for i, prblm in enumerate(prblm_pool)]
+            [setattr(prblm, 'fix_pid', i) for i, prblm in enumerate(prblm_pool)]
         for p in prblm_pool:
             self._gases[p.fix_pid] = self.get_total_gas()
     

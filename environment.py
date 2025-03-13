@@ -240,6 +240,7 @@ class Environment(object):
         # self.view_miner = self.miners[0]
         t_0 = time.time()
         t_gc = t_0
+        last_gas = -1
         for round in range(1, max_rounds+1): 
             for miner in self.miners:
                 if terminate_event and terminate_event.is_set():
@@ -247,6 +248,11 @@ class Environment(object):
                         evn_exec_done.set()
                     print(f"Env terminate!--{mp.current_process().name}")
                     return
+                if self.evaluation.recordGasSolErrs:
+                    cur_gas = self.background.get_total_gas()-self.background.get_rest_gas(0)
+                    if cur_gas > last_gas:
+                        self.evaluation.get_gas_consume(round, cur_gas)
+                        last_gas = cur_gas
                 if miner.isAdversary:
                     self.attack_execute()
                     continue

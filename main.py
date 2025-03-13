@@ -91,7 +91,7 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    background.set_var_num('maxsat')
+    background.set_var_num('burma14')
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
     miner_num = miner_num if miner_num is not None else 1
@@ -114,15 +114,15 @@ def run(pool_path=None, miner_num =None):
 
     # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
     # lp = prblm_pool[3]
-    # lp  = tsp.load_exist_tsp(Path.cwd()/"Problem Pools"/"tsp_origin"/"tsp"/"burma14.xml")
+    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"berlin52.xml")
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\problem pool1007_1837.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\1116\problem pool1116_105207.json")[0]
     # lp = lpprblm.rand_01(50)
-    spot_file_path = "E:\Files\A-blockchain\\branchbound\SPOT5\data\\29.spot"
-    spot_file_path = pool_path
-    lp = spot.spot_to_ilp(spot_file_path)
+    # spot_file_path = "E:\Files\A-blockchain\\branchbound\SPOT5\data\\29.spot"
+    # spot_file_path = pool_path
+    # lp = spot.spot_to_ilp(spot_file_path)
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\1109\problem pool1109_1508.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -137,7 +137,7 @@ def run(pool_path=None, miner_num =None):
     # lp = lpprblm.test5()
     background.set_genesis_prblm(lp)
     background.set_enable_gas(True)
-    background.set_total_gas(50000)
+    background.set_total_gas(20000)
     background.init_gases([lp])   
     set_logger(background, logging.ERROR)
     quiet=False
@@ -218,11 +218,11 @@ if __name__ == '__main__':
     # pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
     # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
 
-    # simu_type = "single_run"
+    simu_type = "single_run"
     # simu_type = "long"
-    simu_type = "short"
-    multiProcessOn = True
-    # multiProcessOn = False
+    # simu_type = "short"
+    # multiProcessOn = True
+    multiProcessOn = False
     threadNum = 1
     # enGas = 2
     enGas = 1

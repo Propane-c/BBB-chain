@@ -293,13 +293,13 @@ class BranchBound(object):
             elif len(self.opt_prblms) > 0:
                 p2.lb_prblm = random.choice(self.opt_prblms)
         if self.evaluation.recordGasSolErrs:
-            sol = None
-            sol = p1.z_lp if int_soln1 and not wrs1 else sol
+            sol = p1.z_lp if int_soln1 and not wrs1 else None
             sol = p2.z_lp if int_soln2 and not wrs2 else sol
-            if sol is not None:
+            ix = p1.x_lp if int_soln1 and not wrs1 else None
+            ix = p2.x_lp if int_soln2 and not wrs2 else ix
+            if sol is not None: 
                 consume_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
-                self.evaluation.get_round_gas_solution(self.round, consume_gas, sol, self.cur_keyblock.get_keyprblm_key().iz_pulp)
-        
+                self.evaluation.get_round_gas_solution(self.round, consume_gas, sol, self.cur_keyblock.get_keyprblm_key().iz_pulp, ix)
         self.solved_pairs.append((p1, p2))
 
 
@@ -892,6 +892,8 @@ class BranchBound(object):
         elif self.kb_strategy == 'withmini':
             powSuccess = True
         if powSuccess:
+            consume_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
+            self.evaluation.get_round_gas_solution(self.round, consume_gas, self.upper_bound, self.cur_keyblock.get_keyprblm_key().iz_pulp)
             # 产生一个keyblock
             block_name = f'B{str(self.background.get_block_number())}'
             prehash = chain.lastblock.name
@@ -1195,11 +1197,11 @@ class BranchBound(object):
         opt_loc = 'opt_prblms' if opt_save_loc is None else opt_save_loc
         if int_soln:
             self.update_upperbound(opt_loc, lp_prblm)
-            rest_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
+            # rest_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
             # 将输出写入文件
             # logger.info(f"{self.LOG_PREFIX}: rest_gas:{rest_gas}; x_lp:{lp_prblm.x_lp}; z_lp:{lp_prblm.z_lp}; "
             #         f"upper_bound:{self.upper_bound}; init_ix:{lp_prblm.init_ix}; init_iz:{lp_prblm.init_iz};\n")
-            self.evaluation.get_round_gas_solution(self.round, rest_gas, lp_prblm.z_lp, self.cur_keyblock.get_keyprblm_key().iz_pulp)
+            # self.evaluation.get_round_gas_solution(self.round, rest_gas, lp_prblm.z_lp, self.cur_keyblock.get_keyprblm_key().iz_pulp)
             updateUB = True
         # update lowerbound
         if not infeas and not wrs and updateLBCrtl:
