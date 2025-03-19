@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 sys.path.append("E:\Files\gitspace\\bbb-github")
 
-import myplot
+import scripts.plot_old.myplot as myplot
 import myplot2
 
 DATAFRAME = "dataframe"
@@ -349,7 +349,7 @@ if __name__ == "__main__":
         # myplot.plot_line_chart_difficulty_subpair_subunpub(data, "Increased workload brought about by distribution", [0.8,1.8], False)
         # myplot.plot_line_chart_difficulty_subpair_subunpub(data, "Increased workload brought about by distribution", [0,2.3], True)
         # myplot.plot_line_chart_difficulty_as_xlabel(data, "Number of solving round for a single problem ", [50,3000], 'ave_solve_round')
-        # myplot.plot_line_chart_difficulty_as_xlabel(data, "Mini-block fork rate", [-0.05, 0.3], 'total_mb_forkrate')
+        # myplot.plot_line_chart_difficulty_as_xlabel(data, "Mini-block fork rate"f, [-0.05, 0.3], 'total_mb_forkrate')
         myplot.plot_line_chart_difficulty_as_xlabel(data, "Mini-block growth rate", [-0.05,0.3], 'ave_mb_growth')
         ...
     elif format_str == MINER:

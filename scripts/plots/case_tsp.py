@@ -1,3 +1,4 @@
+import time
 from typing import Mapping
 import matplotlib.pyplot as plt
 import json
@@ -7,6 +8,8 @@ import networkx as nx
 from pathlib import Path
 import tsplib95
 import numpy as np
+import matplotlib.patches as patches
+import pandas as pd
 
 _pos:Mapping = None
 
@@ -64,7 +67,6 @@ def draw_tsp_solution(pos, n, opt_x):
 
 def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ax_main:plt.Axes):
     """绘制TSP求解进度"""
-    # 使用更丰富的配色方案
     colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
     markers = ['o', 's', '^', 'D', 'P']
     styles = {}
@@ -76,9 +78,13 @@ def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ax_main:plt.Axes):
             'linestyle': '-',
             'alpha': 0.9,
             'zorder': idx + 1
-        }
+    }
     
     solution_pulp = None
+    
+    # 创建左上角的子图
+    # ax_inset = ax_main.inset_axes([0.52, 0.65, 0.4, 0.28])  # [x, y, width, height]
+    # ax_inset2 = ax_main.inset_axes([0.32, 0.65, 0.1, 0.28])  # [x, y, width, height]
     
     # 遍历不同矿工数的结果
     for m in miner_nums:
@@ -86,6 +92,7 @@ def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ax_main:plt.Axes):
         with open(json_path, 'r') as f:
             data = json.load(f)
         
+        # 主图：解的进度
         gas_round_sol_errs = data['gas_round_sol_errs']
         rounds = [item[0] for item in gas_round_sol_errs]
         solutions_bbb = [item[2] for item in gas_round_sol_errs]
@@ -105,23 +112,25 @@ def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ax_main:plt.Axes):
                 linestyle=style['linestyle'],
                 alpha=style['alpha'],
                 label=f'{m} miners',
-                linewidth=1.5,  # 增加线宽
                 zorder=style['zorder'])
-    
+
     # 主图设置
     ax_main.axhline(y=solution_pulp, color='#4b5563', linestyle='--', 
                     linewidth=1.5, zorder=1)
-    ax_main.set_xlim([0, 30000])
+    ax_main.set_xlim([0, 50000])
     ax_main.set_xlabel('Round')
-    ax_main.set_ylabel('Solutions of Burma14')
-    ax_main.grid(True, linestyle='--', alpha=0.8, zorder=0)
+    ax_main.set_ylabel('Solutions of Burma14',labelpad=7)
+    ax_main.grid(True, linestyle='--', alpha=0.3)
+    ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True,
+             loc='upper center', bbox_to_anchor=(0.5, 1.01), ncol=4)
+    ax_main.set_ylim(3300, 3850)
     
-    # 优化图例
-    ax_main.legend(framealpha=0.8, edgecolor='grey', fancybox=True, 
-                loc='center right', ncol=1)
+    # 在左上角子图中绘制gas和error
+    # plot_gas_vs_round(json_dir, miner_nums, ax_inset)
+    # plot_ave_solution_error_vs_round(json_dir, miner_nums, ax_inset2)
     
-    # 设置y轴范围并添加边距
-    ax_main.set_ylim(3275, 3650)
+    # 移除子图多余的刻度标签
+    # ax_inset.set_xticklabels([])
 
 def plot_ave_solution_error_vs_round(json_dir, miner_nums:list, ax_error:plt.Axes):
     """绘制平均解误差"""
@@ -151,26 +160,21 @@ def plot_ave_solution_error_vs_round(json_dir, miner_nums:list, ax_error:plt.Axe
                 color=style['color'],
                 marker=style['marker'],
                 markersize=3,
-                markevery=0.1,
                 linewidth=1.5,
                 alpha=style['alpha'],
                 zorder=style['zorder'])
     # 误差子图设置
     ax_error.set_xlabel('Round')
     ax_error.set_ylabel('Error')
-    ax_error.set_xlim([0, 30000])
+    ax_error.set_xlim([0, 10000])
     ax_error.grid(True, linestyle='--', alpha=0.3)
     ax_error.set_yscale('log')
+    for spine in ax_error.spines.values():
+        spine.set_edgecolor('#dddddd')
     
 
-def visualize_tsp_with_tsplib(round_num=None, json_path=None, ax:plt.Axes=None):
-    """使用tsplib95加载和可视化TSP实例
-    
-    Args:
-        file_path: TSP实例文件路径
-        round_num: 要显示的轮次
-        json_path: 包含解的json文件路径
-    """
+def visualize_tsp_with_tsplib(round_num, json_path, miner_num=None, ax=None):
+    """使用tsplib数据可视化TSP问题"""
     # 加载TSP问题实例
     problem = tsplib95.load("E:\Files\gitspace\\bbb-github\\tsp_origin\\sourcesSymmetricTSP\\burma14.tsp")
     if ax is None:
@@ -198,7 +202,7 @@ def visualize_tsp_with_tsplib(round_num=None, json_path=None, ax:plt.Axes=None):
     G = nx.DiGraph()
     # 添加节点
     n = 14
-    # opt_x = np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, -0.0, 0.0, 0.0, 0.0, 1.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, 0.0, 0.0, -0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 13.0, 11.0, 7.0, 9.0, 2.0])
+    # opt_x = np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, -0.0, 0.0, 0.0, 0.0, 1.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -0.0, 0.0, -0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.0, -0.0, 1.0, 0.0, 0.0, -0.0, 0.0, 0.0, -0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 13.0, 11.0, 7.0, 9.0, 2.0])
     G.add_nodes_from(range(n))
     
     opt_x_path = opt_x[:n * n]  # 前 n * n 项是路径变量
@@ -207,14 +211,23 @@ def visualize_tsp_with_tsplib(round_num=None, json_path=None, ax:plt.Axes=None):
         for j in range(n):
             if opt_x_reshaped[i, j] == 1:  # 如果从城市 i 到城市 j 的路径被选中
                 G.add_edge(i, j)
-    
+    ax.set_facecolor('#f8f9fa') 
     # 绘制图
-    nx.draw(G, pos, with_labels=False, node_size=150, 
-            node_color='#6366f1',  ax=ax,  # 使用暖色调的橙色
+    nx.draw(G, pos, with_labels=False, 
+            node_size=150,
+            node_color='#6366f1',  # 节点不填充颜色
+            # edgecolors='#6366f1',  # 节点边框颜色
+            linewidths=1,  # 节点边框宽度
+            ax=ax,
             alpha=0.8,
-            edge_color='#4A4A4A', width=2, arrowsize=20, 
-            arrowstyle='-|>', style='dashed')
+            edge_color='#4A4A4A', 
+            width=2, 
+            arrowsize=20,
+            arrowstyle='-|>',  # 箭头样式
+            arrows=True,  # 显示箭头
+            style='dashed')
     
+
     # 显示坐标轴
     ax.set_axis_on()
     
@@ -234,8 +247,11 @@ def visualize_tsp_with_tsplib(round_num=None, json_path=None, ax:plt.Axes=None):
         spine.set_edgecolor('#dddddd')
     # 添加网格
     ax.grid(True, linestyle='--', alpha=0.3)
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+    
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\tsp\\tspm{miner_num}r{round_num}_{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
+    # plt.show()
     return G, pos
 
 def plot_gas_vs_round(json_dir, miner_nums:list, ax_gas:plt.Axes):
@@ -249,7 +265,76 @@ def plot_gas_vs_round(json_dir, miner_nums:list, ax_gas:plt.Axes):
             'color': colors[idx % len(colors)],
             'marker': markers[idx % len(markers)],
             'linestyle': '-',
-            'alpha': 0.9,
+            'alpha': 0.5,
+            'zorder': idx + 1
+        }
+    
+    # 创建右侧y轴
+    ax_gas_right = ax_gas.twinx()
+    
+    for m in miner_nums:
+        json_path = f"{json_dir}/m{m}d5vburma14evaluation results.json"
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        
+        # 计算gas值和差值
+        gas_values = [20000-item[1] for item in gas_consumes]
+        gas_diffs = [i-j for i, j in zip(gas_values[:-1], gas_values[1:])]
+        rounds_diff = rounds[1:]  # 差值序列比原序列少一个点
+        
+        style = styles[m]
+        # 左轴画gas消耗差
+        # # 右轴画gas剩余值
+        ax_gas.plot(rounds, gas_values,
+                color=style['color'],
+                linewidth=1,
+                linestyle='-',
+                marker=style['marker'],
+                markersize=2,
+                markevery=0.05,
+                alpha=1,
+                label=f'{m} miners (rest)',
+                zorder=5)
+        
+        ax_gas_right.plot(rounds_diff, gas_diffs, 
+                color=style['color'],
+                linewidth=0.5,
+                linestyle=style['linestyle'],
+                alpha=style['alpha'],
+                label=f'{m} miners (diff)',
+                zorder=style['zorder'])
+        
+        
+    
+    # 设置左轴
+    ax_gas.set_xlabel('Round')
+    ax_gas_right.set_ylabel('Gas \nconsumption')
+    ax_gas_right.set_ylim(0, 50)
+    ax_gas_right.set_xlim([0, 50000])
+    ax_gas.grid(True, linestyle='--', alpha=0.2)
+    
+    # 设置右轴
+    ax_gas.set_ylabel('Rest gas')
+    for spine in ax_gas.spines.values():
+        spine.set_edgecolor('#dddddd')
+    for spine in ax_gas_right.spines.values():
+        spine.set_edgecolor('#dddddd')
+    
+def plot_gas_vs_round1(json_dir, miner_nums:list, ax_gas:plt.Axes):
+    """绘制gas随round的变化"""
+    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
+    markers = ['o', 's', '^', 'D', 'P']
+    styles = {}
+    
+    for idx, m in enumerate(miner_nums):
+        styles[m] = {
+            'color': colors[idx % len(colors)],
+            'marker': markers[idx % len(markers)],
+            'linestyle': '-',
+            'alpha': 0.5,
             'zorder': idx + 1
         }
     
@@ -260,23 +345,93 @@ def plot_gas_vs_round(json_dir, miner_nums:list, ax_gas:plt.Axes):
         
         gas_consumes = data['gas_consumes']
         rounds = [item[0] for item in gas_consumes]
-        cur_gas = [20000-item[1] for item in gas_consumes]
+        
+        # 计算gas值和差值
+        gas_values = [item[1] for item in gas_consumes]
         
         style = styles[m]
-        ax_gas.plot(rounds, cur_gas, 
+        # 左轴画gas消耗差
+        # # 右轴画gas剩余值
+        ax_gas.plot(rounds, gas_values,
                 color=style['color'],
-                linewidth=1.5,
+                linewidth=1,
+                linestyle='-',
+                marker=style['marker'],
+                markersize=2,
+                markevery=0.05,
+                alpha=1,
+                label=f'{m} miners (rest)',
+                zorder=5)
+        
+        
+    # 设置左轴
+    ax_gas.set_xlabel('Round')
+    ax_gas.set_ylabel('Total gas \nconsumption')
+    ax_gas.set_ylim(0, 20000)
+    ax_gas.set_xlim([0, 50000])
+    ax_gas.grid(True, linestyle='--', alpha=0.2)
+    
+
+    for spine in ax_gas.spines.values():
+        spine.set_edgecolor('#dddddd')
+
+def plot_gas_vs_round2(json_dir, miner_nums:list, ax_gas:plt.Axes):
+    """绘制gas随round的变化"""
+    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
+    markers = ['o', 's', '^', 'D', 'P']
+    styles = {}
+    
+    for idx, m in enumerate(miner_nums):
+        styles[m] = {
+            'color': colors[idx % len(colors)],
+            'marker': markers[idx % len(markers)],
+            'linestyle': '-',
+            'alpha': 0.5,
+            'zorder': idx + 1
+        }
+    
+    for m in miner_nums:
+        json_path = f"{json_dir}/m{m}d5vburma14evaluation results.json"
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        
+        # 先计算gas值和差值
+        gas_values = [20000-item[1] for item in gas_consumes]
+        gas_diffs = [i-j for i, j in zip(gas_values[:-1], gas_values[1:])]
+        rounds_diff = rounds[1:]  # 差值序列比原序列少一个点
+        
+        # 对差值进行平滑处理
+        window = 2  # 可以调整窗口大小
+        gas_diffs_smooth = pd.Series(gas_diffs).rolling(window=window, center=True).mean()
+        gas_diffs_smooth = gas_diffs_smooth.fillna(method='bfill').fillna(method='ffill')  # 处理开头和结尾的NaN值
+        
+        style = styles[m]
+        # 添加填充
+        ax_gas.fill_between(rounds_diff, gas_diffs_smooth, 0,
+                        color=style['color'], alpha=0.5)
+        # 绘制曲线
+        ax_gas.plot(rounds_diff, gas_diffs_smooth, 
+                color=style['color'],
+                linewidth=1,  # 增加线宽
                 linestyle=style['linestyle'],
                 alpha=style['alpha'],
-                label=f'{m} miners',
+                label=f'{m} miners (diff)',
                 zorder=style['zorder'])
     
-    # 设置坐标轴
+    # 设置左轴
     ax_gas.set_xlabel('Round')
-    ax_gas.set_ylabel('Rest gas')
-    ax_gas.set_xlim([0, 30000])
-    ax_gas.grid(True, linestyle='--', alpha=0.3)
-    # ax_gas.legend(framealpha=0.0, edgecolor='none', fancybox=True)
+    ax_gas.set_ylabel('Gas\nconsumption',labelpad=25)
+    ax_gas.set_ylim(0, 30)
+    ax_gas.set_xlim([0, 50000])
+    ax_gas.grid(True, linestyle='--', alpha=0.2)
+    
+    # 设置右轴
+    for spine in ax_gas.spines.values():
+        spine.set_edgecolor('#dddddd')
+        
 
 def plot_case_tsp():
     plt.rcParams['font.family'] = 'serif'
@@ -284,24 +439,27 @@ def plot_case_tsp():
     plt.rcParams['font.size'] = 14
 
 
-    fig = plt.figure(figsize=(10, 7))  # 调整整体图大小
-    gs = fig.add_gridspec(2, 2, height_ratios=[3.5, 1], width_ratios=[2, 1],hspace=0.2, wspace=0.25)  # 添加间距控制
+    fig = plt.figure(figsize=(10, 6))  # 调整整体图大小
+    gs = fig.add_gridspec(3, 1,  height_ratios=[4,1,1], width_ratios=[1],hspace=0.2, wspace=0.25)  # 添加间距控制
     
-    ax_b = fig.add_subplot(gs[0, 0:2])
+    ax_b = fig.add_subplot(gs[0, 0])
     json_dir = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035"
     plot_solution_progress_tsp(json_dir, miner_nums=[1, 3, 5, 10], ax_main=ax_b)
 
-    ax_c = fig.add_subplot(gs[1, 0])
-    plot_ave_solution_error_vs_round(json_dir, miner_nums=[1, 3, 5, 10], ax_error=ax_c)
+    # ax_c = fig.add_subplot(gs[1, 0])
+    # plot_ave_solution_error_vs_round(json_dir, miner_nums=[1, 3, 5, 10], ax_error=ax_c)
     
     # ax_d = fig.add_subplot(gs[1, 1])
     # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\191401\m1d5vburma14evaluation results.json"
     # visualize_tsp_with_tsplib(round_num=14412, json_path=json_path, ax=ax_d)
     
-    ax_e = fig.add_subplot(gs[1,1])
-    plot_gas_vs_round(json_dir, miner_nums=[1, 3, 5, 10], ax_gas=ax_e)
+    ax_e = fig.add_subplot(gs[1,0])
+    plot_gas_vs_round2(json_dir, miner_nums=[1, 3, 5, 10], ax_gas=ax_e)
+
+    ax_f = fig.add_subplot(gs[2,0])
+    plot_gas_vs_round1(json_dir, miner_nums=[1, 3, 5, 10], ax_gas=ax_f)
     
-    ax_list = [ax_b, ax_c, ax_e]
+    ax_list = [ax_b]
     for ax in ax_list:
         for spine in ax.spines.values():
             spine.set_edgecolor('grey')
@@ -309,12 +467,12 @@ def plot_case_tsp():
     
     # 调整标签位置
     labels = ['a', 'b', 'c', 'd', 'e', 'f']
-    axes = [ax_b, ax_c, ax_e]
+    axes = [ax_b]
     for ax, label in zip(axes, labels):
         ax.text(-0.15, 1.05, label, transform=ax.transAxes, 
                 fontsize=16, fontweight='bold')
     
-    fig.subplots_adjust(left=0.095, bottom=0.074, right=0.98, top=0.96, hspace=0.4, wspace=0.3)
+    fig.subplots_adjust(left=0.11, bottom=0.083, right=0.964, top=0.979, hspace=0.4, wspace=0.3)
     plt.tight_layout()
     plt.show()
 
@@ -327,10 +485,16 @@ if __name__ == "__main__":
     # 使用新的tsplib95方法
     # tsp_file = Path.cwd() / "tsp_origin" / "tsp" / "burma14.tsp"
     # G_tsp, pos_tsp = visualize_tsp_with_tsplib(tsp_file)
-    # plot_case_tsp()
-    json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m10d5vburma14evaluation results.json"
-    visualize_tsp_with_tsplib(round_num=4873, json_path=json_path)
-    json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m1d5vburma14evaluation results.json"
-    visualize_tsp_with_tsplib(round_num=13565, json_path=json_path)
-    json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m5d5vburma14evaluation results.json"
-    visualize_tsp_with_tsplib(round_num=919, json_path=json_path)
+    plot_case_tsp()
+    
+    # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m1d5vburma14evaluation results.json"
+    # visualize_tsp_with_tsplib(round_num=525, json_path=json_path, miner_num=1)
+    # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m5d5vburma14evaluation results.json"
+    # visualize_tsp_with_tsplib(round_num=1808, json_path=json_path, miner_num=5)
+    # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m1d5vburma14evaluation results.json"
+    # visualize_tsp_with_tsplib(round_num=2335, json_path=json_path, miner_num=1)
+    # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m10d5vburma14evaluation results.json"
+    # visualize_tsp_with_tsplib(round_num=1826, json_path=json_path, miner_num=10)
+    # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250312\\202035\m3d5vburma14evaluation results.json"
+    # visualize_tsp_with_tsplib(round_num=16485, json_path=json_path, miner_num=3)
+    

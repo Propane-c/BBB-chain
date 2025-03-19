@@ -237,7 +237,7 @@ class Environment(object):
         '''
         # logger.info('*'*20 + f"{self.miner_num}Miner(s)  "+ 'New exec!' + '*'*20)
         max_rounds = self.background.get_total_round()
-        # self.view_miner = self.miners[0]
+        self.view_miner = self.miners[0]
         t_0 = time.time()
         t_gc = t_0
         last_gas = -1

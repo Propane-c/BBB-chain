@@ -41,153 +41,179 @@ def plot_security_fig6():
         for json_data in json_list:
             data_list.append(json.loads(json_data))
 
-    
     plt.rcParams['font.family'] = 'Times New Roman'
-    plt.rcParams['font.size'] = 8
+    plt.rcParams['font.size'] = 12
     df = pd.DataFrame([data for data in data_list if data["difficulty"] in [3,5,8,10]])
-    df_sorted = df.sort_values(by=['safe_thre', 'difficulty'],ascending = [False,True])
+    df_sorted = df.sort_values(by=['safe_thre', 'difficulty'], ascending=[False, True])
     sorted_safe_thre = df_sorted['safe_thre'].unique()
-    print(sorted_safe_thre)
-    print(df)
+    
+    # 添加 safe_thre_value 列
+    df['safe_thre_value'] = df['safe_thre']
+    
     np.random.seed(0)  # 为了可重复性的示例
     sns.set(style="whitegrid", font='Times New Roman', font_scale=1)
-    colors = ["#FF8283", "#0D898A","#f9cc52","#5494CE", ]
+    colors = ["#FF8283", "#0D898A", "#f9cc52", "#5494CE"]
 
     # 创建图表
-    heights = [3, 1, 1]
-    fig = plt.figure(figsize=(8, 6))
-    # fig, (ax1, ax41, ax2, ax3) = plt.subplots(4, 1, figsize=(10, 8), 
-    #                                     gridspec_kw={'height_ratios': heights, 'hspace': 0})
+    fig = plt.figure(figsize=(8, 8))
+    grid = fig.add_gridspec(5, 2, height_ratios=[3, 1, 1, 0.5, 2], width_ratios=[1, 1])
     
-    grid = fig.add_gridspec(3, 1, height_ratios=[3, 1, 1], width_ratios=[1])
-    ax1 = fig.add_subplot(grid[0, 0]) # ax_a will span two rows.
-    ax41 = fig.add_subplot(grid[1, 0])
-    # ax42 = fig.add_subplot(grid[1, 0])
-    # ax43 = fig.add_subplot(grid[1, 2]) # Placeholder for ax_d (e in the description)
-    ax2 = fig.add_subplot(grid[2, 0])
-    # ax3 = fig.add_subplot(grid[3, 0])
+    # 创建子图
+    ax1 = fig.add_subplot(grid[0, 0:2])
+    ax3 = fig.add_subplot(grid[1, 0:2])
+    ax2 = fig.add_subplot(grid[2, 0:2])
+    axins1 = fig.add_subplot(grid[4, 0])
+    axins2 = fig.add_subplot(grid[4, 1])
+    
+    # 添加子图标签
+    ax1.text(-0.1, 1.02, 'a', transform=ax1.transAxes, fontsize=12, fontweight='bold')
+    ax3.text(-0.1, 1.02, 'b', transform=ax3.transAxes, fontsize=12, fontweight='bold')
+    ax2.text(-0.1, 1.02, 'c', transform=ax2.transAxes, fontsize=12, fontweight='bold')
+    axins1.text(-0.226, 1.02, 'd', transform=axins1.transAxes, fontsize=12, fontweight='bold')
+    axins2.text(-0.17, 1.02, 'e', transform=axins2.transAxes, fontsize=12, fontweight='bold')
 
     ax1: plt.Axes
     ax41: plt.Axes
     ax42: plt.Axes 
     ax2: plt.Axes
+    ax3: plt.Axes
     # ax3: plt.Axes
     
+    # 选择特定的 difficulty，例如 difficulty 为 5
+    specific_difficulty = 5
+    df_specific = df[df['difficulty'] == specific_difficulty]
+
     # 第一个图表：Rate的柱状图
-    sns.barplot(x='safe_thre', y='ave_advrate', hue='difficulty', 
-                palette = colors, data=df, ax=ax1, width = 0.7, order=sorted_safe_thre)
-    ax1.set_xlabel(' ')  # 移除x轴标签，因为将与第二个图共享
-    ax1.set_ylabel('Success probability',labelpad = 8)
-    ax1.legend(title='Difficulty', loc = "upper left", bbox_to_anchor=(0.08, 0.98),fontsize=10)
+    
+    original_xticks = [0.005, 0.003, 0.001, 0.0008, 0.0005, 0.0003, 0.0001]
+    # # 视觉上均匀分布的x轴刻度位置
+    visual_xticks = range(0, len(original_xticks))
+    ax1.set_xticks(visual_xticks)
+    ax1.set_xticklabels([])
+    ax1.plot(visual_xticks, 'safe_thre' , 
+                data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False),  
+                marker='o', linestyle="--", color="red", label=None)
+    
+    # 添加文字说明
+    last_x = visual_xticks[3]
+    last_y = df[df["difficulty"] == 5].sort_values(by="safe_thre", ascending=False)['safe_thre'].iloc[3]
+    ax1.text(last_x + 0.3, last_y, 'Security Threshold', color='red', va='center')
+    
+    # 绘制柱状图
+    bars = sns.barplot(x='safe_thre', y='ave_advrate', hue='difficulty', 
+                palette=colors, data=df, ax=ax1, width=0.7, order=sorted_safe_thre)
+    
+    # 获取柱状图的图例句柄和标签
+    handles, labels = ax1.get_legend_handles_labels()
+    # 只保留柱状图的图例（移除红线的图例）
+    ax1.legend(handles=handles[1:], labels=labels[1:], title='Difficulty', loc="upper right")
+    ax1.set_xlabel(' ')
+    ax1.set_ylabel('Success probability', labelpad=8)
+    # ax1.legend(title='Difficulty', loc="upper right")
     ax1.spines['top'].set_visible(False)
     ax1.spines['right'].set_visible(False)
     ax1.set_xticklabels([])
-    # ax1.grid(True)
+    ax1.set_yscale("log")
+    ax1.grid(True)
     ax1.grid(axis='y')
-    # ax1.grid(True)
 
-    # 第二个图表：Prob的柱状图
-    sns.barplot(x='safe_thre', y='ave_accept_advrate', hue='difficulty', 
-                palette = colors, data=df, ax=ax2, width = 0.7,order=sorted_safe_thre)
-    ax2.set_ylabel('Chain\nquality',labelpad = 11)
-    ax2.set_xlabel('')  # 移除x轴标签，因为将与第二个图共享
+    # 在ax1和ax3的y轴上添加方向箭头
+    # ax1的向上箭头（在y轴的顶部）
+    ax1.annotate('', xy=(0, 0.2), xytext=(0, 0),
+                 xycoords='axes fraction',
+                 arrowprops=dict(arrowstyle='->', color='gray', lw=2))
+    
+    # ax3的向下箭头（在y轴的底部）
+    ax3.annotate('', xy=(0, 0.4), xytext=(0, 1),
+                 xycoords='axes fraction',
+                 arrowprops=dict(arrowstyle='->', color='gray', lw=2))
+
+    # 第二个图表：Prob的折线图
+    ax2.set_xticks(visual_xticks)
+    markers = ['o', 's', '^', 'D']  # 圆形、方形、三角形、菱形
+    for i, difficulty in enumerate(df['difficulty'].unique()):
+        print(difficulty)
+        ax2.plot(visual_xticks, 'ave_accept_advrate' , 
+                data = df[df["difficulty"] == difficulty].sort_values(by="safe_thre",ascending=False),  
+                marker=markers[i], linestyle="--", color=colors[i], label=f"Difficulty = {difficulty}" if i == 0 else difficulty)
+
+    ax2.set_ylabel('Chain\nquality', labelpad=11)
+    ax2.set_xlabel('Security threshold')  # 移除x轴标签，因为将与第二个图共享
     ax2.set_ylim(bottom=0 + 0.00001)
     ax2.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=2))
-    ax2.get_legend().remove()
-    # ax2.set_xticklabels([])
+    ax2.legend(loc="upper right", ncol=4)
     ax2.grid(True)
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticklabels(original_xticks)
     ax2.grid(axis='y')
-    ax2.invert_yaxis()
-    # ax2.grid(True)
 
-    # 调整子图间距并显示图表
-
-    # 第三个图表：Wasted的箱型图
-    
-    # wasted_path = pathlib.Path(".\Result_Data\\1029attack_data2lite.json")
-    # with open(wasted_path,'r') as f:
-    #     data_list = []
-    #     jsondata_list = f.read().split('\n')[:-1]
-    #     for jsondata in jsondata_list:
-    #         data_list.append(json.loads(jsondata))
-    #     wasted_df = pd.DataFrame(data_list)
-    #     print(wasted_df[wasted_df["difficulty"] == 5])
-    # sns.boxplot(x='safe_thre', y="ave_subpair_unpubs", data = wasted_df[wasted_df["difficulty"] == 5], 
-    #             ax=ax3, width = 0.2, linewidth = 2,order=sorted_safe_thre)
-    # ax3.set_ylabel('Wasted\nworkload',labelpad = 22)
-    ax2.set_xlabel('Safe threshold')
-    # ax3.grid(True)
-    # ax3.grid(axis='y')
-    # ax3.invert_xaxis()
-    # ax3.set_ylabel('Count')
+    # 第三个图表：Security Margin的柱状图
+    df['security_margin'] = df['safe_thre'] - df['ave_advrate']
+    sns.barplot(x='safe_thre', y='security_margin', hue='difficulty', 
+                palette=colors, data=df, ax=ax3, width=0.7, order=sorted_safe_thre)
+    ax3.set_ylabel('Security \nmargin', labelpad=8)
+    ax3.set_xlabel('Security Threshold')
+    ax3.get_legend().remove()
+    ax3.grid(True)
+    ax3.set_yscale("log")
+    ax3.grid(axis='y')
+    ax3.invert_yaxis()
 
     df.loc[df['difficulty'] == 5, 'safe_ratio'] = \
         df.loc[df['difficulty'] == 5, 'ave_advrate'] / df.loc[df['difficulty'] == 5, 'safe_thre']
     df_d5 = df[df["difficulty"] == 5].sort_values(by="safe_thre", ascending=False)
-    # print(df_d5)
-    # sns.lineplot(x='safe_thre', y='safe_thre', data=df_d5, ax=ax_inset,
-    #          marker='x', linestyle="--", color="#0D898A", label="threshold",)
-    # sns.lineplot(x='safe_thre', y='ave_advrate', data=df_d5, ax=ax_inset,
-    #             marker='o', color="#0D898A", label="simulation",)
-    # ax_inset.legend(loc = "upper left",bbox_to_anchor=(0.4, 1))
-    # 
-    # ax_inset2 = ax_inset.twinx()
-    # sns.lineplot(x= "safe_thre",y = 'safe_ratio' , 
-    #             data =df_d5,
-    #             marker='o', color = "#BC5133")
+    
+    # original_xticks = [0.005, 0.003, 0.001, 0.0008, 0.0005, 0.0003, 0.0001]
+    # # 视觉上均匀分布的x轴刻度位置
+    # visual_xticks = range(0, len(original_xticks))
+    # ax41.set_xticks(visual_xticks)
+    # ax41.set_xticklabels([])
+    # ax41.plot(visual_xticks, 'safe_thre' , 
+    #             data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False),  
+    #             marker='x',linestyle = "--", color = "#0D898A",
+    #             label = "threshlod")
+    # ax41.plot(visual_xticks, 'ave_advrate' , 
+    #             data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False),  
+    #             marker='o',color = "#0D898A",
+    #             label = "simulation")
+    # ax41.set_ylim(bottom=0, top=0.0051)
+    # # ax41.set_xticks([])
+    # # ax41.set_xticks(sorted_safe_thre)
+    # ax41.set_xlim(ax1.get_xlim())
+    # # print()
+    # # print(ax3.get_xlim())
+    # # ax41.invert_xaxis()
+    # ax41.legend(loc = "upper left",bbox_to_anchor=(0.3, 1.01),ncol=2)
+    # axins_2 = ax41.twinx()
+    # axins_2.plot(visual_xticks, 'safe_ratio' , 
+    #             data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False), 
+    #                 marker='o', color = "#BC5133",alpha = 0.5)
+    # axins_2.spines['left'].set_color('#0D898A')  # Set the color of the y-axis to blue
+    # # axins_2.set_xticks(sorted_safe_thre)
+    # axins_2.set_xticks(visual_xticks)
+    # # axins_2.set_xticks([])
+    # axins_2.set_xticklabels([])
+    # # ax_inset.set_yticks([0.00])
+    # ax41.yaxis.label.set_color('#0D898A')
+    # ax41.tick_params(axis='y', colors='#0D898A')
+    # ax41.set_ylabel("Success\nprobability",labelpad=15)
+    # ax41.set_xlabel(" ")
+    # ax41.grid(axis='y')
+    # # labels = [item.get_text() for item in ax41.get_xticklabels()]
+    # ax41.tick_params(axis='x')
+    # # ax41.xaxis.set_major_locator(plt.MaxNLocator(5))
+    # axins_2.spines['right'].set_color('#BC5133')  # Set the color of the y-axis to blue
+    # axins_2.yaxis.label.set_color('#BC5133')
+    # axins_2.tick_params(axis='y', colors='#BC5133')
+    # axins_2.set_ylabel("Safety performance")
+    # axins_2.set_ylim(0.1, 0.4)
+    # # ax_inset.grid(False)
+    # axins_2.grid(False)
 
-    # ax_inset = ax1.inset_axes([0.45, 0.51, 0.5, 0.45])  # [x, y, width, height] in relative coordinates
-    # ax41 = ax1.inset_axes([0.4, 0.5, 0.5, 0.4])
-    original_xticks = [0.005, 0.003, 0.001, 0.0008, 0.0005, 0.0003, 0.0001]
-
-    # 视觉上均匀分布的x轴刻度位置
-    visual_xticks = range(0, len(original_xticks))
-    ax41.set_xticks(visual_xticks)
-    ax41.set_xticklabels([])
-    ax41.plot(visual_xticks, 'safe_thre' , 
-                data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False),  
-                marker='x',linestyle = "--", color = "#0D898A",
-                label = "threshlod")
-    ax41.plot(visual_xticks, 'ave_advrate' , 
-                data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False),  
-                marker='o',color = "#0D898A",
-                label = "simulation")
-    ax41.set_ylim(bottom=0, top=0.0051)
-    # ax41.set_xticks([])
-    # ax41.set_xticks(sorted_safe_thre)
-    ax41.set_xlim(ax1.get_xlim())
-    # print()
-    # print(ax3.get_xlim())
-    # ax41.invert_xaxis()
-    ax41.legend(loc = "upper left",bbox_to_anchor=(0.3, 1.01),ncol=2)
-    axins_2 = ax41.twinx()
-    axins_2.plot(visual_xticks, 'safe_ratio' , 
-                data = df[df["difficulty"] == 5].sort_values(by="safe_thre",ascending=False), 
-                    marker='o', color = "#BC5133",alpha = 0.5)
-    axins_2.spines['left'].set_color('#0D898A')  # Set the color of the y-axis to blue
-    # axins_2.set_xticks(sorted_safe_thre)
-    axins_2.set_xticks(visual_xticks)
-    # axins_2.set_xticks([])
-    axins_2.set_xticklabels([])
-    # ax_inset.set_yticks([0.00])
-    ax41.yaxis.label.set_color('#0D898A')
-    ax41.tick_params(axis='y', colors='#0D898A')
-    ax41.set_ylabel("Success\nprobability",labelpad=15)
-    ax41.set_xlabel(" ")
-    ax41.grid(axis='y')
-    # labels = [item.get_text() for item in ax41.get_xticklabels()]
-    ax41.tick_params(axis='x')
-    # ax41.xaxis.set_major_locator(plt.MaxNLocator(5))
-    axins_2.spines['right'].set_color('#BC5133')  # Set the color of the y-axis to blue
-    axins_2.yaxis.label.set_color('#BC5133')
-    axins_2.tick_params(axis='y', colors='#BC5133')
-    axins_2.set_ylabel("Safety performance")
-    axins_2.set_ylim(0.1, 0.4)
-    # ax_inset.grid(False)
-    axins_2.grid(False)
-
-    axins1 = ax1.inset_axes([0.33, 0.4, 0.3, 0.5])
-    axins2 = ax1.inset_axes([0.7, 0.4, 0.3, 0.5])
+    # axins1 = ax1.inset_axes([0.33, 0.4, 0.3, 0.5])
+    # axins2 = ax1.inset_axes([0.7, 0.4, 0.3, 0.5])
+    # axins1 = fig.add_subplot(grid[3, 0])
+    # axins2 = fig.add_subplot(grid[3, 1])
 
     # 调整子图间距
     # ax_inset = ax1.inset_axes([0.5, 0.3, 0.5, 0.65])
@@ -211,18 +237,28 @@ def plot_security_fig6():
     plot_atklog_fig6(atklog_df.loc[atklog_df['difficulty']==7]["atklog_mb"].iloc[0], 
                     axins2, atklog_df.loc[atklog_df['difficulty']==7]["safe_thre"].iloc[0],
                     color = "#f9cc52")
-    axins1.set_ylabel("Success probability", fontsize=10)
-    axins1.tick_params(axis='x', labelsize=10)
-    axins1.tick_params(axis='y', labelsize=10)
-    axins1.set_xlabel("Blocks", fontsize=10)
+    axins1.set_ylabel("Success probability")
+    axins1.tick_params(axis='x')
+    axins1.tick_params(axis='y')
+    axins1.set_xlabel("Blocks")
     axins2.set_ylabel(" ",labelpad = 12)
-    axins2.set_xlabel("Blocks", fontsize=10)
-    axins2.tick_params(axis='y', labelsize=10)
-    axins2.tick_params(axis='x', labelsize=10)
-    axins1.legend(fontsize = 10)
-    fig.subplots_adjust(left=0.13, bottom=0.08, right=0.9, top=0.98,hspace=0.05)
+    axins2.set_xlabel("Blocks")
+    axins2.tick_params(axis='y')
+    axins2.tick_params(axis='x')
+    axins1.legend()
+    axins2.legend()
+    fig.subplots_adjust(left=0.13, bottom=0.08, right=0.98, top=0.98,hspace=0.05)
     plt.show()
     
+    # 在创建完所有子图后调整位置
+    # pos_ax2 = ax2.get_position()
+    # pos_axins1 = axins1.get_position()
+    # pos_axins2 = axins2.get_position()
+    
+    # # 向上移动axins1和axins2
+    # axins1.set_position([pos_axins1.x0, pos_axins1.y0 - 0.1, pos_axins1.width, pos_axins1.height])
+    # axins2.set_position([pos_axins2.x0, pos_axins2.y0 - 0.1, pos_axins2.width, pos_axins2.height])
+
 def plot_atklog_fig6(atklog_mb:list, ax_inset:plt.Axes, safe_thre,color):
     """
     {"depth":0,"theory":0,"attack_num":0,"success_num":0,"success_rate":0}
@@ -262,3 +298,7 @@ def plot_atklog_fig6(atklog_mb:list, ax_inset:plt.Axes, safe_thre,color):
     # if SAVE:
     #     plt.savefig(SAVE_PREFIX + "\\atklogm10_001.svg", dpi=300)
     # plt.show()
+
+
+if __name__ == "__main__":
+    plot_security_fig6()

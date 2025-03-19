@@ -892,8 +892,9 @@ class BranchBound(object):
         elif self.kb_strategy == 'withmini':
             powSuccess = True
         if powSuccess:
-            consume_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
-            self.evaluation.get_round_gas_solution(self.round, consume_gas, self.upper_bound, self.cur_keyblock.get_keyprblm_key().iz_pulp)
+            if self.evaluation.recordGasSolErrs:
+                consume_gas = self.background.get_total_gas()-self.background.get_rest_gas(self.cur_keyblock.get_keyprblm_key().fix_pid)
+                self.evaluation.get_round_gas_solution(self.round, consume_gas, self.upper_bound, self.cur_keyblock.get_keyprblm_key().iz_pulp)
             # 产生一个keyblock
             block_name = f'B{str(self.background.get_block_number())}'
             prehash = chain.lastblock.name

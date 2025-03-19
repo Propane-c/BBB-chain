@@ -5,6 +5,7 @@ sys.path.append("E:\Files\gitspace\\bbb-github")
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
 
@@ -51,9 +52,9 @@ def plot_solveround_workload_fig4(file_path: str = None):
         # df_easy = df[(df['difficulty'] == 5) & (df['var_num'] == 100)]
 
         for df, label, marker, base_color in [
-                                    (df_easy, '50 Variables', 'x', colors[2]),
-                                    (df_med, '100 Variables', 'o', colors[1]), 
-                                    (df_hard, '150 Variables', 's', colors[3])]:
+                                    (df_easy, '50 variables', 'x', colors[2]),
+                                    (df_med, '100 variables', 'o', colors[1]), 
+                                    (df_hard, '150 variables', 's', colors[3])]:
             # 先展开solve_rounds列表
             df_expanded = df.explode('solve_rounds')
             df_expanded['solve_rounds'] = df_expanded['solve_rounds'].astype(float)
@@ -87,8 +88,12 @@ def plot_solveround_workload_fig4(file_path: str = None):
                          color=color_list[i], alpha=0.7)
                 ax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
                          color=color_list[i], alpha=0.7)
+        
+        # 设置x轴刻度为1到15的整数
+        ax.set_xticks(range(1, 16))
         ax.set_xlabel('Number of miners')
         ax.set_ylabel('Solving rounds')
+        
         ax.legend()
     
     def plot_speedup(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, df_hard:pd.DataFrame, 
@@ -99,7 +104,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.plot(df_med['miner_num'], speedup_100, marker='o',color =colors[1])
         ax.plot(df_easy['miner_num'], speedup_50, marker='x',color =colors[2])
         ax.plot(df_hard['miner_num'], speedup_120, marker='s',color =colors[3])
-        ax.set_xlabel(' ')
+        ax.set_xticks(range(1, 16))
+        ax.set_xlabel('Number of miners')
         ax.set_ylabel('Speed up',labelpad = 12)
         # ax.legend()
     
@@ -216,6 +222,9 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax2.bar(df_filtered['var_num'], df_filtered['unpub_ratio'], 
             bottom=df_filtered['main_ratio'] + df_filtered['fork_ratio'], 
             label='unpublished', color=colors[2], alpha=0.8, width=width, zorder=2)
+                
+        # 设置y轴为百分比格式
+        # ax2.yaxis.set_major_formatter(PercentFormatter(1.0))  # 1.0表示原数据是小数形式
         ax2.set_xlabel('Number of variables')
         ax2.set_ylabel('Proportion of\nworkload')
         # ax2.legend()
@@ -245,40 +254,62 @@ def plot_solveround_workload_fig4(file_path: str = None):
             ax.legend()
 
     def plot_workload_comparison(ax:plt.Axes, df_easy:pd.DataFrame, df_med:pd.DataFrame):
-        # 颜色设置 - 只使用深色系，通过透明度区分
+        # 颜色设置
         colors = ["#2b6cb0", "#dc2626", "#CCCACAFF"]   # 深蓝色、深红色、深灰色
         
-        # 设置柱状图的宽度和间距
         width = 0.35  # 单个柱子的宽度
         x = np.arange(len(df_easy['miner_num']))  # 横坐标位置
         
-        # 绘制df_med的数据（不透明）
-        ax.bar(x - width/2, df_med['main_per'], width, label='main',
-            color=colors[0], alpha=0.9, zorder=2)
-        ax.bar(x - width/2, df_med['fork_per'], width, label='fork', 
-            bottom=df_med['main_per'], color=colors[1], alpha=0.9, zorder=2)
+        # 设置填充线的样式
+        hatch_color = '#333333'  # 使用深一点的灰色
+        plt.rcParams['hatch.linewidth'] = 1  # 减小填充线的粗细
+        plt.rcParams['hatch.color'] = hatch_color  # 设置填充线颜色
+        
+        # 绘制df_med的数据（使用稀疏点状填充）
+        ax.bar(x - width/2, df_med['main_per'], width,
+            color=colors[0], alpha=0.9, zorder=2, hatch='...')
+        ax.bar(x - width/2, df_med['fork_per'], width,
+            bottom=df_med['main_per'], color=colors[1], alpha=0.9, zorder=2, hatch='...')
         ax.bar(x - width/2, df_med['unpub_per'], width, 
-            bottom=df_med['main_per'] + df_med['fork_per'], label='unpublished',
-            color=colors[2], alpha=0.9, zorder=2)
+            bottom=df_med['main_per'] + df_med['fork_per'],
+            color=colors[2], alpha=0.9, zorder=2, hatch='...')
 
-        # 绘制df_easy的数据（半透明）
+        # 绘制df_easy的数据（使用稀疏斜线填充）
         ax.bar(x + width/2, df_easy['main_per'], width, 
-            color=colors[0], alpha=0.4, zorder=2)
+            color=colors[0], alpha=0.4, zorder=2, hatch='///')
         ax.bar(x + width/2, df_easy['fork_per'], width, 
-            bottom=df_easy['main_per'], color=colors[1], alpha=0.4, zorder=2)
+            bottom=df_easy['main_per'], color=colors[1], alpha=0.4, zorder=2, hatch='///')
         ax.bar(x + width/2, df_easy['unpub_per'], width, 
             bottom=df_easy['main_per'] + df_easy['fork_per'], 
-            color=colors[2], alpha=0.4, zorder=2)
+            color=colors[2], alpha=0.4, zorder=2, hatch='///')
+        
+        # 创建自定义图例
+        from matplotlib.patches import Patch
+        # 工作量类型的图例（纯色）
+        legend_elements1 = [
+            Patch(facecolor=colors[0], label='Main', alpha=0.9),
+            Patch(facecolor=colors[1], label='Fork', alpha=0.9),
+            Patch(facecolor=colors[2], label='Unpublished', alpha=0.9)
+        ]
+        # 变量数量的图例（空心）
+        legend_elements2 = [
+            Patch(facecolor='white', edgecolor=hatch_color, hatch='///', label='50 variables'),
+            Patch(facecolor='white', edgecolor=hatch_color, hatch='...', label='100 variables'),
+        ]
+        
+        # 添加两组图例
+        ax.legend(handles=legend_elements1+legend_elements2, loc='upper right')
         
         # 设置坐标轴
         ax.set_xlabel('Number of miners')
         ax.set_ylabel('Workload per miner')
         ax.set_xticks(x)
         ax.set_xticklabels(df_easy['miner_num'])
+
         
-        # 添加网格和图例
+        # 添加网格
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
-        ax.legend()
+        # ax.legend()
         
         # 在第二和第三组柱子顶部添加标注
         # 100变量的标注
@@ -375,8 +406,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.legend(title = "difficulty")
     
     # 创建子图并添加标签
-    fig = plt.figure(figsize=(10, 8))
-    grid = fig.add_gridspec(4, 2, height_ratios=[1.1, 1.1, 1.1, 1.1], width_ratios=[1, 1])
+    fig = plt.figure(figsize=(10, 8.5))
+    grid = fig.add_gridspec(4, 2, height_ratios=[0.8, 0.8, 1.2, 1.2], width_ratios=[1, 1])
     
     # 定义标签位置
     label_x = -0.12  # 标签的x位置
@@ -384,8 +415,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
     
     # 创建所有子图
     axSolveRounds = fig.add_subplot(grid[0:2, 0]) 
-    axSpeed1 = fig.add_subplot(grid[0, 1])         
-    axSpeed2 = fig.add_subplot(grid[1, 1])        
+    axSpeed1 = fig.add_subplot(grid[0:2, 1])         
+    # axSpeed2 = fig.add_subplot(grid[1, 1])        
     axWorkPer = fig.add_subplot(grid[2:4, 0])        
     axWorkVarRatio = fig.add_subplot(grid[2, 1])   
     # axWorkBalance = fig.add_subplot(grid[3, 0])   
@@ -396,17 +427,17 @@ def plot_solveround_workload_fig4(file_path: str = None):
                        fontsize=14, fontweight='bold')
     axSpeed1.text(label_x, label_y, 'b', transform=axSpeed1.transAxes, 
                   fontsize=14, fontweight='bold')
-    axSpeed2.text(label_x, label_y, 'c', transform=axSpeed2.transAxes, 
-                  fontsize=14, fontweight='bold')
-    axWorkPer.text(label_x, label_y, 'd', transform=axWorkPer.transAxes, 
+    # axSpeed2.text(label_x, label_y, 'c', transform=axSpeed2.transAxes, 
+    #               fontsize=14, fontweight='bold')
+    axWorkPer.text(label_x, label_y, 'c', transform=axWorkPer.transAxes, 
                    fontsize=14, fontweight='bold')
-    axWorkVarRatio.text(label_x, label_y, 'e', transform=axWorkVarRatio.transAxes, 
+    axWorkVarRatio.text(label_x, label_y, 'd', transform=axWorkVarRatio.transAxes, 
                         fontsize=14, fontweight='bold')
-    axWorkBalance2.text(label_x, label_y, 'f', transform=axWorkBalance2.transAxes, 
+    axWorkBalance2.text(label_x, label_y, 'e', transform=axWorkBalance2.transAxes, 
                         fontsize=14, fontweight='bold')
     
     # 设置边框颜色等
-    ax_list = [axSolveRounds, axSpeed1, axSpeed2, axWorkPer, axWorkVarRatio]  # 更新列表
+    ax_list = [axSolveRounds, axSpeed1, axWorkPer, axWorkVarRatio]  # 更新列表
     for ax in ax_list:
         for spine in ax.spines.values():
             spine.set_edgecolor('grey')
@@ -443,7 +474,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
     # plot_solve_rounds(axSolveRounds, sr_med, sr_easy)
     plot_solve_rounds_with_stats(axSolveRounds, df_easy, df_med, df_hard)
     plot_speedup(axSpeed1, sr_med, sr_easy, sr_hard, m1sr_med, m1sr_easy, m1sr_hard)
-    plot_efficiency(axSpeed2, sr_med, sr_easy, sr_hard, m1sr_med, m1sr_easy, m1sr_hard)
+    # plot_efficiency(axSpeed2, sr_med, sr_easy, sr_hard, m1sr_med, m1sr_easy, m1sr_hard)
     # plot_workload_per_miner(axWorkPer, df_easy)
     plot_workload_comparison(axWorkPer, df_easy, df_med)
     plot_workload_by_varnum(axWorkVarRatio)  # 注意这里只传一个参数
@@ -453,5 +484,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
     # plot_workload_decrease(axWorkBalance2)
     
     # 调整子图间距
-    fig.subplots_adjust(left=0.079, bottom=0.1, right=0.98, top=0.98, hspace=0.4)
+    fig.subplots_adjust(left=0.079, bottom=0.067, right=0.98, top=0.98, hspace=0.57, wspace=0.25)
     plt.show()
+
+if __name__ == "__main__":
+    plot_solveround_workload_fig4()

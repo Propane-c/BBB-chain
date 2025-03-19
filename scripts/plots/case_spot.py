@@ -517,10 +517,10 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
     # # 移除y轴上的Optimal标签，改为普通数值
     # ylabels = [f'{y:.1f}' for y in yticks]
     # ax_main.set_yticklabels(ylabels)
-    if instance_id == 28:
+    if instance_id == 42:
         ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True, 
                        loc='upper center', bbox_to_anchor=(0.5, 1.035), ncol=3, fontsize=10)
-    ax_main.set_ylim(0, 70000) if instance_id == 28 else ax_main.set_ylim(0, 125000)
+    ax_main.set_ylim(0, 65000) if instance_id == 28 else ax_main.set_ylim(0, 128000)
     
     # 在图中添加Optimal标签
     ax_main.text(19000, solution_pulp+2500, f'Optimal ({solution_pulp:.1f})', 
@@ -530,6 +530,7 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
     # 子图设置
     ax_error.set_ylabel('Error')
     ax_error.set_xlim([0, 50000])
+    ax_error.set_ylim(0.7e-1,1)
     ax_error.grid(True, linestyle='--', alpha=0.3)
     ax_error.set_yscale('log')
     for spine in ax_error.spines.values():
@@ -686,7 +687,7 @@ def plot_case_spot():
     # 子图c - Solution progress (instance 28)
     ax_c = fig.add_subplot(gs[1, 0])
     json_dir = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148"
-    plot_solution_progress_spot(json_dir, instance_id=28, miner_nums=[1, 5, 10], ax_main=ax_c, ax_error=None)
+    plot_solution_progress_spot(json_dir, instance_id=42, miner_nums=[1, 5, 10], ax_main=ax_c, ax_error=None)
     
     # 子图d - Solution error distribution
     ax_d = fig.add_subplot(gs[1, 1])
@@ -697,7 +698,7 @@ def plot_case_spot():
     # 子图e - Solution progress (instance 42)
     ax_e = fig.add_subplot(gs[2, 0])
     json_dir = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148"
-    plot_solution_progress_spot(json_dir, instance_id=42, miner_nums=[1, 5, 10], ax_main=ax_e, ax_error=None)
+    plot_solution_progress_spot(json_dir, instance_id=28, miner_nums=[1, 5, 10], ax_main=ax_e, ax_error=None)
     
     # 子图f - Solution error vs miner number
     ax_f = fig.add_subplot(gs[2, 1])
@@ -712,7 +713,7 @@ def plot_case_spot():
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
     
     # 调整标签位置
-    labels = ['a', 'b', 'c', 'd', 'e', 'f']
+    labels = ['a', 'd', 'b', 'e', 'c', 'f']
     axes = [ax_a, ax_b, ax_c, ax_d, ax_e, ax_f]
     for ax, label in zip(axes, labels):
         ax.text(-0.15, 1.05, label, transform=ax.transAxes, 

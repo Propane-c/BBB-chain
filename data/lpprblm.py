@@ -465,7 +465,7 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
         p_json_list = f.read().split('\n')[:-1]
         for fix_pid, p_json in enumerate(p_json_list):
             p_data = json.loads(p_json)
-            c = np.array(p_data['c'])
+            c = -np.array(p_data['c'])
             G_ub = np.array(p_data['G_ub'])
             h_ub = np.array(p_data['h_ub'])
             A_eq = np.array(p_data['A_eq']) if 'A_eq' in p_data.keys() else None
