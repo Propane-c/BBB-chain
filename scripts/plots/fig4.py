@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
+import matplotlib.path as mpath
+import matplotlib.patches as mpatches
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -25,14 +27,55 @@ def plot_solveround_workload_fig4(file_path: str = None):
     plt.rcParams['font.size'] = 12
     colors = ["#f9cc52", "#5494CE","#FF8283", "#0D898A"]
     # sns.set(style="whitegrid")
-    def plot_solve_rounds(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame):
-        """绘制平均求解轮数"""
-        df_med.groupby('miner_num')['ave_solve_round']
-        ax.plot(df_med['miner_num'], df_med['ave_solve_round'], label='medium', marker='o',color=colors[1])
-        ax.plot(df_easy['miner_num'], df_easy['ave_solve_round'], label='easy', marker='x',color=colors[2])
+    def plot_solve_rounds(ax:plt.Axes, df:pd.DataFrame, base_color:str, label:str, marker:str='o'):
+        # 保留原有的色块代码但注释掉
+        """
+        # 原有的色块代码
+        df_expanded = df.explode('solve_rounds')
+        stats = df_expanded.groupby('miner_num')['solve_rounds'].agg(
+            ['median', lambda x: np.percentile(x, 25), lambda x: np.percentile(x, 75)]).reset_index()
+        stats.columns = ['miner_num', 'median', 'q1', 'q3']
+        n_points = len(stats)
+        color_list = [mcolors.to_rgba(base_color, alpha) 
+                     for alpha in np.linspace(1, 0.3, n_points)]
+        
+        for i in range(len(stats)-1):
+            x_fill = [stats['miner_num'][i], stats['miner_num'][i+1]]
+            y1_fill = [stats['q1'][i], stats['q1'][i+1]]  # 下四分位数
+            y2_fill = [stats['q3'][i], stats['q3'][i+1]]  # 上四分位数
+            ax.fill_between(x_fill, y1_fill, y2_fill, 
+                          color=color_list[i], alpha=0.2)
+            ax.plot(stats['miner_num'][i:i+2], stats['median'][i:i+2], 
+                   color=color_list[i], linewidth=1.5)
+            ax.plot(stats['miner_num'][i], stats['median'][i], 
+                   marker=marker, color=color_list[i])
+        """
+
+        # 新增箱琴图代码
+        df_expanded = df.explode('solve_rounds')
+        positions = sorted(df['miner_num'].unique())
+        
+        # 创建箱琴图数据
+        data = [df_expanded[df_expanded['miner_num'] == x]['solve_rounds'] for x in positions]
+        
+        # 绘制箱琴图
+        parts = ax.violinplot(data, positions=positions, 
+                            showmeans=False, showmedians=True)
+        
+        # 设置箱琴图样式
+        for pc in parts['bodies']:
+            pc.set_facecolor(base_color)
+            pc.set_alpha(0.3)
+        
+        parts['cmedians'].set_color(base_color)
+        
+        # 添加图例项
+        ax.plot([], [], color=base_color, label=label, marker=marker)
+
+        # 设置坐标轴等
         ax.set_xlabel('Number of miners')
-        ax.set_ylabel('Solving round')
-        ax.legend()
+        ax.set_ylabel('Solving rounds')
+        ax.grid(True, linestyle='--', alpha=0.7)
 
     def plot_solve_rounds_with_stats(ax:plt.Axes, df_easy:pd.DataFrame, df_med:pd.DataFrame, df_hard:pd.DataFrame):
         """绘制求解轮数的统计图，包含中位数和四分位数"""
@@ -51,10 +94,26 @@ def plot_solveround_workload_fig4(file_path: str = None):
         # df_med = df[(df['difficulty'] == 5) & (df['var_num'] == 150)]
         # df_easy = df[(df['difficulty'] == 5) & (df['var_num'] == 100)]
 
-        for df, label, marker, base_color in [
-                                    (df_easy, '50 variables', 'x', colors[2]),
-                                    (df_med, '100 variables', 'o', colors[1]), 
-                                    (df_hard, '150 variables', 's', colors[3])]:
+        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+        
+        # 获取所有数据的 miner_num 值
+        all_miner_nums = sorted(set(df_easy['miner_num'].unique()) | 
+                               set(df_med['miner_num'].unique()) | 
+                               set(df_hard['miner_num'].unique()))
+        
+        # 确定需要添加分布图的位置
+        # 选择几个代表性的矿工数量点，避免图形过于拥挤
+        selected_miners = [1, 3, 5, 10, 15]  # 可根据实际数据调整
+        selected_miners = [m for m in selected_miners if m in all_miner_nums]
+        
+        # 存储各个变量的颜色和标签信息
+        df_list = [df_easy, df_med, df_hard]
+        label_list = ['50 variables', '100 variables', '150 variables']
+        marker_list = ['x', 'o', 's']
+        color_list = [colors[2], colors[1], colors[3]]
+        
+        # 主图中绘制统计数据
+        for df, label, marker, base_color in zip(df_list, label_list, marker_list, color_list):
             # 先展开solve_rounds列表
             df_expanded = df.explode('solve_rounds')
             df_expanded['solve_rounds'] = df_expanded['solve_rounds'].astype(float)
@@ -64,36 +123,99 @@ def plot_solveround_workload_fig4(file_path: str = None):
                 ['median', lambda x: np.percentile(x, 25), lambda x: np.percentile(x, 75)]).reset_index()
             stats.columns = ['miner_num', 'median', 'q1', 'q3']
             n_points = len(stats)
-            color_list = [mcolors.to_rgba(base_color, alpha) 
-                         for alpha in np.linspace(1, 0.3, n_points)]
+            color_shades = [mcolors.to_rgba(base_color, alpha) 
+                          for alpha in np.linspace(1, 0.3, n_points)]
             ax.plot([], [], marker=marker, color=base_color, label=label) # 图例
             
+            # 保留原有的线条和点的绘制
             for i in range(len(stats)-1):
                 x_fill = [stats['miner_num'][i], stats['miner_num'][i+1]]
                 y1_fill = [stats['q1'][i], stats['q1'][i+1]]  # 下四分位数
                 y2_fill = [stats['q3'][i], stats['q3'][i+1]]  # 上四分位数
-                ax.fill_between(x_fill, y1_fill, y2_fill, 
-                              color=color_list[i], alpha=0.2)
+                # ax.fill_between(x_fill, y1_fill, y2_fill, 
+                #               color=color_list[i], alpha=0.2)
                 ax.plot(stats['miner_num'][i:i+2], stats['median'][i:i+2], 
-                       color=color_list[i], linewidth=1.5)
+                       color=color_shades[i], linewidth=1.5)
                 ax.plot(stats['miner_num'][i], stats['median'][i], 
-                       marker=marker, color=color_list[i])
+                       marker=marker, color=color_shades[0])
             ax.plot(stats['miner_num'].iloc[-1], stats['median'].iloc[-1], 
-                   marker=marker, color=color_list[-1])
+                   marker=marker, color=color_shades[0])
             
             for i, (_, row) in enumerate(stats.iterrows()): # 四分位数的短横线
                 ax.vlines(row['miner_num'], row['q1'], row['q3'], 
-                         color=color_list[i], alpha=0.7)
+                         color=color_shades[i], alpha=0.7)
                 ax.hlines(row['q1'], row['miner_num']-0.1, row['miner_num']+0.1, 
-                         color=color_list[i], alpha=0.7)
+                         color=color_shades[i], alpha=0.7)
                 ax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
-                         color=color_list[i], alpha=0.7)
+                         color=color_shades[i], alpha=0.7)
+                
+            if label == "50 variables":
+                continue
+            # 在每个数据点旁边绘制频率直方图（归一化处理）
+            for i, (_, row) in enumerate(stats.iterrows()):
+                miner_num = row['miner_num']
+                
+                # 筛选该矿工数量下的数据
+                data = df_expanded[df_expanded['miner_num'] == miner_num]['solve_rounds'].values
+                
+                if len(data) < 3:
+                    continue  # 数据太少则跳过
+                
+                # 获取四分位数
+                q1 = row['q1']
+                q3 = row['q3']
+                
+                # 只保留q1到q3之间的数据
+                trimmed_data = data[(data >= q1) & (data <= q3)]
+                
+                if len(trimmed_data) < 3:
+                    continue  # 截断后数据太少则跳过
+                
+                # 计算直方图数据
+                n_bins = 5 if label == "150 variables" else 5 # 直方图的箱数
+                bin_range = (q1, q3)
+                hist_heights, bin_edges = np.histogram(trimmed_data, bins=n_bins, range=bin_range, density=True)
+                
+                # 固定宽度，用于所有直方图
+                fixed_width = 2.0  # 可以根据图形大小调整
+                
+                # 真正的归一化处理 - 确保每个直方图的总高度相等
+                # 计算总面积
+                bin_width = (bin_edges[1] - bin_edges[0])
+                total_area = np.sum(hist_heights * bin_width)
+                
+                # 归一化到固定总高度
+                norm_factor = 1.0 / total_area if total_area > 0 else 0
+                norm_heights = hist_heights * norm_factor
+                
+                # 再次缩放，使得视觉效果合适
+                scale_factor = (q3 - q1) * 0.5  # 最大高度比例，可调整
+                scaled_heights = norm_heights * scale_factor
+                
+                # 绘制频率柱状图（只在右侧）
+                for j in range(len(scaled_heights)):
+                    # 计算柱子高度
+                    bar_height = fixed_width  # 使用固定宽度
+                    # 计算柱子位置
+                    bar_left = miner_num 
+                    bar_bottom = bin_edges[j]  # 柱子的底部位置
+                    
+                    # 创建长方形，宽度随频率变化
+                    rect = plt.Rectangle(
+                        (bar_left, bar_bottom),  # 左下角坐标
+                        bar_height * scaled_heights[j],  # 宽度根据频率变化
+                        bin_width,   # 高度固定为bin宽度
+                        facecolor=color_shades[i],
+                        alpha=0.3,
+                        edgecolor='#333333',  # 使用浅灰色边缘线
+                        linewidth=0.2  # 细线宽度
+                    )
+                    
+                    # 添加到图中
+                    ax.add_patch(rect)
         
-        # 设置x轴刻度为1到15的整数
-        ax.set_xticks(range(1, 16))
         ax.set_xlabel('Number of miners')
         ax.set_ylabel('Solving rounds')
-        
         ax.legend()
     
     def plot_speedup(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, df_hard:pd.DataFrame, 
@@ -261,27 +383,27 @@ def plot_solveround_workload_fig4(file_path: str = None):
         x = np.arange(len(df_easy['miner_num']))  # 横坐标位置
         
         # 设置填充线的样式
-        hatch_color = '#333333'  # 使用深一点的灰色
+        hatch_color = '#1B1B1BFF'  # 使用深一点的灰色
         plt.rcParams['hatch.linewidth'] = 1  # 减小填充线的粗细
         plt.rcParams['hatch.color'] = hatch_color  # 设置填充线颜色
         
         # 绘制df_med的数据（使用稀疏点状填充）
         ax.bar(x - width/2, df_med['main_per'], width,
-            color=colors[0], alpha=0.9, zorder=2, hatch='...')
+            color=colors[0], alpha=0.9, zorder=2, hatch='///')
         ax.bar(x - width/2, df_med['fork_per'], width,
-            bottom=df_med['main_per'], color=colors[1], alpha=0.9, zorder=2, hatch='...')
+            bottom=df_med['main_per'], color=colors[1], alpha=0.9, zorder=2, hatch='///')
         ax.bar(x - width/2, df_med['unpub_per'], width, 
             bottom=df_med['main_per'] + df_med['fork_per'],
-            color=colors[2], alpha=0.9, zorder=2, hatch='...')
+            color=colors[2], alpha=0.9, zorder=2, hatch='///')
 
         # 绘制df_easy的数据（使用稀疏斜线填充）
         ax.bar(x + width/2, df_easy['main_per'], width, 
-            color=colors[0], alpha=0.4, zorder=2, hatch='///')
+            color=colors[0], alpha=0.4, zorder=2)
         ax.bar(x + width/2, df_easy['fork_per'], width, 
-            bottom=df_easy['main_per'], color=colors[1], alpha=0.4, zorder=2, hatch='///')
+            bottom=df_easy['main_per'], color=colors[1], alpha=0.4, zorder=2)
         ax.bar(x + width/2, df_easy['unpub_per'], width, 
             bottom=df_easy['main_per'] + df_easy['fork_per'], 
-            color=colors[2], alpha=0.4, zorder=2, hatch='///')
+            color=colors[2], alpha=0.4, zorder=2)
         
         # 创建自定义图例
         from matplotlib.patches import Patch
@@ -293,8 +415,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ]
         # 变量数量的图例（空心）
         legend_elements2 = [
-            Patch(facecolor='white', edgecolor=hatch_color, hatch='///', label='50 variables'),
-            Patch(facecolor='white', edgecolor=hatch_color, hatch='...', label='100 variables'),
+            Patch(facecolor='white', edgecolor=hatch_color,  label='50 variables'),
+            Patch(facecolor='white', edgecolor=hatch_color, hatch='///', label='100 variables'),
         ]
         
         # 添加两组图例
@@ -319,8 +441,8 @@ def plot_solveround_workload_fig4(file_path: str = None):
         
         # 50变量的标注
         total_height_easy = df_easy['main_per'].iloc[2] + df_easy['fork_per'].iloc[2] + df_easy['unpub_per'].iloc[2]
-        ax.text(2 + width/2, total_height_easy, '50 vars', 
-                ha='center', va='bottom')
+        ax.text(2, total_height_easy, '50\nvars', 
+                ha='left', va='bottom')
 
     def plot_workload_balance(ax:plt.Axes, miner_num:int=5, var_num:int=100):
         # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250305\\214034\workload_balance.json"
@@ -407,7 +529,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
     
     # 创建子图并添加标签
     fig = plt.figure(figsize=(10, 8.5))
-    grid = fig.add_gridspec(4, 2, height_ratios=[0.8, 0.8, 1.2, 1.2], width_ratios=[1, 1])
+    grid = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1, 1], width_ratios=[1, 1])
     
     # 定义标签位置
     label_x = -0.12  # 标签的x位置

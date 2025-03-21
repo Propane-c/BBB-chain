@@ -91,12 +91,12 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    background.set_var_num('burma14')
+    background.set_var_num('g9x3')
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
-    miner_num = miner_num if miner_num is not None else 5
+    miner_num = miner_num if miner_num is not None else 10
     background.set_miner_num(miner_num)
-    background.set_bb_difficulty(5)
+    background.set_bb_difficulty(1)
     background.set_openblock_strategy(bb.OB_RAND)
     background.set_openprblm_strategy(bb.OP_RAND)
     if pool_path is not None:
@@ -107,13 +107,13 @@ def run(pool_path=None, miner_num =None):
     #     pool_path = Path.cwd()/"Problem Pools"/"20250103"/f"100vars.json"
         # pool_path = Path.cwd()/"Problem Pools\\fig1.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
-        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        # pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
-        # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var54_soft27_con54_pseudoBoolean-normalized-g9x3.opb.msat.json"
+        pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
 
-    # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
-    # lp = prblm_pool[0]
-    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"bayg29.xml")
+    prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
+    lp = prblm_pool[0]
+    # lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"bayg29.xml")
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\problem pool1007_1837.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -136,7 +136,7 @@ def run(pool_path=None, miner_num =None):
     # lp = lpprblm.test5()
     background.set_genesis_prblm(lp)
     background.set_enable_gas(False)
-    background.set_total_gas(20000)
+    background.set_total_gas(20000000000)
     background.init_gases([lp])   
     set_logger(background, logging.ERROR)
     quiet=False
@@ -217,14 +217,14 @@ if __name__ == '__main__':
     # pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
     # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
 
-    simu_type = "single_run"
+    # simu_type = "single_run"
     # simu_type = "long"
-    # simu_type = "short"
-    # multiProcessOn = True
-    multiProcessOn = False
-    threadNum = 1
+    simu_type = "short"
+    multiProcessOn = True
+    # multiProcessOn = False
+    threadNum = 5
     # enGas = 2
-    enGas = 1
+    enGas = 0
     # enGas = 0 # 0不启用gas，1 总gas，2 gas/miner
     """
     short参数说明:
@@ -233,7 +233,7 @@ if __name__ == '__main__':
     
     """
     rpt_num1 = 1
-    rpt_num = 3
+    rpt_num = 1
     args_list = [
         # [500,   rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
         # [500,   rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
@@ -257,33 +257,29 @@ if __name__ == '__main__':
         # [2500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
         # [2500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
 
-        # [enGas, 2500,  rpt_num, 15, 120, [5],  [1], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 120, [5],  [3], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 120, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 120, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 120, [5],  [15], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 100, [5],  [1], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 100, [5],  [3], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 100, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 100, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 100, [5],  [15], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 50, [5],  [1], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 50, [5],  [3], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 50, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 50, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 15, 50, [5],  [15], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 10, 100, [5],  [20], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 50, 150, [5],  [15, 5,10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 50, 150, [5],  [1, 20], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 50, 200, [5],  [1,5,10,15,20], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
 
         # [enGas, 2500,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 30, 70, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 30, 70, [5],  [10], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 30, 70, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 30, 70, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 30, 70, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 30, 70, [5],  [15], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
         

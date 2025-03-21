@@ -44,12 +44,12 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
     if m == 'load':
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
-        # pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
+        pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
         # pool_path = Path(".\\testTSP\problem poolburma14.json")
         # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
-        pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
+        # pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
         prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path, pool_save_path)
     elif m == 'rand':
         prblm_pool = lpprblm.prblm_pool_generator(pool_size, var_num, lpprblm.ZERO_ONE)

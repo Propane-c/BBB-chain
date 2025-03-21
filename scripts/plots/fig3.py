@@ -20,6 +20,7 @@ from matplotlib.gridspec import GridSpec
 MAXSAT='maxsat'
 TSP='tsp'
 MIPLTP='miplib'
+FANGDA  = "fangda"
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\figs\\fig3"
 
@@ -38,6 +39,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     if ax is None:
         if type == TSP:
             fig = plt.figure(figsize=(12, 5))
+        elif type == FANGDA:
+            fig = plt.figure(figsize=(6, 5))
         else:
             fig = plt.figure(figsize=(8, 5))
         ax = fig.gca()
@@ -66,7 +69,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
                 pre_pname = get_pname(pre_point["pre_pname"])
         print("count chilren finished")
 
-    def draw_int_path(path, color = "#FF8283", linewidth=1.5, linestyle='--'):
+    def draw_int_path(path, color = "#FF8283", linewidth=1.8, linestyle='--'):
         for i in range(len(path) - 1):
             start_point = (path[i]['bround'], path[i]['ub'])
             end_point = (path[i + 1]['bround'], path[i + 1]['ub'])
@@ -86,7 +89,6 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         if pre_point is None:
             return None 
         return root_df[root_df['block'] == pre_point['block']].iloc[0]
-
     
     data = data_list[0]
     ub_data = data.get("ubdata", [])
@@ -107,11 +109,9 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     children_counts = defaultdict(lambda : 1) 
     count_children(ub_data)
     
-    print(children_counts)
-
+    print("loading data")
     # 创建数据帧
     ub_df = pd.DataFrame(ub_data)
-    # ub_df['ub'] = -ub_df['ub']
     ub_df['children_count'] = ub_df['pname'].apply(lambda x: children_counts[get_pname(x)])
     ub_df['pname'] = ub_df['pname'].apply(lambda x: get_pname(x))
     ub_df['pre_pname'] = ub_df['pre_pname'].apply(lambda x: get_pname(x) if x != "None" else None)
@@ -123,7 +123,6 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     min_ub_df = main_df[main_df['ub'] == main_df.groupby('block')['ub'].transform('min')]
     max_ub_value = main_df.groupby('block')['ub'].max()
     block_df = pd.merge(min_ub_df, max_ub_value, on='block', suffixes=('_min', '_max'))
-    # block_df = main_df.groupby('block').agg(min_ub=('ub', 'min'), max_ub=('ub', 'max'), bround=('bround', 'min')).reset_index()
     pre_rows = []
     for _, row in root_df.iterrows():
         pre_pname = row['pre_pname']
@@ -135,16 +134,12 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         pre_pname = row['pre_pname']
         matched_row = ub_df[ub_df['pname'] == pre_pname]
         bpre_rows.append(matched_row)
-        
-    bpre_df = pd.concat( bpre_rows)
+    bpre_df = pd.concat(bpre_rows)
     children_counts[((0,0),0)]=bpre_df['children_count'].max()
-    print(ub_df)
-    print(block_df)
-    print(root_df)
-    print(pre_df)
 
-     # sns.set(style="white")
-    
+    # sns.set(style="white")
+
+    print("drawing integer path")
     # 对于相同的整数解，只保留最早出现的点
     int_df = ub_df[(ub_df["allInteger"] == True) & (ub_df["block"]!= "None")].copy()
     int_df = int_df.sort_values('bround')  # 按轮次排序
@@ -179,26 +174,41 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     for path in int_paths:
         if max_bround_point in path:
             # 用红色标记这条路径
-            draw_int_path(path, "red", 5,'-')
+            if type == FANGDA:
+                draw_int_path(path, "#D62728", 10,'--')
+            else:
+                draw_int_path(path, "#D62728", 4,'--')
         else:
             # 其他路径使用默认颜色
             draw_int_path(path)
+    
 
+    print("drawing points")
     sampled_points = set(root_df['pname']).union(intpath_points).union((((0,0),0)))
     # sampled_points = set(ub_df.sample(frac=0.1, random_state=0)['pname'])
     # sampled_points = sampled_points.union(intpath_points)
     # ["#B96666","#78BCFF","#66A266","#F2A663","#BEA9E9"] 
     # ["#FF8283", "#0D898A","#f9cc52","#5494CE", ] '#00796B' '#ff8c00' '#b22222'
+    
     # 绘制UB数据点和连接线
     smain = 15
     smain = 15 if type == MAXSAT else 40
     if type == TSP:
-        s = 10
-    elif type == MAXSAT:
-        s = 40
-    else:
         s = 15
-    sopt = 80 if type == TSP else 40
+        sorange = 3
+        sopt = 80
+    elif type == MAXSAT:
+        s = 15
+        sorange = 15
+        sopt = 40
+    elif type == MIPLTP:
+        s = 15
+        sorange = 15
+        sopt = 40
+    elif type == FANGDA:
+        s = 15
+        sorange = 15
+        sopt = 200
     rasterized=False if type == MIPLTP else True
     if type != TSP:
         sns.scatterplot(x="bround",y ="ub",
@@ -208,22 +218,27 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     sns.scatterplot(x="bround",y ="ub",
                     data = ub_df[(ub_df["fathomed"]== True) & 
                                  (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
-                    color = "#ff8c00", s= s, rasterized=rasterized, edgecolor="none",alpha = 0.5)
+                    color = "#FF9E4A", s= sorange, rasterized=rasterized, edgecolor="none",alpha = 0.5)
+    # sns.scatterplot(x="bround",y ="ub",
+    #                 data = ub_df[(ub_df["fathomed"]== True) & 
+    #                              (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , ff8c00#FF9E4A
+    #                 color = "#EDB120", s= s, rasterized=rasterized, edgecolor="none",alpha = 0.5)#E6D5BE #ee9b00
     sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["block"]== "None")], 
-                    color = "#9acd32", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
+                    color = "#9acd32", s= s,rasterized=rasterized,edgecolor="none",zorder = 1, alpha = 0.5)
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
                     color = "black", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
     
     sns.scatterplot(x="bround",y ="ub",data = int_df, 
-                    color = "r", s = sopt,rasterized=rasterized,edgecolor="none",zorder = 6)
+                    color = "#D62728", s = sopt,rasterized=rasterized,edgecolor="none",zorder = 6)
+    
+
+    print("drawing main chain")
     point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
-    print(bpre_df['children_count'].max())
+    # print(bpre_df['children_count'].max())
     blues = plt.cm.Blues
-    # my_blues = mcolors.LinearSegmentedColormap.from_list("my_blues", 
-    #["#caf0f8","#caf0f8","#ade8f4","#90e0ef","#48cae4","#00b4d8","#0096c7", "#0077b6","#003049"])#"#caf0f8" ,
-    drawRect = True if type != TSP else False
+    drawRect = True if type != TSP and type != FANGDA else False
+
     def adjust_width_for_log_scale(center_x, desired_width, base=10):
-        # Calculate the factor to adjust the width in log scale
         factor = (np.log10(center_x + desired_width/2) - np.log10(center_x - desired_width/2)) / desired_width
         
         # Adjust the width and calculate the new left edge
@@ -240,8 +255,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             if row['block'] in blocks:
                 continue
             i+=1
-            print(i)
-            print(row)
+            # print(i)
+            # print(row)
         # 提取每个block的数据
             blocks.append(row['block'])
             min_ub = row['ub_min']
@@ -254,13 +269,9 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             # 计算对数尺度下的矩形边界
             l = 0.05 if type == MAXSAT else 1
             rect = Rectangle((left, min_ub-l), width, max_ub - min_ub+l*2, 
-                            linewidth=1.5, edgecolor='#5494CE',  facecolor = color,#facecolor='#00b4d8',
+                            linewidth=1.5, edgecolor='#5494CE',  facecolor = color,
                             linestyle='-', capstyle='round', joinstyle='round',
                             rotation_point='center',alpha = 0.4, zorder = 2)
-            # rect = FancyBboxPatch((row['bround'] - 500, min_ub), 
-            #                   1000, max_ub - min_ub, 
-            #                   boxstyle="round,pad=0.2,rounding_size=100", linewidth=1, 
-            #                   edgecolor='none', facecolor='#0096c7', linestyle='--')
             ax.add_patch(rect)
         for idx, block_row in block_df.iterrows():
             # 获取block点的坐标
@@ -280,7 +291,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     lb_rounds_new = list(map(int, lowerbounds.keys()))
     if type == MAXSAT:
         lb_values_new = [-v for v in lowerbounds.values()]
-    elif type == TSP:
+    elif type == TSP or type == FANGDA:
         lb_values_new = [v for v in lowerbounds.values()]
     elif type == MIPLTP:
         lb_values_new = [v for v in lowerbounds.values()]
@@ -297,38 +308,45 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         alpha=0.6
         color = '#0072BD'  # 默认颜色
         if math.log(point['children_count']) > 10:
-            zorder = 5
+            zorder = 1
         elif math.ceil(math.log(point['children_count'])) > 5:
-            zorder = 4
-        elif math.ceil(math.log(point['children_count'])) > 3:
             zorder = 3
+        elif math.ceil(math.log(point['children_count'])) > 3:
+            zorder = 2
         elif math.ceil(math.log(point['children_count'])) > 1:
             zorder = 2
         elif math.ceil(math.log(point['children_count'])) >= 0:
-            zorder = 1  
-        s = ((point['children_count'])**0.5)*30+10
+            zorder = 2  
+            alpha = 0.8
+        if type == TSP:
+            s = ((point['children_count'])**0.5)*10+5
+        elif type == FANGDA:
+            s = ((point['children_count'])**0.5)*30+10
         # s = 10
         # print(math.log(point['children_count']))
-        color = point_cmap(1- point_norm(math.log(point['children_count'])))
-        # color = 
-        if pre_point["allInteger"]:
-            color = 'r' 
-            alpha = 1 
-            s = 30
-            zorder = 50
-            print(point["pname"])
-        if pre_point["fathomed"] and not point["allInteger"]:
-            color = 'orange' 
-            s = 1
-        if pre_point["isFork"]:
-            color = "black"
-            alpha = 1
-            s = 50
-        if pre_point["block"] == "None":
-            color = "#9acd32"
-            alpha = 0.5
-            s = 50
-            # alpha = 0.5
+        color = point_cmap(0.1 + 0.75 *(1- point_norm(math.log(point['children_count']))))
+        
+        if (pre_point["allInteger"] or (pre_point["fathomed"] and not point["allInteger"]) 
+            or pre_point["isFork"] or pre_point["block"] == "None"):
+            return
+        
+        # if pre_point["allInteger"]:
+        #     color = 'r' 
+        #     alpha = 1 
+        #     s = 30
+        #     zorder = 50
+        #     # print(point["pname"])
+        # if pre_point["fathomed"] and not point["allInteger"]:
+        #     color = 'orange' 
+        #     s = 1
+        # if pre_point["isFork"]:
+        #     color = "black"
+        #     alpha = 1
+        #     s = 50
+        # if pre_point["block"] == "None":
+        #     color = "#9acd32"
+        #     alpha = 0.5
+        #     s = 50
         ax.scatter(point["bround"], pre_point["ub"], color=color, alpha=alpha, 
                     s =s ,zorder =  zorder, rasterized=rasterized,
                     edgecolor='none')
@@ -336,11 +354,11 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     def get_pre_point(point):
         pre_point_rows = ub_df[ub_df['pname'] == point['pre_pname']]
         if pre_point_rows.empty:
-            print("not foundd pre", point['pname'])
+            # print("not foundd pre", point['pname'])
             return point
         return pre_point_rows.iloc[0]       
     
-    if type == TSP:
+    if type == TSP or type == FANGDA:
         for i, point in ub_df.iterrows():
             if point['pname'] not in sampled_points:
                 continue  # 只绘制抽样的点
@@ -354,7 +372,9 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             draw_point(point, pre_point)
 
     # # 绘制Lowerbounds的线段
-    ax.plot(lb_rounds_new, lb_values_new, color="#66A266", linewidth=8, zorder = 3)
+    bound_line_width = 6 if type != FANGDA else 10
+    ax.plot(lb_rounds_new, lb_values_new, color="#66A266", linewidth=bound_line_width, zorder = 5)
+    # ax.plot(lb_rounds_new, lb_values_new, color="#60636A", linewidth=5, zorder = 3)
 
     plts = [plt.Line2D([], [], color='green', linewidth=2, label='upper bounds'),
         plt.Line2D([],[],color="red", linestyle='None',marker = 'o', label="integer"),
@@ -365,12 +385,34 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     
     ax.set_xlabel(None)
     ax.set_ylabel('Values')
-    ax.set_xscale("log")
+    if not type == FANGDA:
+        ax.set_xscale("log")
     
-    fig.subplots_adjust(left=0.118, bottom=0.079, right=0.975, top=0.974)
+    if type == FANGDA:
+        fig.subplots_adjust(left=0.166, bottom=0.102, right=0.936, top=0.974)
+    elif type == TSP:
+        fig.subplots_adjust(left=0.09, bottom=0.102, right=0.975, top=0.974)
+    elif type == MIPLTP:
+        fig.subplots_adjust(left=0.112, bottom=0.102, right=0.975, top=0.974)
+    elif type == MAXSAT:
+        fig.subplots_adjust(left=0.09, bottom=0.102, right=0.975, top=0.974)
     if type == TSP:
-        ax.set_xlim(2000, 110000)
+        ax.set_xlim(96, 110000)
+        # ax.set_xlim(2500, 110000)
         ax.set_ylim(2700, 4000)
+    elif type == FANGDA:
+        if m == 1:
+            ax.set_xlim(51000, 55000)
+            ax.set_ylim(3000, 3600)
+        elif m == 3:
+            ax.set_xlim(29000, 30500) # 29649
+            ax.set_ylim(3000, 3600)
+        elif m == 5:
+            ax.set_xlim(1500, 3000) # 
+            ax.set_ylim(3000, 3600)
+        elif m == 10:
+            ax.set_xlim(1800,2300)
+            ax.set_ylim(3000, 3600)# 2132
     elif type == MAXSAT:
         ax.set_xlim(100, 4500)
         ax.set_ylim(59, 63)
@@ -383,8 +425,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # plt.xlim(-30, 430)
     # plt.grid(True)
     # plt.legend(handles = plts)
-    ax.set_rasterized(True)
-    plt.savefig(SAVE_PREFIX + f"\\bounds_{type}_m{m}_{time.strftime('%m%d_%H%M%S')}.svg", dpi=200)
+    ax.set_rasterized(False)
+    plt.savefig(SAVE_PREFIX + f"\\bounds_{type}_m{m}_{time.strftime('%m%d_%H%M%S')}.svg", dpi=150)
     plt.show()
 
 def create_fig3():
@@ -431,34 +473,47 @@ def create_fig3():
     
     # # 保存图片
     # plt.savefig(SAVE_PREFIX + f"\\bounds_maxsat{time.strftime('%H%M%S')}.svg",  dpi=300)
-    # plt.show()
+    plt.show()
 
 if __name__ == "__main__":
     # create_fig3()
-    f1 = Path.cwd()/"Results/20250316/134735/pint24_conti24_ub24_eq10_gr4x6m1d1evaluation results.json"
-    f2 = Path.cwd()/"Results/20250316/134727/pint24_conti24_ub24_eq10_gr4x6m3d1evaluation results.json"
-    f3 = Path.cwd()/"Results/20250316/134140/pint24_conti24_ub24_eq10_gr4x6m5d1evaluation results.json"
-    f4 = Path.cwd()/"Results/20250316/133345/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm1d1evaluation results.json"
-    f5 = Path.cwd()/"Results/20250316/133803/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm3d1evaluation results.json"
-    f6 = Path.cwd()/"Results/20250316/133936/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm5d1evaluation results.json"   
+    f1 = Path.cwd()/"Results/20250316/pint24_conti24_ub24_eq10_gr4x6m1d1evaluation results.json"
+    f2 = Path.cwd()/"Results/20250316/pint24_conti24_ub24_eq10_gr4x6m3d1evaluation results.json"
+    f3 = Path.cwd()/"Results/20250316/pint24_conti24_ub24_eq10_gr4x6m10d1evaluation results.json"
+    f4 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm1d1evaluation results.json"
+    f5 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm3d1evaluation results.json"
+    f6 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm10d1evaluation results.json"   
     f7 = Path.cwd()/"Result_Data/tspfig3/m1d5vtspevaluation results.json"
     f8 = Path.cwd()/"Result_Data/tspfig3/m3d5vtspevaluation results.json"
     f9 = Path.cwd()/"Result_Data/tspfig3/m5d5vtspevaluation results.json"
     f10 = Path.cwd()/"Results/20250317/201726/pvar54_soft27_con54_pseudoBoolean-normalized-g9x3.opb.msatm1d1evaluation results.json"
 
-    # f7 = Path.cwd()/ "Results\\20250319\\175110\\burma14m1d10evaluation results.json"
-    # f8 = Path.cwd()/ "Results\\20250319\\175110\\burma14m3d10evaluation results.json"
-    # f9 = Path.cwd()/ "Results\\20250319\\175110\\burma14m5d10evaluation results.json"
-    f10 = Path.cwd()/ "Results\\20250319\\175110\\burma14m10d10evaluation results.json"
+    f11 = Path.cwd()/ "Results\\20250319\\175110\\burma14m1d10evaluation results.json"
+    f12 = Path.cwd()/ "Results\\20250319\\175110\\burma14m3d10evaluation results.json"
+    f13 = Path.cwd()/ "Results\\20250319\\175110\\burma14m5d10evaluation results.json"
+    f14 = Path.cwd()/ "Results\\20250319\\175110\\burma14m10d10evaluation results.json"
 
+
+    f7 = Path.cwd()/ "Results\\20250319\\184042\\burma14m1d5evaluation results.json"
+    f8 = Path.cwd()/ "Results\\20250319\\184042\\burma14m3d5evaluation results.json"
+    f9 = Path.cwd()/ "Results\\20250319\\184042\\burma14m5d5evaluation results.json"
+    f10 = Path.cwd()/ "Results\\20250319\\184042\\burma14m10d5evaluation results.json"
 
     # plot_bounds_fig3(f1, MIPLTP, m=1)
     # plot_bounds_fig3(f2, MIPLTP, m=3)
-    # plot_bounds_fig3(f3, MIPLTP, m=5)
+    # plot_bounds_fig3(f3, MIPLTP, m=10)
     # plot_bounds_fig3(f4, MAXSAT,m=1)
     # plot_bounds_fig3(f5, MAXSAT,m=3)
-    # plot_bounds_fig3(f6, MAXSAT,m=5)
+    plot_bounds_fig3(f6, MAXSAT,m=10)
     # plot_bounds_fig3(f7, TSP,m=1)
     # plot_bounds_fig3(f8, TSP,m=3)
     # plot_bounds_fig3(f9, TSP,m=5)
-    plot_bounds_fig3(f10, TSP,m=10)
+    # plot_bounds_fig3(f10, TSP,m=10)
+    # plot_bounds_fig3(f11, TSP,m=1)
+    # plot_bounds_fig3(f12, TSP,m=3)
+    # plot_bounds_fig3(f13, TSP,m=5)
+    # plot_bounds_fig3(f14, TSP,m=10)
+    # plot_bounds_fig3(f7, FANGDA,m=1)
+    # plot_bounds_fig3(f8, FANGDA,m=3)
+    # plot_bounds_fig3(f9, FANGDA,m=5)
+    # plot_bounds_fig3(f10, FANGDA,m=10)
