@@ -91,10 +91,10 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    background.set_var_num('g9x3')
+    background.set_var_num('29spot')
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
-    miner_num = miner_num if miner_num is not None else 10
+    miner_num = miner_num if miner_num is not None else 1
     background.set_miner_num(miner_num)
     background.set_bb_difficulty(1)
     background.set_openblock_strategy(bb.OB_RAND)
@@ -107,19 +107,19 @@ def run(pool_path=None, miner_num =None):
     #     pool_path = Path.cwd()/"Problem Pools"/"20250103"/f"100vars.json"
         # pool_path = Path.cwd()/"Problem Pools\\fig1.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
-        # pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
-        pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
+        # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
 
     prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
     lp = prblm_pool[0]
     # lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"bayg29.xml")
     # lp = lpprblm.load_prblm_pool_from_json(
-    #     ".\Problem Pools\\problem pool1007_1837.json")[0]
+        # ".\Problem Pools\\problem pool1007_1837.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
     #     ".\Problem Pools\\1116\problem pool1116_105207.json")[0]
     # lp = lpprblm.rand_01(50)
-    # spot_file_path = "E:\Files\A-blockchain\\branchbound\SPOT5\data\\29.spot"
+    # spot_file_path = Path.cwd()/ "Problem Pools\\SPOT\origin_spot\\28.spot"
     # spot_file_path = pool_path
     # lp = spot.spot_to_ilp(spot_file_path)
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -135,13 +135,13 @@ def run(pool_path=None, miner_num =None):
     #     background.get_result_path())
     # lp = lpprblm.test5()
     background.set_genesis_prblm(lp)
-    background.set_enable_gas(False)
-    background.set_total_gas(20000000000)
+    background.set_enable_gas(True)
+    background.set_total_gas(50000)
     background.init_gases([lp])   
     set_logger(background, logging.ERROR)
     quiet=False
-    recordSols = True
-    recordGasSolErrs = True
+    recordSols = False
+    recordGasSolErrs = False
     Z = Environment(background, t, q_ave, q_distr, target, adversary_ids, network_param, recordSols, recordGasSolErrs)
     # Z.env_load_prblm_pool([lp, lp2])
     total_round = Z.exec(quiet=quiet)
@@ -217,14 +217,14 @@ if __name__ == '__main__':
     # pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
     # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
 
-    # simu_type = "single_run"
+    simu_type = "single_run"
     # simu_type = "long"
-    simu_type = "short"
-    multiProcessOn = True
-    # multiProcessOn = False
-    threadNum = 5
+    # simu_type = "short"
+    # multiProcessOn = True
+    multiProcessOn = False
+    threadNum = 1
     # enGas = 2
-    enGas = 0
+    enGas = 1
     # enGas = 0 # 0不启用gas，1 总gas，2 gas/miner
     """
     short参数说明:

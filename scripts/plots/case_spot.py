@@ -142,7 +142,7 @@ def plot_task_vs_solution_round_spot(json_file_path, ax:plt.Axes):
     ax.set_xticklabels([str(x) for x in var_nums])
     
     ax.legend(framealpha=0.9, edgecolor='none', fancybox=True,
-             loc='upper center', bbox_to_anchor=(0.5, 1.03), ncol=3, fontsize=10)
+             loc='upper center', bbox_to_anchor=(0.5, 1), ncol=3, fontsize=10)
     ax.grid(True, linestyle='--', alpha=0.6)
     
     # 添加椭圆标注，只标注80个任务的数据点
@@ -311,7 +311,7 @@ def plot_ave_solution_error_spot(json_file_path, ax:plt.Axes, ax_inset:plt.Axes)
 
     # 主图设置
     ax.set_xlabel("Number of tasks")
-    ax.set_ylabel("Solution error")
+    ax.set_ylabel("Optimality gap")
     ax.grid(True, linestyle="--", alpha=0.3)
     # ax.legend(framealpha=0.9, edgecolor='none', fancybox=True, loc='upper left')
     ax.legend(framealpha=0.0, edgecolor='none', fancybox=True,
@@ -422,17 +422,49 @@ def plot_solve_err_vs_gas_spot(json_file_path, groups):
             color=colors[i], marker='o', linestyle='-', label=f"Gas={gas}"
         )
     plt.xlabel("Number of Tasks", fontsize=14)
-    plt.ylabel("Optimal Error", fontsize=14)
+    plt.ylabel("Optimality gap", fontsize=14)
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.ylim([0, 0.1])
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
+# 预处理数据：对于round不同但其他特征相同的数据点，只保留round最小的，但也保留最后一个数据点
+def filter_data_points(data_points):
+    # 按照round排序（从小到大）
+    sorted_points = sorted(data_points, key=lambda x: x[0])
+    
+    # 用字典来存储特征相同的数据点中round最小的
+    min_round_dict = {}
+    last_point = None
+    
+    # 遍历所有数据点
+    for point in sorted_points:
+        round_val = point[0]
+        
+        # 提取后面两个特征作为键
+        key = (point[2], point[3])  # 假设第2和第3个特征是索引1和2
+        
+        # 如果这个特征组合还没有记录过，则记录它
+        if key not in min_round_dict:
+            min_round_dict[key] = point
+        
+        # 记录最后一个点
+        last_point = point
+    
+    # 获取所有最小round的点
+    result_points = list(min_round_dict.values())
+    
+    # 如果最后一个点不在结果中，则添加进去
+    if last_point not in result_points:
+        result_points.append(last_point)
+    
+    # 按round排序返回结果
+    return sorted(result_points, key=lambda x: x[0])
 
 def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, ax_main, ax_error):
     """绘制求解进度"""
     # 创建子图用于error
-    ax_error = ax_main.inset_axes([0.6, 0.15, 0.35, 0.45])  # 调整error子图位置
+    ax_error = ax_main.inset_axes([0.55, 0.15, 0.35, 0.45])  # 调整error子图位置
     
     # 定义更丰富的样式
     styles = {
@@ -443,9 +475,16 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
             'alpha': 0.9,
             'zorder': 1
         },
+        3: {
+            'color': '#f59e0b',  # 亮红色
+            'marker': 'x',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 2
+        },
         5: {
             'color': '#10b981',  # 亮红色
-            'marker': 's',
+            'marker': 'x',
             'linestyle': '-',
             'alpha': 0.9,
             'zorder': 2
@@ -469,6 +508,7 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
             data = json.load(f)
         
         gas_round_sol_errs = data['gas_round_sol_errs']
+        gas_round_sol_errs = filter_data_points(gas_round_sol_errs)
         rounds = [item[0] for item in gas_round_sol_errs]
         solutions_bbb = [-item[2] for item in gas_round_sol_errs]
         solution_errs = [item[3] for item in gas_round_sol_errs]
@@ -481,29 +521,38 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
         ax_main.fill_between(rounds, solutions_bbb, solution_pulp,
                         color=style['color'], alpha=0.1)
         # 主曲线
+        # x_step, y_step = create_step_data(rounds, solutions_bbb)
         ax_main.plot(rounds, solutions_bbb, 
                 color=style['color'],
                 marker=style['marker'],
                 markersize=4,
-                markevery=0.05,  # 减少标记点数量
+                # markevery=0.05,  # 
                 linestyle=style['linestyle'],
                 alpha=style['alpha'],
-                label=f'{m} miners',
+                label=f'{m} solvers',
                 zorder=style['zorder'])
+        
+        # # 只在原始数据点位置添加标记
+        # for i in range(len(rounds)):
+        #     ax_main.plot(rounds[i], solutions_bbb[i],
+        #             color=style['color'],
+        #             marker=style['marker'],
+        #             markersize=4,
+        #             linestyle='None')
         
         # 子图
         ax_error.plot(rounds, solution_errs,
                 color=style['color'],
                 marker=style['marker'],
                 markersize=3,
-                markevery=0.1,
+                # markevery=0.1,
                 alpha=style['alpha'],
                 zorder=style['zorder'])
 
     # 主图设置
-    ax_main.axhline(y=solution_pulp, color='#4b5563', linestyle='--', 
+    ax_main.axhline(y=solution_pulp, color='#D62728', linestyle='--', #4b5563
                     linewidth=1.5, zorder=1)
-    ax_main.set_xlim([0, 50000])
+    ax_main.set_xlim([0, 100000])
     ax_main.set_xlabel('Round')
     ax_main.set_ylabel(f'Solutions of {instance_id}.spot')
     ax_main.grid(True, linestyle='--', alpha=0.3, zorder=0)
@@ -520,16 +569,21 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
     if instance_id == 42:
         ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True, 
                        loc='upper center', bbox_to_anchor=(0.5, 1.035), ncol=3, fontsize=10)
-    ax_main.set_ylim(0, 65000) if instance_id == 28 else ax_main.set_ylim(0, 128000)
+    if instance_id == 29:
+        ax_main.set_ylim(12025, 12033)
+    elif instance_id == 28:
+        ax_main.set_ylim(0, 65000)
+    elif instance_id == 42:
+        ax_main.set_ylim(0, 128000)
     
     # 在图中添加Optimal标签
     ax_main.text(19000, solution_pulp+2500, f'Optimal ({solution_pulp:.1f})', 
-                color='#4b5563', 
+                color='#4b5563', #4b5563
                 verticalalignment='center')
     
     # 子图设置
-    ax_error.set_ylabel('Error')
-    ax_error.set_xlim([0, 50000])
+    ax_error.set_ylabel("Optimality\n gap")
+    ax_error.set_xlim([0, 100000])
     ax_error.set_ylim(0.7e-1,1)
     ax_error.grid(True, linestyle='--', alpha=0.3)
     ax_error.set_yscale('log')
@@ -636,7 +690,7 @@ def plot_ave_solution_error_vs_gas(json_file_path, ax:plt.Axes):
 
     # 设置图表属性
     ax.set_xlabel('Gas/miner')
-    ax.set_ylabel('Solution error')
+    ax.set_ylabel("Optimality gap")
     ax.set_yscale('log')
 
     ax.grid(True, linestyle='--', alpha=0.3)
@@ -660,6 +714,218 @@ def plot_ave_solution_error_vs_gas(json_file_path, ax:plt.Axes):
         # 添加文本标注
         ax.text(target_gas - 300, y_max * 1.8, f"Gas/miner={target_gas}", 
                color='gray', fontsize=12, ha='left', va='center')
+        
+def plot_gas_vs_round1(json_dir1, json_dir2, miner_nums:list, miner_nums2:list, ax_gas:plt.Axes):
+    """绘制gas随round的变化"""
+    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
+    markers = ['o', 's', '^', 'D', 'P']
+    styles = {
+        1: {
+            'color': '#3b82f6',  # 亮蓝色
+            'marker': 'o',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 1
+        },
+        3: {
+            'color': '#f59e0b',  # 亮红色
+            'marker': 'x',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 2
+        },
+        10: {
+            'color': '#ef4444',  # 亮绿色
+            'marker': '^',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 3
+        }
+    }
+    
+    
+    for m in miner_nums2:
+        json_path = f"{json_dir2}/p28m{m}d5evaluation results.json"
+        with open(json_path, 'r') as f: 
+            data = json.load(f)
+        
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        
+        # 计算gas值和差值
+        gas_values = [item[1] for item in gas_consumes]
+        
+        style2 = styles[m]
+        # 左轴画gas消耗差
+        # # 右轴画gas剩余值
+        ax_gas.plot(rounds, gas_values,
+                color=style2['color'],
+                linewidth=1,
+                linestyle='--',
+                marker=style2['marker'],
+                markersize=4,
+                markevery=0.05,
+                alpha=1,
+                label=f'{m} miners (rest)',
+                zorder=5)
+    
+    for m in miner_nums:
+        json_path = f"{json_dir1}/p42m{m}d5evaluation results.json"
+        with open(json_path, 'r') as f: 
+            data = json.load(f)
+        
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        
+        # 计算gas值和差值
+        gas_values = [item[1] for item in gas_consumes]
+        
+        style = styles[m]
+        # 左轴画gas消耗差
+        # # 右轴画gas剩余值
+        ax_gas.plot(rounds, gas_values,
+                color=style['color'],
+                linewidth=1,
+                linestyle='-',
+                marker=style['marker'],
+                markersize=4,
+                markevery=0.1,
+                alpha=1,
+                label=f'{m} miners (rest)',
+                zorder=5)
+        
+    # 设置左轴
+    ax_gas.set_xlabel('Round')
+    # ax_gas.set_ylabel('Total gas \nconsumption')
+    ax_gas.set_ylim(0, 60000)
+    ax_gas.set_xlim([0, 100000])
+    ax_gas.grid(True, linestyle='--', alpha=0.2)
+    
+
+    for spine in ax_gas.spines.values():
+        spine.set_edgecolor('#dddddd')
+
+def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
+    """绘制gas随round的变化"""
+    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
+    markers = ['o', 's', '^', 'D', 'P']
+    styles = {
+        1: {
+            'color': '#3b82f6',  # 亮蓝色
+            'marker': 'o',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 1
+        },
+        3: {
+            'color': '#f59e0b',  # 亮红色
+            'marker': 'x',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 2
+        },
+        10: {
+            'color': '#ef4444',  # 亮绿色
+            'marker': '^',
+            'linestyle': '-',
+            'alpha': 0.9,
+            'zorder': 3
+        }
+    }
+    ax_gas2 = ax_gas.twinx()
+    for m in miner_nums:
+        json_path = f"{json_dir}/p{ins}m{m}d5evaluation results.json"
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        print("rounds",len(rounds))
+        solve_rounds = data['solve_rounds']
+        max_round = solve_rounds["B0"] if solve_rounds else 0
+
+        gas_diffs = [0] * (max_round + 1) 
+        prev_gas = None
+        for item in gas_consumes:
+            round_num = item[0]
+            curr_gas = item[1]
+            if prev_gas is not None and round_num <= max_round:
+                gas_diff = curr_gas - prev_gas
+                gas_diffs[round_num] = gas_diff
+            prev_gas = curr_gas
+        window = 50
+        gas_diffs_smooth = pd.Series(gas_diffs).rolling(window=window, center=True).mean()
+        gas_diffs_smooth = gas_diffs_smooth.fillna(method='bfill').fillna(method='ffill')
+        rounds_diff = list(range(len(gas_diffs_smooth)))
+
+        style = styles[m]
+        ax_gas.fill_between([0, max_round], [8, 8], 0,
+                          color=style['color'], alpha=0.05, zorder=1)
+        ax_gas.fill_between(rounds_diff, gas_diffs_smooth, 0,
+                         color=style['color'], alpha=0.5, rasterized=True, zorder=3)
+        ax_gas.axvline(x=max_round, color='#4b5563', linestyle='--', linewidth=0.5, alpha=0.8, zorder=2)
+        
+        # 绘制曲线
+        # gas_values = [20000-item[1] for item in gas_consumes]
+        # gas_diffs = [i-j for i, j in zip(gas_values[:-1], gas_values[1:])]
+        # ax_gas.plot(rounds[1:] , gas_diffs, 
+        #         color=style['color'],
+        #         linewidth=1,  # 增加线宽
+        #         linestyle=style['linestyle'],
+        #         alpha=style['alpha'],
+        #         label=f'{m} miners (diff)',
+        #         zorder=style['zorder'])
+        # # avg_gas_consumption = np.mean(gas_diffs_smooth)
+        # ax_gas.axhline(y=avg_gas_consumption, color='red', linestyle='--', 
+        #              label=f'Avg gas: {avg_gas_consumption:.2f}')
+        # ax_gas.legend()
+
+        gas_consumes = data['gas_consumes']
+        rounds = [item[0] for item in gas_consumes]
+        gas_values = [item[1] for item in gas_consumes]
+        style = styles[m]
+        ax_gas2.plot(rounds, gas_values,
+                color=style['color'],
+                linewidth=1,
+                linestyle='-',
+                marker=style['marker'],
+                markersize=3,
+                markevery=0.05,
+                alpha=1,
+                zorder=2)
+    
+    # 设置左轴
+    # ax_gas.set_xlabel('Round')
+    if ins == "28":
+        ax_gas.set_ylabel('')
+        ax_gas.text(-0.15, 0.1, 'Gas consumption per round',
+                   rotation=90,
+                   transform=ax_gas.transAxes,
+                   verticalalignment='bottom',
+                   horizontalalignment='center')
+    else:
+        ax_gas.set_ylabel(" ")
+    ax_gas.set_ylim(0, 8)
+    ax_gas2.set_ylim(0, 60000)
+    
+    ax_gas2.tick_params(axis='y', rotation=90)
+    
+    if ins == "28":
+        ax_gas.set_xlim([0, 100000])
+    elif ins == "42":
+        ax_gas.set_xlim([0, 100000])
+    if ins == "42": 
+        ax_gas.set_xlabel(" ")
+        ax_gas.set_xticks([])
+    else:
+        ax_gas.set_xlabel("Round")
+    ax_gas.grid(True, linestyle='--', alpha=0.2)
+    
+    # 设置右轴
+    for spine in ax_gas.spines.values():
+        spine.set_edgecolor('#dddddd')
+    for spine in ax_gas2.spines.values():
+        spine.set_edgecolor('#dddddd')
 
 def plot_case_spot():
     """绘制案例研究的组合图
@@ -672,56 +938,87 @@ def plot_case_spot():
     plt.rcParams['font.size'] = 12
 
     # 创建2x3的子图布局
-    fig = plt.figure(figsize=(10, 8))  # 调整整体图大小
-    gs = fig.add_gridspec(3, 2, height_ratios=[1, 1, 1], hspace=0.3, wspace=0.3)  # 添加间距控制
+    fig = plt.figure(figsize=(10, 10))  # 调整整体图大小
+    gs = fig.add_gridspec(6, 2, height_ratios=[1.1, 0.18, 1.1, 0.18, 0.4, 0.4])  # 添加间距控制
     
     # 子图a - 留空（系统架构图）
     ax_a = fig.add_subplot(gs[0, 0])
     ax_a.axis('off')
     
     # 子图b - Key-block time vs Number of tasks
-    ax_b = fig.add_subplot(gs[0, 1])
+    ax_b = fig.add_subplot(gs[2, 0])
     med_results_path = "E:\Files\gitspace\\bbb-github\\Results\\20250309\\230617\med_results.json"
     plot_ave_solution_error_spot(med_results_path, ax=ax_b, ax_inset=None)
     
-    # 子图c - Solution progress (instance 28)
-    ax_c = fig.add_subplot(gs[1, 0])
-    json_dir = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148"
-    plot_solution_progress_spot(json_dir, instance_id=42, miner_nums=[1, 5, 10], ax_main=ax_c, ax_error=None)
-    
     # 子图d - Solution error distribution
-    ax_d = fig.add_subplot(gs[1, 1])
+    ax_c = fig.add_subplot(gs[4:7, 0])
     med_results_path = "E:\Files\gitspace\\bbb-github\\Results\\20250309\\230617\med_results.json"
-    plot_task_vs_solution_round_spot(med_results_path, ax_d)
-    
-    
+    plot_task_vs_solution_round_spot(med_results_path, ax_c)
+    json_dir = pathlib.Path.cwd() / "Results\\20250309\\232546"
+
+    # 子图c - Solution progress (instance 28)
+    ax_d = fig.add_subplot(gs[0, 1])
+    json_dir = pathlib.Path.cwd() / "Results\\20250309\\232546"
+    plot_solution_progress_spot(json_dir, instance_id=42, miner_nums=[1, 3, 10], ax_main=ax_d, ax_error=None)
     # 子图e - Solution progress (instance 42)
-    ax_e = fig.add_subplot(gs[2, 0])
-    json_dir = "E:\Files\gitspace\\bbb-github\Results\\20250309\\235148"
-    plot_solution_progress_spot(json_dir, instance_id=28, miner_nums=[1, 5, 10], ax_main=ax_e, ax_error=None)
+    ax_e = fig.add_subplot(gs[2, 1])
+    plot_solution_progress_spot(json_dir, instance_id=28, miner_nums=[1, 3, 10], ax_main=ax_e, ax_error=None)
     
-    # 子图f - Solution error vs miner number
-    ax_f = fig.add_subplot(gs[2, 1])
-    plot_ave_solution_error_vs_gas(
-        "E:\Files\gitspace\\bbb-github\\Results\\20250311\\164919\\med_res.json",
-        ax=ax_f
-    )
-    ax_list = [ax_b, ax_c, ax_d, ax_e, ax_f]  # 更新列表
+    # ax_f = fig.add_subplot(gs[2, 1])
+    # plot_ave_solution_error_vs_gas(
+    #     "E:\Files\gitspace\\bbb-github\\Results\\20250311\\164919\\med_res.json",
+    #     ax=ax_f
+    # )
+    
+    ax_f = fig.add_subplot(gs[4, 1])
+    plot_gas_vs_round2(json_dir, miner_nums=[1, 3, 10], ins = "42", ax_gas=ax_f)
+    ax_g = fig.add_subplot(gs[5, 1])
+    plot_gas_vs_round2(json_dir, miner_nums=[1, 3, 10], ins = "28", ax_gas=ax_g)
+    # ax_h = fig.add_subplot(gs[6, 1])
+    # plot_gas_vs_round1(json_dir, json_dir, [1, 3, 10], [1, 3, 10], ax_h)
+    ax_list = [ax_a,ax_b, ax_c, ax_d, ax_e, ax_f, ax_g]  # 更新列表
     for ax in ax_list:
         for spine in ax.spines.values():
             spine.set_edgecolor('grey')
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
     
     # 调整标签位置
-    labels = ['a', 'd', 'b', 'e', 'c', 'f']
+    labels = ['a', 'b', 'c', 'd', 'e', 'f']
     axes = [ax_a, ax_b, ax_c, ax_d, ax_e, ax_f]
     for ax, label in zip(axes, labels):
         ax.text(-0.15, 1.05, label, transform=ax.transAxes, 
                 fontsize=16, fontweight='bold')
     
-    fig.subplots_adjust(left=0.095, bottom=0.074, right=0.98, top=0.96, hspace=0.4, wspace=0.3)
+    fig.subplots_adjust(left=0.095, bottom=0.074, right=0.93, top=0.96, hspace=0.16, wspace=0.336)
+    import time
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\spot{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
     plt.show()
+    
+    
 
+# 创建横平竖直的折线图数据
+def create_step_data(x_values, y_values):
+    if len(x_values) != len(y_values) or len(x_values) < 2:
+        return x_values, y_values
+    
+    x_step = []
+    y_step = []
+    
+    # 添加第一个点
+    x_step.append(x_values[0])
+    y_step.append(y_values[0])
+    
+    # 处理中间的点
+    for i in range(1, len(x_values)):
+        # 添加一个水平中间点
+        x_step.append(x_values[i])
+        y_step.append(y_values[i-1])
+        
+        # 添加原始点
+        x_step.append(x_values[i])
+        y_step.append(y_values[i])
+    
+    return x_step, y_step
 
 if __name__=="__main__":
     # plot_gas()
@@ -816,3 +1113,4 @@ if __name__=="__main__":
 #     ax1.grid(True, linestyle='--', alpha=0.6)
 #     plt.tight_layout()
 #     plt.show()
+

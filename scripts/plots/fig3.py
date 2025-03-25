@@ -24,6 +24,7 @@ FANGDA  = "fangda"
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\figs\\fig3"
 
+
 def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     with open(file_path, 'r') as f:
         jsondata_list = f.read().split('\n')
@@ -38,7 +39,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
 
     if ax is None:
         if type == TSP:
-            fig = plt.figure(figsize=(12, 5))
+            fig = plt.figure(figsize=(12, 6))
         elif type == FANGDA:
             fig = plt.figure(figsize=(6, 5))
         else:
@@ -73,8 +74,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         for i in range(len(path) - 1):
             start_point = (path[i]['bround'], path[i]['ub'])
             end_point = (path[i + 1]['bround'], path[i + 1]['ub'])
-            ax.plot([start_point[0], end_point[0], end_point[0]], [start_point[1], start_point[1], end_point[1]], 
-                    color = color, linestyle=linestyle, linewidth=linewidth, alpha=0.7, zorder=6)
+            ax.plot([start_point[0], start_point[0], end_point[0]], [start_point[1], end_point[1], end_point[1]], 
+                    color = color, linestyle=linestyle, linewidth=linewidth, alpha=0.9, zorder=6)
 
 
     def get_pre_root(point):
@@ -138,7 +139,18 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     children_counts[((0,0),0)]=bpre_df['children_count'].max()
 
     # sns.set(style="white")
-
+    pink_to_red_colors = [
+        # "#FFC0CB",  # 淡粉色
+        # "#FFB6C1",  # 浅粉色
+        # "#FF9999",  # 粉红色
+        "#FF7F7F",  # 浅红色
+        "#FF6666",  # 粉红红色
+        "#FF4D4D",  # 橙红色
+        "#FF3333",  # 亮红色
+        # "#FF1A1A",  # 鲜红色
+        "#FF0000",
+        "#D62728"   # 纯红色
+    ]
     print("drawing integer path")
     # 对于相同的整数解，只保留最早出现的点
     int_df = ub_df[(ub_df["allInteger"] == True) & (ub_df["block"]!= "None")].copy()
@@ -149,6 +161,12 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     intpath_points = set()
     max_bround_point = None
     max_bround = float('-inf')
+    # 按bround值排序，确定每个点的颜色索引
+    sorted_brounds = sorted(int_df['bround'].unique())
+    bround_to_color_index = {
+        b: int((i / (len(sorted_brounds) - 1 if len(sorted_brounds) > 1 else 1)) * (len(pink_to_red_colors) - 1))
+        for i, b in enumerate(sorted_brounds)
+    }
     for point in ub_data:
         if not ((point['ub'], point['bround']) in int_df[['ub', 'bround']].itertuples(index=False, name=None)):
             continue
@@ -173,14 +191,35 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             int_paths.append(path)
     for path in int_paths:
         if max_bround_point in path:
-            # 用红色标记这条路径
+            # 找到路径起点(最大bround的点)的bround值
+            start_point = path[0]  # path[0]是最新的点(bround最大)
+            bround = start_point['bround']
+            
+            # 使用与散点图相同的颜色映射逻辑
+            color_index = bround_to_color_index[bround]
+            color_index = min(color_index, len(pink_to_red_colors) - 1)
+            path_color = pink_to_red_colors[color_index]
+            
+            # 用对应颜色标记这条路径
             if type == FANGDA:
-                draw_int_path(path, "#D62728", 10,'--')
+                draw_int_path(path, path_color, 10, '--')
             else:
-                draw_int_path(path, "#D62728", 4,'--')
+                draw_int_path(path, path_color, 4, '--')
         else:
-            # 其他路径使用默认颜色
-            draw_int_path(path)
+            # 其他路径也使用对应颜色
+            start_point = path[0]
+            bround = start_point['bround']
+            color_index = bround_to_color_index[bround]
+            color_index = min(color_index, len(pink_to_red_colors) - 1)
+            path_color = pink_to_red_colors[color_index]
+            
+            # 线宽稍小一些，区分主要路径
+            if type == FANGDA:
+                draw_int_path(path, path_color, 8, '--')
+            else:
+                draw_int_path(path, path_color, 2, '--')
+    
+    
     
 
     print("drawing points")
@@ -195,49 +234,91 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     smain = 15 if type == MAXSAT else 40
     if type == TSP:
         s = 15
+        sfork = 50
         sorange = 3
-        sopt = 80
+        sopt = 100
     elif type == MAXSAT:
         s = 15
+        sfork = s
         sorange = 15
         sopt = 40
     elif type == MIPLTP:
         s = 15
+        sfork = s
         sorange = 15
         sopt = 40
     elif type == FANGDA:
-        s = 15
+        s = 100
+        sfork = 200
         sorange = 15
-        sopt = 200
+        sopt = 400
     rasterized=False if type == MIPLTP else True
-    if type != TSP:
+    if type != TSP and type != FANGDA:
         sns.scatterplot(x="bround",y ="ub",
                         data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] ,
-                        s = smain, color = '#0072BD', rasterized=rasterized ,edgecolor="none",
-                        zorder = 5, alpha = 0.7) ,
+                        s = smain, color = '#00B0F0', rasterized=rasterized ,edgecolor="none",
+                        zorder = 5, alpha = 0.7) ,#0072BD
     sns.scatterplot(x="bround",y ="ub",
                     data = ub_df[(ub_df["fathomed"]== True) & 
                                  (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
-                    color = "#FF9E4A", s= sorange, rasterized=rasterized, edgecolor="none",alpha = 0.5)
+                    color = "#CFCFCF", s= sorange, rasterized=rasterized, edgecolor="none",alpha = 0.5)
     # sns.scatterplot(x="bround",y ="ub",
     #                 data = ub_df[(ub_df["fathomed"]== True) & 
-    #                              (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , ff8c00#FF9E4A
-    #                 color = "#EDB120", s= s, rasterized=rasterized, edgecolor="none",alpha = 0.5)#E6D5BE #ee9b00
-    sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["block"]== "None")], 
-                    color = "#9acd32", s= s,rasterized=rasterized,edgecolor="none",zorder = 1, alpha = 0.5)
+    #                              (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , #ff8c00#FF9E4A#EDB120#ECE3AFFF#FFD700#DA70D6
+    #                 color = "", s= s, rasterized=rasterized, edgecolor="none",alpha = 0.5)#E6D5BE #ee9b00#9acd32 #E2CAA9FF
+    unpub_zorder = 4 if type == FANGDA or type == TSP else 2
+    # sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["block"]== "None")], 
+    #                 color = "#39FF14", s= s,rasterized=rasterized,edgecolor="none",zorder = unpub_zorder, alpha = 1)
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
-                    color = "black", s= s,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 0.5)
-    
-    sns.scatterplot(x="bround",y ="ub",data = int_df, 
-                    color = "#D62728", s = sopt,rasterized=rasterized,edgecolor="none",zorder = 6)
+                    color = "#FF9E4A", s= sfork,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 1)
+    # 以下是一些更亮、更显眼的颜色选择
+    bright_colors = {
+        "青色": "#00FFFF",       # 明亮的青色/水绿色
+        "霓虹绿": "#39FF14",     # 非常明亮的绿色
+        "亮粉色": "#FF69B4",     # 热粉色
+        "柠檬黄": "#FFF700",     # 明亮的柠檬色
+        "青柠色": "#BFFF00",     # 鲜艳的黄绿色
+        "珊瑚红": "#FF7F50",     # 明亮的珊瑚色
+        "霓虹蓝": "#1E90FF",     # 亮蓝色
+        "亮绿松": "#00FA9A",     # 亮绿松色
+        "霓虹紫": "#9D00FF",     # 鲜艳的紫色
+        "青绿色": "#00CED1"      # 亮青绿色
+    }
+
+    for _, point in int_df.iterrows():
+        bround = point['bround']
+        color_index = bround_to_color_index[bround]
+        color_index = min(color_index, len(pink_to_red_colors) - 1)
+        scatter_color = pink_to_red_colors[color_index]
+        print(bround, point['ub'])
+        ax.scatter(
+            bround, 
+            point['ub'], 
+            s=sopt, 
+            color=scatter_color, 
+            edgecolor="none", 
+            zorder=6,
+            rasterized=rasterized
+        )
     
 
+
     print("drawing main chain")
+    # 添加蓝绿黄颜色映射
+    base_colors = {
+        'blue': '#3b82f6',   # 蓝色
+        'green': '#10b981',  # 绿色
+        'yellow': '#EDB120'  # 黄色
+    }
+    
+    
     point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
     # print(bpre_df['children_count'].max())
     blues = plt.cm.Blues
     drawRect = True if type != TSP and type != FANGDA else False
-
+    point_norm = mcolors.Normalize(vmin=0, vmax=math.log(max(children_counts.values())))
+    my_blues = mcolors.LinearSegmentedColormap.from_list("my_blues", 
+    ["#caf0f8","#caf0f8","#ade8f4","#90e0ef","#48cae4","#00b4d8","#00B0F0", "#0096c7","#0077b6"]) # "", ,"#003049"])#"#caf0f8" ,#00B0F0
     def adjust_width_for_log_scale(center_x, desired_width, base=10):
         factor = (np.log10(center_x + desired_width/2) - np.log10(center_x - desired_width/2)) / desired_width
         
@@ -264,7 +345,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             # 绘制圆角矩形
             width = 0.023 if type == MAXSAT else 0.04
             children_count = children_counts[row['pre_pname']]
-            color = blues(0 + 0.4 * (1-point_norm(children_count)))  # 将颜色范围限制在0.3-0.7之间，使颜色更浅
+            color = my_blues(0 + 0.5*(1-point_norm(children_count)))  # 将颜色范围限制在0.3-0.7之间，使颜色更浅
             left, width = adjust_width_for_log_scale(row['bround'], width)
             # 计算对数尺度下的矩形边界
             l = 0.05 if type == MAXSAT else 1
@@ -273,19 +354,20 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
                             linestyle='-', capstyle='round', joinstyle='round',
                             rotation_point='center',alpha = 0.4, zorder = 2)
             ax.add_patch(rect)
-        for idx, block_row in block_df.iterrows():
-            # 获取block点的坐标
-            block_round = block_row['bround']
-            block_ub = block_row['ub_min']
+        if type == MIPLTP:
+            for idx, block_row in block_df.iterrows():
+                # 获取block点的坐标
+                block_round = block_row['bround']
+                block_ub = block_row['ub_min']
 
-            # 获取pre点的坐标
-            pre_row = pre_df[pre_df['pname'] == block_row['pre_pname']]
-            if not pre_row.empty:
-                pre_round = pre_row.iloc[0]['bround']
-                pre_ub = pre_row.iloc[0]['ub']
-                # 绘制折线连接两点
-                ax.plot([pre_round, block_round, block_round], [pre_ub, pre_ub, block_ub], color = '#5494CE',
-                        linestyle='--',linewidth = 0.5,alpha = 0.5, zorder = 0)#color='#CFCFCF'
+                # 获取pre点的坐标
+                pre_row = pre_df[pre_df['pname'] == block_row['pre_pname']]
+                if not pre_row.empty:
+                    pre_round = pre_row.iloc[0]['bround']
+                    pre_ub = pre_row.iloc[0]['ub']
+                    # 绘制折线连接两点
+                    ax.plot([pre_round, block_round, block_round], [pre_ub, pre_ub, block_ub], color = '#5494CE',
+                            linestyle='--',linewidth = 0.5,alpha = 0.5, zorder = 0)#color='#CFCFCF'
 
     # # 处理Lowerbounds数据
     lb_rounds_new = list(map(int, lowerbounds.keys()))
@@ -300,9 +382,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # sns.kdeplot(data=ub_df[ub_df['is_main']],     x='round', y='ub', cmap="Blues" , fill=True, bw_adjust=0.2, zorder = 0)
     # sns.kdeplot(data=ub_df[ub_df['is_fathomed']], x='bround', y='ub', cmap="Oranges", fill=True, bw_adjust=0.2, zorder = 0)
     # sns.kdeplot(data=ub_df[ub_df['is_fathomed']], x='bround', y='ub', cmap="Oranges", fill=True, bw_adjust=0.1, zorder = 0)
-    point_norm = mcolors.Normalize(vmin=0, vmax=math.log(max(children_counts.values())))
     
-    point_cmap = plt.cm.Blues
     def draw_point(point,pre_point):
         # print(point["block"],point["pname"],point["bround"])
         alpha=0.6
@@ -324,7 +404,10 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             s = ((point['children_count'])**0.5)*30+10
         # s = 10
         # print(math.log(point['children_count']))
-        color = point_cmap(0.1 + 0.75 *(1- point_norm(math.log(point['children_count']))))
+        # color = my_blues(0.1 + 0.75 *(1- point_norm(math.log(point['children_count']))))
+        miner_colors = [base_colors['blue'], base_colors['green'], base_colors['yellow']]
+        miner_id = point['miner']
+        color = miner_colors[miner_id % 3]  # 使用基础颜色循环
         
         if (pre_point["allInteger"] or (pre_point["fathomed"] and not point["allInteger"]) 
             or pre_point["isFork"] or pre_point["block"] == "None"):
@@ -373,8 +456,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
 
     # # 绘制Lowerbounds的线段
     bound_line_width = 6 if type != FANGDA else 10
-    ax.plot(lb_rounds_new, lb_values_new, color="#66A266", linewidth=bound_line_width, zorder = 5)
-    # ax.plot(lb_rounds_new, lb_values_new, color="#60636A", linewidth=5, zorder = 3)
+    ax.plot(lb_rounds_new, lb_values_new, color="#333333", linewidth=bound_line_width, zorder = 5)
+    # ax.plot(lb_rounds_new, lb_values_new, color="#60636A", linewidth=5, zorder = 3)#66A266
 
     plts = [plt.Line2D([], [], color='green', linewidth=2, label='upper bounds'),
         plt.Line2D([],[],color="red", linestyle='None',marker = 'o', label="integer"),
@@ -402,16 +485,16 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         ax.set_ylim(2700, 4000)
     elif type == FANGDA:
         if m == 1:
-            ax.set_xlim(51000, 55000)
+            ax.set_xlim(50000, 56000)
             ax.set_ylim(3000, 3600)
         elif m == 3:
-            ax.set_xlim(29000, 30500) # 29649
+            ax.set_xlim(28000, 31500) # 29649
             ax.set_ylim(3000, 3600)
         elif m == 5:
             ax.set_xlim(1500, 3000) # 
             ax.set_ylim(3000, 3600)
         elif m == 10:
-            ax.set_xlim(1800,2300)
+            ax.set_xlim(1600,2500)
             ax.set_ylim(3000, 3600)# 2132
     elif type == MAXSAT:
         ax.set_xlim(100, 4500)
@@ -426,8 +509,9 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # plt.grid(True)
     # plt.legend(handles = plts)
     ax.set_rasterized(False)
-    plt.savefig(SAVE_PREFIX + f"\\bounds_{type}_m{m}_{time.strftime('%m%d_%H%M%S')}.svg", dpi=150)
-    plt.show()
+    print("end")
+    plt.savefig(SAVE_PREFIX + f"\\bounds_{type}_m{m}_{time.strftime('%m%d_%H%M%S')}.svg", dpi=300)
+    # plt.show()
 
 def create_fig3():
     plt.rcParams['font.family'] = 'Times New Roman'
@@ -473,7 +557,7 @@ def create_fig3():
     
     # # 保存图片
     # plt.savefig(SAVE_PREFIX + f"\\bounds_maxsat{time.strftime('%H%M%S')}.svg",  dpi=300)
-    plt.show()
+    # plt.show()
 
 if __name__ == "__main__":
     # create_fig3()
@@ -504,9 +588,9 @@ if __name__ == "__main__":
     # plot_bounds_fig3(f3, MIPLTP, m=10)
     # plot_bounds_fig3(f4, MAXSAT,m=1)
     # plot_bounds_fig3(f5, MAXSAT,m=3)
-    plot_bounds_fig3(f6, MAXSAT,m=10)
+    # plot_bounds_fig3(f6, MAXSAT,m=10)
     # plot_bounds_fig3(f7, TSP,m=1)
-    # plot_bounds_fig3(f8, TSP,m=3)
+    plot_bounds_fig3(f8, TSP,m=3)
     # plot_bounds_fig3(f9, TSP,m=5)
     # plot_bounds_fig3(f10, TSP,m=10)
     # plot_bounds_fig3(f11, TSP,m=1)

@@ -45,7 +45,7 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
         pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
-        # pool_path = Path(".\\testTSP\problem poolburma14.json")
+        # pool_path =  Path.cwd() / "Problem Pools\\testTSP\problem poolburma14.json"
         # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
         # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"

@@ -43,7 +43,7 @@ def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
         # ax.set_ylabel('Difficulty', labelpad = -10, loc='top')
         leg = ax.legend(title="difficulty",fontsize = 12,loc = "lower right", bbox_to_anchor=(1, 0.05))
         leg.get_title().set_fontsize('12')
-        ax.set_ylabel('The number of miners')
+        ax.set_ylabel('Number of solvers')
         ax.set_xlabel('Block times')
 
     def plot_growthrate(ax:plt.Axes, data_df:pd.DataFrame):

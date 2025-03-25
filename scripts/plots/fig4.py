@@ -73,7 +73,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.plot([], [], color=base_color, label=label, marker=marker)
 
         # 设置坐标轴等
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Solving rounds')
         ax.grid(True, linestyle='--', alpha=0.7)
 
@@ -149,72 +149,72 @@ def plot_solveround_workload_fig4(file_path: str = None):
                 ax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
                          color=color_shades[i], alpha=0.7)
                 
-            if label == "50 variables":
-                continue
-            # 在每个数据点旁边绘制频率直方图（归一化处理）
-            for i, (_, row) in enumerate(stats.iterrows()):
-                miner_num = row['miner_num']
+            # if label == "50 variables":
+            #     continue
+            # # 在每个数据点旁边绘制频率直方图（归一化处理）
+            # for i, (_, row) in enumerate(stats.iterrows()):
+            #     miner_num = row['miner_num']
                 
-                # 筛选该矿工数量下的数据
-                data = df_expanded[df_expanded['miner_num'] == miner_num]['solve_rounds'].values
+            #     # 筛选该矿工数量下的数据
+            #     data = df_expanded[df_expanded['miner_num'] == miner_num]['solve_rounds'].values
                 
-                if len(data) < 3:
-                    continue  # 数据太少则跳过
+            #     if len(data) < 3:
+            #         continue  # 数据太少则跳过
                 
-                # 获取四分位数
-                q1 = row['q1']
-                q3 = row['q3']
+            #     # 获取四分位数
+            #     q1 = row['q1']
+            #     q3 = row['q3']
                 
-                # 只保留q1到q3之间的数据
-                trimmed_data = data[(data >= q1) & (data <= q3)]
+            #     # 只保留q1到q3之间的数据
+            #     trimmed_data = data[(data >= q1) & (data <= q3)]
                 
-                if len(trimmed_data) < 3:
-                    continue  # 截断后数据太少则跳过
+            #     if len(trimmed_data) < 3:
+            #         continue  # 截断后数据太少则跳过
                 
-                # 计算直方图数据
-                n_bins = 5 if label == "150 variables" else 5 # 直方图的箱数
-                bin_range = (q1, q3)
-                hist_heights, bin_edges = np.histogram(trimmed_data, bins=n_bins, range=bin_range, density=True)
+            #     # 计算直方图数据
+            #     n_bins = 5 if label == "150 variables" else 5 # 直方图的箱数
+            #     bin_range = (q1, q3)
+            #     hist_heights, bin_edges = np.histogram(trimmed_data, bins=n_bins, range=bin_range, density=True)
                 
-                # 固定宽度，用于所有直方图
-                fixed_width = 2.0  # 可以根据图形大小调整
+            #     # 固定宽度，用于所有直方图
+            #     fixed_width = 2.0  # 可以根据图形大小调整
                 
-                # 真正的归一化处理 - 确保每个直方图的总高度相等
-                # 计算总面积
-                bin_width = (bin_edges[1] - bin_edges[0])
-                total_area = np.sum(hist_heights * bin_width)
+            #     # 真正的归一化处理 - 确保每个直方图的总高度相等
+            #     # 计算总面积
+            #     bin_width = (bin_edges[1] - bin_edges[0])
+            #     total_area = np.sum(hist_heights * bin_width)
                 
-                # 归一化到固定总高度
-                norm_factor = 1.0 / total_area if total_area > 0 else 0
-                norm_heights = hist_heights * norm_factor
+            #     # 归一化到固定总高度
+            #     norm_factor = 1.0 / total_area if total_area > 0 else 0
+            #     norm_heights = hist_heights * norm_factor
                 
-                # 再次缩放，使得视觉效果合适
-                scale_factor = (q3 - q1) * 0.5  # 最大高度比例，可调整
-                scaled_heights = norm_heights * scale_factor
+            #     # 再次缩放，使得视觉效果合适
+            #     scale_factor = (q3 - q1) * 0.5  # 最大高度比例，可调整
+            #     scaled_heights = norm_heights * scale_factor
                 
-                # 绘制频率柱状图（只在右侧）
-                for j in range(len(scaled_heights)):
-                    # 计算柱子高度
-                    bar_height = fixed_width  # 使用固定宽度
-                    # 计算柱子位置
-                    bar_left = miner_num 
-                    bar_bottom = bin_edges[j]  # 柱子的底部位置
+            #     # 绘制频率柱状图（只在右侧）
+            #     for j in range(len(scaled_heights)):
+            #         # 计算柱子高度
+            #         bar_height = fixed_width  # 使用固定宽度
+            #         # 计算柱子位置
+            #         bar_left = miner_num 
+            #         bar_bottom = bin_edges[j]  # 柱子的底部位置
                     
-                    # 创建长方形，宽度随频率变化
-                    rect = plt.Rectangle(
-                        (bar_left, bar_bottom),  # 左下角坐标
-                        bar_height * scaled_heights[j],  # 宽度根据频率变化
-                        bin_width,   # 高度固定为bin宽度
-                        facecolor=color_shades[i],
-                        alpha=0.3,
-                        edgecolor='#333333',  # 使用浅灰色边缘线
-                        linewidth=0.2  # 细线宽度
-                    )
+            #         # 创建长方形，宽度随频率变化
+            #         rect = plt.Rectangle(
+            #             (bar_left, bar_bottom),  # 左下角坐标
+            #             bar_height * scaled_heights[j],  # 宽度根据频率变化
+            #             bin_width,   # 高度固定为bin宽度
+            #             facecolor=color_shades[i],
+            #             alpha=0.3,
+            #             edgecolor='#333333',  # 使用浅灰色边缘线
+            #             linewidth=0.2  # 细线宽度
+            #         )
                     
-                    # 添加到图中
-                    ax.add_patch(rect)
+            #         # 添加到图中
+            #         ax.add_patch(rect)
         
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Solving rounds')
         ax.legend()
     
@@ -227,7 +227,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.plot(df_easy['miner_num'], speedup_50, marker='x',color =colors[2])
         ax.plot(df_hard['miner_num'], speedup_120, marker='s',color =colors[3])
         ax.set_xticks(range(1, 16))
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Speed up',labelpad = 12)
         # ax.legend()
     
@@ -239,7 +239,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.plot(df_med['miner_num'], speedup_100, marker='o',color =colors[1])
         ax.plot(df_easy['miner_num'], speedup_50, marker='x',color =colors[2])
         ax.plot(df_hard['miner_num'], speedup_120, marker='s',color =colors[3])
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Efficiency')
     
     def plot_workload(ax:plt.Axes, df_med:pd.DataFrame):
@@ -370,7 +370,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
                label='unpublished', color=colors[2], alpha=0.8,width=width,zorder=2)
         # Plotting
         # metrics_per.plot(kind='bar', ax=ax, stacked=True)
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Workload per miner',labelpad = 12)
         if showLegend:
             ax.legend()
@@ -423,7 +423,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.legend(handles=legend_elements1+legend_elements2, loc='upper right')
         
         # 设置坐标轴
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Workload per miner')
         ax.set_xticks(x)
         ax.set_xticklabels(df_easy['miner_num'])
@@ -511,7 +511,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
                    color=colors[i], marker='o')
         
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
-        ax.set_xlabel('Number of miners')
+        ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Workload decrease ratio')
         ax.legend()
     

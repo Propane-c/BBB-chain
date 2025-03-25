@@ -55,15 +55,15 @@ def plot_security_fig6():
     colors = ["#FF8283", "#0D898A", "#f9cc52", "#5494CE"]
 
     # 创建图表
-    fig = plt.figure(figsize=(8, 8))
-    grid = fig.add_gridspec(5, 2, height_ratios=[3, 1, 1, 0.5, 2], width_ratios=[1, 1])
+    fig = plt.figure(figsize=(8, 9))
+    grid = fig.add_gridspec(6, 2, height_ratios=[3, 1, 0.8, 2, 0.5, 1], width_ratios=[1, 1])
     
     # 创建子图
     ax1 = fig.add_subplot(grid[0, 0:2])
     ax3 = fig.add_subplot(grid[1, 0:2])
-    ax2 = fig.add_subplot(grid[2, 0:2])
-    axins1 = fig.add_subplot(grid[4, 0])
-    axins2 = fig.add_subplot(grid[4, 1])
+    axins1 = fig.add_subplot(grid[3, 0])
+    axins2 = fig.add_subplot(grid[3, 1])
+    ax2 = fig.add_subplot(grid[5, 0:2])
     
     # 添加子图标签
     ax1.text(-0.1, 1.02, 'a', transform=ax1.transAxes, fontsize=12, fontweight='bold')
@@ -97,7 +97,7 @@ def plot_security_fig6():
     # 添加文字说明
     last_x = visual_xticks[3]
     last_y = df[df["difficulty"] == 5].sort_values(by="safe_thre", ascending=False)['safe_thre'].iloc[3]
-    ax1.text(last_x + 0.3, last_y, 'Security Threshold', color='red', va='center')
+    ax1.text(last_x + 0.3, last_y, 'Secure Threshold', color='red', va='center')
     
     # 绘制柱状图
     bars = sns.barplot(x='safe_thre', y='ave_advrate', hue='difficulty', 
@@ -108,7 +108,7 @@ def plot_security_fig6():
     # 只保留柱状图的图例（移除红线的图例）
     ax1.legend(handles=handles[1:], labels=labels[1:], title='Difficulty', loc="upper right")
     ax1.set_xlabel(' ')
-    ax1.set_ylabel('Success probability', labelpad=8)
+    ax1.set_ylabel('Success probability', labelpad=15)
     # ax1.legend(title='Difficulty', loc="upper right")
     ax1.spines['top'].set_visible(False)
     ax1.spines['right'].set_visible(False)
@@ -129,30 +129,33 @@ def plot_security_fig6():
                  arrowprops=dict(arrowstyle='->', color='gray', lw=2))
 
     # 第二个图表：Prob的折线图
-    ax2.set_xticks(visual_xticks)
-    markers = ['o', 's', '^', 'D']  # 圆形、方形、三角形、菱形
-    for i, difficulty in enumerate(df['difficulty'].unique()):
-        print(difficulty)
-        ax2.plot(visual_xticks, 'ave_accept_advrate' , 
-                data = df[df["difficulty"] == difficulty].sort_values(by="safe_thre",ascending=False),  
-                marker=markers[i], linestyle="--", color=colors[i], label=f"Difficulty = {difficulty}" if i == 0 else difficulty)
-
-    ax2.set_ylabel('Chain\nquality', labelpad=11)
-    ax2.set_xlabel('Security threshold')  # 移除x轴标签，因为将与第二个图共享
+    # ax2.set_xticks(visual_xticks)
+    # markers = ['o', 's', '^', 'D']  # 圆形、方形、三角形、菱形
+    # for i, difficulty in enumerate(df['difficulty'].unique()):
+    #     print(difficulty)
+    #     ax2.plot(visual_xticks, 'ave_accept_advrate' , 
+    #             data = df[df["difficulty"] == difficulty].sort_values(by="safe_thre",ascending=False),  
+    #             marker=markers[i], linestyle="--", color=colors[i], label=f"Difficulty = {difficulty}" if i == 0 else difficulty)
+    sns.barplot(x='safe_thre', y='ave_accept_advrate', hue='difficulty', 
+                palette=colors, data=df, ax=ax2, width=0.7, order=sorted_safe_thre)
+    ax2.set_ylabel('Chain\nquality', labelpad=8)
+    ax2.set_xlabel('Secure threshold')  # 移除x轴标签，因为将与第二个图共享
     ax2.set_ylim(bottom=0 + 0.00001)
     ax2.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=2))
-    ax2.legend(loc="upper right", ncol=4)
+    # ax2.legend(loc="upper right", ncol=4)
+    ax2.get_legend().remove()
     ax2.grid(True)
-    ax2.set_xlim(ax1.get_xlim())
-    ax2.set_xticklabels(original_xticks)
+    # ax2.set_xlim(ax1.get_xlim())
+    # ax2.set_xticklabels(original_xticks)
     ax2.grid(axis='y')
+
 
     # 第三个图表：Security Margin的柱状图
     df['security_margin'] = df['safe_thre'] - df['ave_advrate']
     sns.barplot(x='safe_thre', y='security_margin', hue='difficulty', 
                 palette=colors, data=df, ax=ax3, width=0.7, order=sorted_safe_thre)
-    ax3.set_ylabel('Security \nmargin', labelpad=8)
-    ax3.set_xlabel('Security Threshold')
+    ax3.set_ylabel('Secure \nmargin', labelpad=8)
+    ax3.set_xlabel('Secure Threshold')
     ax3.get_legend().remove()
     ax3.grid(True)
     ax3.set_yscale("log")
@@ -237,18 +240,20 @@ def plot_security_fig6():
     plot_atklog_fig6(atklog_df.loc[atklog_df['difficulty']==7]["atklog_mb"].iloc[0], 
                     axins2, atklog_df.loc[atklog_df['difficulty']==7]["safe_thre"].iloc[0],
                     color = "#f9cc52")
-    axins1.set_ylabel("Success probability")
+    axins1.set_ylabel("Success probability", labelpad = 15)
     axins1.tick_params(axis='x')
     axins1.tick_params(axis='y')
     axins1.set_xlabel("Blocks")
-    axins2.set_ylabel(" ",labelpad = 12)
+    axins2.set_ylabel(" ",labelpad = 15)
     axins2.set_xlabel("Blocks")
     axins2.tick_params(axis='y')
     axins2.tick_params(axis='x')
     axins1.legend()
     axins2.legend()
     fig.subplots_adjust(left=0.13, bottom=0.08, right=0.98, top=0.98,hspace=0.05)
-    plt.show()
+    import time
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\secure{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
+    # plt.show()
     
     # 在创建完所有子图后调整位置
     # pos_ax2 = ax2.get_position()
