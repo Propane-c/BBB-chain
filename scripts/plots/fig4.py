@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.path as mpath
 import matplotlib.patches as mpatches
+from brokenaxes import brokenaxes
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -77,26 +78,17 @@ def plot_solveround_workload_fig4(file_path: str = None):
         ax.set_ylabel('Solving rounds')
         ax.grid(True, linestyle='--', alpha=0.7)
 
-    def plot_solve_rounds_with_stats(ax:plt.Axes, df_easy:pd.DataFrame, df_med:pd.DataFrame, df_hard:pd.DataFrame):
+    def plot_solve_rounds_with_stats(gs_pos, df_easy:pd.DataFrame, df_med:pd.DataFrame, df_hard:pd.DataFrame, df_tsp:pd.DataFrame):
         """绘制求解轮数的统计图，包含中位数和四分位数"""
-        # 读取数据
-        # # file_path = pathlib.Path.cwd() / "Result_Data/1226v100_50m1_20_full.json"
-        # file_path = pathlib.Path.cwd() / "E:\Files\gitspace\\bbb-github\Results\\20250306\\203200\\med_results.json"
-        # data_list = []
-        # with open(file_path, 'r') as f:
-        #     jsondata_list = f.read().split('\n')[:-1]
-        #     for jsondata in jsondata_list:
-        #         data_list.append(json.loads(jsondata))
-        # df = pd.DataFrame(data_list)
-        # df = df.explode('solve_rounds')
-        # df['solve_rounds'] = df['solve_rounds'].astype(float)
-        # df = df.sort_values(by=["var_num", "difficulty", "miner_num"])
-        # df_med = df[(df['difficulty'] == 5) & (df['var_num'] == 150)]
-        # df_easy = df[(df['difficulty'] == 5) & (df['var_num'] == 100)]
-
         from mpl_toolkits.axes_grid1.inset_locator import inset_axes
         
-        # 获取所有数据的 miner_num 值
+        # 创建断轴
+        bax = brokenaxes(
+            ylims=((0, 4500), (8000, 120000)),  # 调整断轴范围
+            hspace=0.05,  # 断开部分的间距
+            subplot_spec=gs_pos,
+            height_ratios=(0.5, 1))  # 使用gridspec位置
+
         all_miner_nums = sorted(set(df_easy['miner_num'].unique()) | 
                                set(df_med['miner_num'].unique()) | 
                                set(df_hard['miner_num'].unique()))
@@ -107,46 +99,44 @@ def plot_solveround_workload_fig4(file_path: str = None):
         selected_miners = [m for m in selected_miners if m in all_miner_nums]
         
         # 存储各个变量的颜色和标签信息
-        df_list = [df_easy, df_med, df_hard]
-        label_list = ['50 variables', '100 variables', '150 variables']
-        marker_list = ['x', 'o', 's']
-        color_list = [colors[2], colors[1], colors[3]]
+        df_list = [df_easy, df_med, df_hard, df_tsp]
+        label_list = ['50 variables', '100 variables', '150 variables', 'Burma14']
+        marker_list = ['x', 'o', 's', 'D']
+        color_list = [colors[2], colors[1], colors[3], colors[0]]
         
         # 主图中绘制统计数据
         for df, label, marker, base_color in zip(df_list, label_list, marker_list, color_list):
-            # 先展开solve_rounds列表
             df_expanded = df.explode('solve_rounds')
             df_expanded['solve_rounds'] = df_expanded['solve_rounds'].astype(float)
             
-            # 然后计算统计值
             stats = df_expanded.groupby('miner_num')['solve_rounds'].agg(
                 ['median', lambda x: np.percentile(x, 25), lambda x: np.percentile(x, 75)]).reset_index()
             stats.columns = ['miner_num', 'median', 'q1', 'q3']
             n_points = len(stats)
             color_shades = [mcolors.to_rgba(base_color, alpha) 
                           for alpha in np.linspace(1, 0.3, n_points)]
-            ax.plot([], [], marker=marker, color=base_color, label=label) # 图例
+            bax.plot([], [], marker=marker, color=base_color, label=label) # 图例
             
-            # 保留原有的线条和点的绘制
+            # 保留原有的线条和点的绘制，但使用bax而不是ax
             for i in range(len(stats)-1):
                 x_fill = [stats['miner_num'][i], stats['miner_num'][i+1]]
                 y1_fill = [stats['q1'][i], stats['q1'][i+1]]  # 下四分位数
                 y2_fill = [stats['q3'][i], stats['q3'][i+1]]  # 上四分位数
-                # ax.fill_between(x_fill, y1_fill, y2_fill, 
-                #               color=color_list[i], alpha=0.2)
-                ax.plot(stats['miner_num'][i:i+2], stats['median'][i:i+2], 
+                # bax.fill_between(x_fill, y1_fill, y2_fill, 
+                #               color=color_shades[i], alpha=0.2)
+                bax.plot(stats['miner_num'][i:i+2], stats['median'][i:i+2], 
                        color=color_shades[i], linewidth=1.5)
-                ax.plot(stats['miner_num'][i], stats['median'][i], 
+                bax.plot(stats['miner_num'][i], stats['median'][i], 
                        marker=marker, color=color_shades[0])
-            ax.plot(stats['miner_num'].iloc[-1], stats['median'].iloc[-1], 
+            bax.plot(stats['miner_num'].iloc[-1], stats['median'].iloc[-1], 
                    marker=marker, color=color_shades[0])
             
             for i, (_, row) in enumerate(stats.iterrows()): # 四分位数的短横线
-                ax.vlines(row['miner_num'], row['q1'], row['q3'], 
+                bax.vlines(row['miner_num'], row['q1'], row['q3'], 
                          color=color_shades[i], alpha=0.7)
-                ax.hlines(row['q1'], row['miner_num']-0.1, row['miner_num']+0.1, 
+                bax.hlines(row['q1'], row['miner_num']-0.1, row['miner_num']+0.1, 
                          color=color_shades[i], alpha=0.7)
-                ax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
+                bax.hlines(row['q3'], row['miner_num']-0.1, row['miner_num']+0.1, 
                          color=color_shades[i], alpha=0.7)
                 
             # if label == "50 variables":
@@ -214,18 +204,34 @@ def plot_solveround_workload_fig4(file_path: str = None):
             #         # 添加到图中
             #         ax.add_patch(rect)
         
-        ax.set_xlabel('Number of solvers')
-        ax.set_ylabel('Solving rounds')
-        ax.legend()
-    
-    def plot_speedup(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, df_hard:pd.DataFrame, 
-                     m1_med:pd.DataFrame, m1_easy:pd.DataFrame, m1_hard:pd.DataFrame):
+        # 设置y轴刻度
+        # ticks_lower = [0, 1000, 2000, 3000, 4000]
+        # ticks_upper = [20000, 60000, 100000, 120000]
+        # bax.set_yticks(ticks_upper)  # 上半部分
+        # # bax.axs[0].set_ylim(9000, 120000)  # 上半部分
+
+        # bax.axs[1].set_yticks(ticks_lower)  # 下半部分
+        # bax.axs[1].set_ylim(0, 4500)  # 下半部分
+        # 设置标签和图例
+        bax.set_xlabel('Number of solvers')
+        bax.set_ylabel('Solving rounds')
+        bax.legend(loc="center left", bbox_to_anchor=(0.6, 0.5))
+        
+        # 设置x轴刻度
+        bax.set_xticks(range(1, 16))
+        
+        return bax.axs[0]  # 返回主轴对象以便后续使用
+
+    def plot_speedup(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, df_hard:pd.DataFrame, df_tsp:pd.DataFrame, 
+                     m1_med:pd.DataFrame, m1_easy:pd.DataFrame, m1_hard:pd.DataFrame, m1_tsp:pd.DataFrame):
         speedup_100 = m1_med / df_med['ave_solve_round']
         speedup_50 = m1_easy / df_easy['ave_solve_round']
         speedup_120 = m1_hard / df_hard['ave_solve_round']
+        speedup_tsp = m1_tsp / df_tsp['ave_solve_round']
         ax.plot(df_med['miner_num'], speedup_100, marker='o',color =colors[1])
         ax.plot(df_easy['miner_num'], speedup_50, marker='x',color =colors[2])
         ax.plot(df_hard['miner_num'], speedup_120, marker='s',color =colors[3])
+        ax.plot(df_tsp['miner_num'], speedup_tsp, marker='D',color =colors[0])
         ax.set_xticks(range(1, 16))
         ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Speed up',labelpad = 12)
@@ -529,24 +535,24 @@ def plot_solveround_workload_fig4(file_path: str = None):
     
     # 创建子图并添加标签
     fig = plt.figure(figsize=(10, 8.5))
-    grid = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1, 1], width_ratios=[1, 1])
+    gs = fig.add_gridspec(4, 2, height_ratios=[1, 1, 1, 1], width_ratios=[1, 1])
     
     # 定义标签位置
     label_x = -0.12  # 标签的x位置
     label_y = 1.01   # 标签的y位置
     
     # 创建所有子图
-    axSolveRounds = fig.add_subplot(grid[0:2, 0]) 
-    axSpeed1 = fig.add_subplot(grid[0:2, 1])         
+    # axSolveRounds = fig.add_subplot(gs[0:2, 0]) 
+    axSpeed1 = fig.add_subplot(gs[0:2, 1])         
     # axSpeed2 = fig.add_subplot(grid[1, 1])        
-    axWorkPer = fig.add_subplot(grid[2:4, 0])        
-    axWorkVarRatio = fig.add_subplot(grid[2, 1])   
+    axWorkPer = fig.add_subplot(gs[2:4, 0])        
+    axWorkVarRatio = fig.add_subplot(gs[2, 1])   
     # axWorkBalance = fig.add_subplot(grid[3, 0])   
-    axWorkBalance2 = fig.add_subplot(grid[3, 1])  
+    axWorkBalance2 = fig.add_subplot(gs[3, 1])  
 
     # 添加标签
-    axSolveRounds.text(label_x, label_y, 'a', transform=axSolveRounds.transAxes, 
-                       fontsize=14, fontweight='bold')
+    # axSolveRounds.text(label_x, label_y, 'a', transform=axSolveRounds.transAxes, 
+    #                    fontsize=14, fontweight='bold')
     axSpeed1.text(label_x, label_y, 'b', transform=axSpeed1.transAxes, 
                   fontsize=14, fontweight='bold')
     # axSpeed2.text(label_x, label_y, 'c', transform=axSpeed2.transAxes, 
@@ -559,7 +565,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
                         fontsize=14, fontweight='bold')
     
     # 设置边框颜色等
-    ax_list = [axSolveRounds, axSpeed1, axWorkPer, axWorkVarRatio]  # 更新列表
+    ax_list = [ axSpeed1, axWorkPer, axWorkVarRatio]  # 更新列表
     for ax in ax_list:
         for spine in ax.spines.values():
             spine.set_edgecolor('grey')
@@ -584,18 +590,21 @@ def plot_solveround_workload_fig4(file_path: str = None):
     df['unpub_per'] = df['unpub'] / df['miner_num']
     df['chain_per'] = df['ave_subpair_num'] / df['miner_num']
     df['total_per'] = df['ave_subpair_unpubs'] / df['miner_num']
+    df_tsp = df[(df['difficulty'] == 5) & (df['var_num'] == "tsp")]
     df_hard = df[(df['difficulty'] == 5) & (df['var_num'] == 150)]
     df_med = df[(df['difficulty'] == 5) & (df['var_num'] == 100)]
     df_easy = df[(df['difficulty'] == 5) & (df['var_num'] == 50)]
+    sr_tsp = df_tsp.groupby('miner_num')['ave_solve_round'].mean().reset_index()
     sr_med = df_med.groupby('miner_num')['ave_solve_round'].mean().reset_index()
     sr_easy = df_easy.groupby('miner_num')['ave_solve_round'].mean().reset_index()
     sr_hard = df_hard.groupby('miner_num')['ave_solve_round'].mean().reset_index()
+    m1sr_tsp = df_tsp[df_tsp['miner_num'] == 1]['ave_solve_round'].mean()
     m1sr_med = df_med[df_med['miner_num'] == 1]['ave_solve_round'].mean()
     m1sr_easy = df_easy[df_easy['miner_num'] == 1]['ave_solve_round'].mean()
     m1sr_hard = df_hard[df_hard['miner_num'] == 1]['ave_solve_round'].mean()
     # plot_solve_rounds(axSolveRounds, sr_med, sr_easy)
-    plot_solve_rounds_with_stats(axSolveRounds, df_easy, df_med, df_hard)
-    plot_speedup(axSpeed1, sr_med, sr_easy, sr_hard, m1sr_med, m1sr_easy, m1sr_hard)
+    plot_solve_rounds_with_stats(gs[0:2, 0], df_easy, df_med, df_hard, df_tsp)
+    plot_speedup(axSpeed1, sr_med, sr_easy, sr_hard, sr_tsp, m1sr_med, m1sr_easy, m1sr_hard, m1sr_tsp)
     # plot_efficiency(axSpeed2, sr_med, sr_easy, sr_hard, m1sr_med, m1sr_easy, m1sr_hard)
     # plot_workload_per_miner(axWorkPer, df_easy)
     plot_workload_comparison(axWorkPer, df_easy, df_med)

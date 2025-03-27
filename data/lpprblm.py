@@ -560,14 +560,14 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     if A_eq is not None:
         for i in range(len(A_eq)):
             ilp += (pulp.lpDot(A_eq[i], vars) == b_eq[i])
-    # print(ilp)
+    print(ilp)
     ilp.solve(pulp.PULP_CBC_CMD(msg=False))
     if ilp.status != pulp.LpStatusOptimal:
         return None
     # for i, v in enumerate(ilp.variables()):
     #     print(v.name, "=", v.varValue)
     obj_value = pulp.value(ilp.objective)
-    # print("Optimal value Integer:", obj_value)
+    print("Optimal value Integer:", obj_value)
     prblm.iz_pulp = obj_value
     prblm.ix_pulp = [v.varValue for v in ilp.variables()]
     return obj_value

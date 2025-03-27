@@ -92,6 +92,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         return root_df[root_df['block'] == pre_point['block']].iloc[0]
     
     data = data_list[0]
+    solve_rounds = data['solve_rounds']
+    max_round = solve_rounds["B0"] if solve_rounds else 0
     ub_data = data.get("ubdata", [])
     columns = ["miner", "block", "round", "bround", "pname", "pre_pname", "ub", "fathomed", "allInteger", "isFork"]
     ub_data = [dict(zip(columns, point)) for point in ub_data]
@@ -228,39 +230,73 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # sampled_points = sampled_points.union(intpath_points)
     # ["#B96666","#78BCFF","#66A266","#F2A663","#BEA9E9"] 
     # ["#FF8283", "#0D898A","#f9cc52","#5494CE", ] '#00796B' '#ff8c00' '#b22222'
-    
+    miner_colors = [
+        "#00B0F0", 
+        "#00FA9A", 
+        "#FFF700", 
+        "#0096FF", 
+        "#3CB371", 
+        "#FFD700", 
+        "#1E90FF", 
+        "#32CD32", 
+        "#FFBF00", 
+        "#4169E1", 
+    ]
     # 绘制UB数据点和连接线
     smain = 15
     smain = 15 if type == MAXSAT else 40
     if type == TSP:
         s = 15
-        sfork = 50
+        sfork = 40
         sorange = 3
         sopt = 100
     elif type == MAXSAT:
         s = 15
         sfork = s
         sorange = 15
-        sopt = 40
+        sopt = 80
     elif type == MIPLTP:
-        s = 15
+        s = 40
         sfork = s
         sorange = 15
-        sopt = 40
+        sopt = 60
     elif type == FANGDA:
         s = 100
         sfork = 200
         sorange = 15
         sopt = 400
     rasterized=False if type == MIPLTP else True
+
     if type != TSP and type != FANGDA:
-        sns.scatterplot(x="bround",y ="ub",
-                        data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] ,
-                        s = smain, color = '#00B0F0', rasterized=rasterized ,edgecolor="none",
-                        zorder = 5, alpha = 0.7) ,#0072BD
+        # 原代码注释保留
+        # sns.scatterplot(x="bround",y ="ub",
+        #                 data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] ,
+        #                 s = smain, color = '#00B0F0', rasterized=rasterized ,edgecolor="none",
+        #                 zorder = 5, alpha = 0.7)
+
+        # 按矿工ID分组绘制主链数据
+        for miner_id in ub_df['miner'].unique():
+            miner_data = ub_df[
+                (ub_df['miner'] == miner_id) & 
+                (ub_df['fathomed'] == False) & 
+                (ub_df['block'] != 'None')
+            ]
+            if not miner_data.empty:
+                sns.scatterplot(
+                    x="bround", y="ub",
+                    data=miner_data,
+                    s=smain, 
+                    color=miner_colors[miner_id], 
+                    rasterized=rasterized,
+                    edgecolor="none",
+                    zorder=5, 
+                    alpha=0.7
+                )
+
+    # 保持其他数据的绘制不变
     sns.scatterplot(x="bround",y ="ub",
                     data = ub_df[(ub_df["fathomed"]== True) & 
-                                 (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
+                                (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
                     color = "#CFCFCF", s= sorange, rasterized=rasterized, edgecolor="none",alpha = 0.5)
     # sns.scatterplot(x="bround",y ="ub",
     #                 data = ub_df[(ub_df["fathomed"]== True) & 
@@ -270,7 +306,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # sns.scatterplot(x="round",y ="ub",data = ub_df[(ub_df["block"]== "None")], 
     #                 color = "#39FF14", s= s,rasterized=rasterized,edgecolor="none",zorder = unpub_zorder, alpha = 1)
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
-                    color = "#FF9E4A", s= sfork,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 1)
+                    color = "#FF69B4", s= sfork,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 1)#FF9E4A
     # 以下是一些更亮、更显眼的颜色选择
     bright_colors = {
         "青色": "#00FFFF",       # 明亮的青色/水绿色
@@ -306,12 +342,43 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     print("drawing main chain")
     # 添加蓝绿黄颜色映射
     base_colors = {
-        'blue': '#3b82f6',   # 蓝色
-        'green': '#10b981',  # 绿色
-        'yellow': '#EDB120'  # 黄色
+        'blue': [
+            "#00B0F0",  # 主蓝色
+            "#0096FF",  # 天蓝色
+            "#1E90FF",  # 道奇蓝
+            "#4169E1",  # 皇家蓝
+            "#0047AB"   # 钴蓝色
+        ],
+        'green': [
+            "#00FA9A",  # 主绿色
+            "#3CB371",  # 中海绿色
+            "#32CD32",  # 酸橙绿
+            "#228B22",  # 森林绿
+            "#008B45"   # 春绿色
+        ],
+        'yellow': [
+            "#FFF700",  # 主黄色
+            "#FFD700",  # 金色
+            "#FFBF00",  # 琥珀色
+            "#FFA500",  # 橙色
+            "#FF8C00"   # 深橙色
+        ]
     }
-    
-    
+
+    def get_miner_color(miner_id: int, total_miners: int):
+        """根据矿工ID获取颜色，同一基色使用不同色调"""
+        base_idx = miner_id % 3
+        color_group = miner_id // 3
+        
+        if base_idx == 0:
+            colors = base_colors['blue']
+        elif base_idx == 1:
+            colors = base_colors['green']
+        else:
+            colors = base_colors['yellow']
+        
+        return colors[color_group % len(colors)]
+
     point_norm = mcolors.Normalize(vmin=0, vmax=bpre_df['children_count'].max())
     # print(bpre_df['children_count'].max())
     blues = plt.cm.Blues
@@ -343,16 +410,33 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             min_ub = row['ub_min']
             max_ub = row['ub_max']
             # 绘制圆角矩形
-            width = 0.023 if type == MAXSAT else 0.04
-            children_count = children_counts[row['pre_pname']]
-            color = my_blues(0 + 0.5*(1-point_norm(children_count)))  # 将颜色范围限制在0.3-0.7之间，使颜色更浅
+            if type == MIPLTP:
+                width = 0.04
+                if m == 1:
+                    width = 0.04
+                elif m == 3:
+                    width = 0.035
+                elif m == 10:
+                    width = 0.03
+            elif type == MAXSAT:
+                width = 0.023
+                if m == 1:
+                    width = 0.023
+                elif m == 3:
+                    width = 0.02
+                elif m == 10:
+                    width = 0.015
+            # children_count = children_counts[row['pre_pname']]
+            color = miner_colors[row['miner']]
+            # color = my_blues(0 + 0.5*(1-point_norm(children_count)))  # 将颜色范围限制在0.3-0.7之间，使颜色更浅
             left, width = adjust_width_for_log_scale(row['bround'], width)
+            # left = row['bround']-width/2
             # 计算对数尺度下的矩形边界
             l = 0.05 if type == MAXSAT else 1
             rect = Rectangle((left, min_ub-l), width, max_ub - min_ub+l*2, 
                             linewidth=1.5, edgecolor='#5494CE',  facecolor = color,
                             linestyle='-', capstyle='round', joinstyle='round',
-                            rotation_point='center',alpha = 0.4, zorder = 2)
+                            rotation_point='center',alpha = 0.2, zorder = 2)
             ax.add_patch(rect)
         if type == MIPLTP:
             for idx, block_row in block_df.iterrows():
@@ -370,7 +454,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
                             linestyle='--',linewidth = 0.5,alpha = 0.5, zorder = 0)#color='#CFCFCF'
 
     # # 处理Lowerbounds数据
-    lb_rounds_new = list(map(int, lowerbounds.keys()))
+    lb_rounds_new = [x-1 if x != 0 else x for x in map(int, lowerbounds.keys())]
     if type == MAXSAT:
         lb_values_new = [-v for v in lowerbounds.values()]
     elif type == TSP or type == FANGDA:
@@ -379,13 +463,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         lb_values_new = [v for v in lowerbounds.values()]
     # my_oranges = mcolors.LinearSegmentedColormap.from_list("my_oranges", ["white", "#ee9b00"])
     
-    # sns.kdeplot(data=ub_df[ub_df['is_main']],     x='round', y='ub', cmap="Blues" , fill=True, bw_adjust=0.2, zorder = 0)
-    # sns.kdeplot(data=ub_df[ub_df['is_fathomed']], x='bround', y='ub', cmap="Oranges", fill=True, bw_adjust=0.2, zorder = 0)
-    # sns.kdeplot(data=ub_df[ub_df['is_fathomed']], x='bround', y='ub', cmap="Oranges", fill=True, bw_adjust=0.1, zorder = 0)
-    
     def draw_point(point,pre_point):
-        # print(point["block"],point["pname"],point["bround"])
-        alpha=0.6
+        alpha=0.4
         color = '#0072BD'  # 默认颜色
         if math.log(point['children_count']) > 10:
             zorder = 1
@@ -397,39 +476,19 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             zorder = 2
         elif math.ceil(math.log(point['children_count'])) >= 0:
             zorder = 2  
-            alpha = 0.8
+            alpha = 0.6
         if type == TSP:
             s = ((point['children_count'])**0.5)*10+5
         elif type == FANGDA:
             s = ((point['children_count'])**0.5)*30+10
-        # s = 10
-        # print(math.log(point['children_count']))
         # color = my_blues(0.1 + 0.75 *(1- point_norm(math.log(point['children_count']))))
-        miner_colors = [base_colors['blue'], base_colors['green'], base_colors['yellow']]
+
         miner_id = point['miner']
-        color = miner_colors[miner_id % 3]  # 使用基础颜色循环
+        color = miner_colors[miner_id]  # 使用基础颜色循环
         
         if (pre_point["allInteger"] or (pre_point["fathomed"] and not point["allInteger"]) 
             or pre_point["isFork"] or pre_point["block"] == "None"):
             return
-        
-        # if pre_point["allInteger"]:
-        #     color = 'r' 
-        #     alpha = 1 
-        #     s = 30
-        #     zorder = 50
-        #     # print(point["pname"])
-        # if pre_point["fathomed"] and not point["allInteger"]:
-        #     color = 'orange' 
-        #     s = 1
-        # if pre_point["isFork"]:
-        #     color = "black"
-        #     alpha = 1
-        #     s = 50
-        # if pre_point["block"] == "None":
-        #     color = "#9acd32"
-        #     alpha = 0.5
-        #     s = 50
         ax.scatter(point["bround"], pre_point["ub"], color=color, alpha=alpha, 
                     s =s ,zorder =  zorder, rasterized=rasterized,
                     edgecolor='none')
@@ -480,7 +539,8 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     elif type == MAXSAT:
         fig.subplots_adjust(left=0.09, bottom=0.102, right=0.975, top=0.974)
     if type == TSP:
-        ax.set_xlim(96, 110000)
+        # ax.set_xlim(96, 110000)
+        ax.set_xlim(96, max_round+1000//m)
         # ax.set_xlim(2500, 110000)
         ax.set_ylim(2700, 4000)
     elif type == FANGDA:
@@ -497,12 +557,14 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             ax.set_xlim(1600,2500)
             ax.set_ylim(3000, 3600)# 2132
     elif type == MAXSAT:
-        ax.set_xlim(100, 4500)
+        # ax.set_xlim(100, 4500)
+        ax.set_xlim(60, max_round+10)
         ax.set_ylim(59, 63)
         # ax.set_xlim(1, 100)
         # ax.set_ylim(18, 21)
     elif type == MIPLTP:
-        ax.set_xlim(10, 430)
+        # ax.set_xlim(10, 430)
+        ax.set_xlim(10, max_round+5)
         ax.set_ylim(180, 250)
     # plt.ylim(180, 250)
     # plt.xlim(-30, 430)
@@ -559,6 +621,93 @@ def create_fig3():
     # plt.savefig(SAVE_PREFIX + f"\\bounds_maxsat{time.strftime('%H%M%S')}.svg",  dpi=300)
     # plt.show()
 
+def create_legend(type=None):
+    """创建MIPLIB和TSP的图例"""
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.size'] = 12
+    fig, ax = plt.subplots(figsize=(10, 1))
+    ax.set_axis_off()
+    miner_colors = [
+        "#00B0F0", 
+        "#00FA9A", 
+        "#FFF700", 
+        "#0096FF", 
+        "#3CB371", 
+        "#FFD700", 
+        "#1E90FF", 
+        "#32CD32", 
+        "#FFBF00", 
+        "#4169E1", 
+    ]
+    
+    if type == "MIPLIB":
+        # 创建所有图例元素
+        legend_elements = [
+            plt.scatter([], [], c=miner_colors[i], s=40, 
+                       label=f'Solver {i+1}', alpha=0.7)
+            for i in range(10)
+        ]
+        # 添加其他元素
+        legend_elements.extend([
+            plt.scatter([], [], c='#CFCFCF', s=15, label='Fathomed', alpha=0.5),
+            plt.scatter([], [], c='#FF69B4', s=40, label='Fork', alpha=1.0),
+            plt.scatter([], [], c='#D62728', s=40, label='Integer', alpha=1.0),
+            plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
+            plt.Line2D([], [], color='#333333', linewidth=2, label='Bounds'),
+            plt.Rectangle((0,0), 1, 1, facecolor=miner_colors[0], edgecolor='#5494CE', alpha=0.2, linewidth=1, label='Block')
+        ])
+        
+        # 重新排列元素顺序
+        ncols = 7
+        nrows = (len(legend_elements) + ncols - 1) // ncols
+        new_elements = []
+        for col in range(ncols):
+            for row in range(nrows):
+                idx = row * ncols + col
+                if idx < len(legend_elements):
+                    new_elements.append(legend_elements[idx])
+        legend_elements = new_elements
+        
+    elif type == "TSP":
+        legend_elements = [
+            plt.scatter([], [], c=miner_colors[i], s=40, 
+                       label=f'Solver {i+1}', alpha=0.7)
+            for i in range(10)
+        ]
+        # 添加其他元素
+        legend_elements.extend([
+            plt.scatter([], [], c='#CFCFCF', s=15, label='Fathomed', alpha=0.5),
+            plt.scatter([], [], c='#FF69B4', s=40, label='Fork', alpha=1.0),
+            plt.scatter([], [], c='#D62728', s=40, label='Integer', alpha=1.0),
+            plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
+            plt.Line2D([], [], color='#333333', linewidth=2, label='Bounds')
+        ])
+        
+        # 重新排列元素顺序
+        ncols = 7
+        nrows = (len(legend_elements) + ncols - 1) // ncols
+        new_elements = []
+        for col in range(ncols):
+            for row in range(nrows):
+                idx = row * ncols + col
+                if idx < len(legend_elements):
+                    new_elements.append(legend_elements[idx])
+        legend_elements = new_elements
+
+    ax.legend(handles=legend_elements, 
+             loc='center', 
+             ncol=ncols,
+             edgecolor='none', 
+             fancybox=True,
+             frameon=False,
+            # handletextpad=0.3,
+            # columnspacing=0.8,
+             bbox_to_anchor=(0.5, 0.5))
+
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == "__main__":
     # create_fig3()
     f1 = Path.cwd()/"Results/20250316/pint24_conti24_ub24_eq10_gr4x6m1d1evaluation results.json"
@@ -590,7 +739,7 @@ if __name__ == "__main__":
     # plot_bounds_fig3(f5, MAXSAT,m=3)
     # plot_bounds_fig3(f6, MAXSAT,m=10)
     # plot_bounds_fig3(f7, TSP,m=1)
-    plot_bounds_fig3(f8, TSP,m=3)
+    # plot_bounds_fig3(f8, TSP,m=3)
     # plot_bounds_fig3(f9, TSP,m=5)
     # plot_bounds_fig3(f10, TSP,m=10)
     # plot_bounds_fig3(f11, TSP,m=1)
@@ -601,3 +750,5 @@ if __name__ == "__main__":
     # plot_bounds_fig3(f8, FANGDA,m=3)
     # plot_bounds_fig3(f9, FANGDA,m=5)
     # plot_bounds_fig3(f10, FANGDA,m=10)
+    create_legend("MIPLIB")  # 创建MIPLIB的图例
+    create_legend("TSP")     # 创建TSP的图例

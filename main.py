@@ -44,7 +44,8 @@ def set_background(environ_settings):
     background.set_ave_q(int(environ_settings['q_ave']))
     background.set_blocksize(int(environ_settings['blocksize']))
     background.set_show_fig(False)
-    background.set_total_round(int(environ_settings['total_round']))
+    # background.set_total_round(int(environ_settings['total_round']))
+    background.set_total_round(150000)
     
     return background
 
@@ -91,12 +92,12 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    background.set_var_num('29spot')
+    background.set_var_num(f"{pool_path.stem}")
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
     miner_num = miner_num if miner_num is not None else 1
     background.set_miner_num(miner_num)
-    background.set_bb_difficulty(1)
+    background.set_bb_difficulty(5)
     background.set_openblock_strategy(bb.OB_RAND)
     background.set_openprblm_strategy(bb.OP_RAND)
     if pool_path is not None:
@@ -105,11 +106,13 @@ def run(pool_path=None, miner_num =None):
     else:
     #     # pool_path = Path.cwd()/"Problem Pools"/"01"/f"problem pool{background.get_var_num()}.json"
     #     pool_path = Path.cwd()/"Problem Pools"/"20250103"/f"100vars.json"
-        # pool_path = Path.cwd()/"Problem Pools\\fig1.json"
+        pool_path = Path.cwd()/"Problem Pools\\fig1_03262.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
-        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        # pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
+        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
+        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int200_conti54_ub820_eq45_graphdraw-domain.json"
 
     prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
     lp = prblm_pool[0]
@@ -135,7 +138,7 @@ def run(pool_path=None, miner_num =None):
     #     background.get_result_path())
     # lp = lpprblm.test5()
     background.set_genesis_prblm(lp)
-    background.set_enable_gas(True)
+    background.set_enable_gas(False)
     background.set_total_gas(50000)
     background.init_gases([lp])   
     set_logger(background, logging.ERROR)
@@ -377,21 +380,18 @@ if __name__ == '__main__':
         if simu_type == "single_run":
             """单次运行测试"""
         
-            # i = 0
-            # json_files = []
-            # for root, _, files in os.walk(Path.cwd() / "SPOT"/ "Origin"):
-            #     for file in files:
-            #         if file.endswith('.json'):
-            #             json_files.append(os.path.join(root, file))
-            # print(json_files)
-            # # while not run():
-            # #     i+=1
-            # #     print(i)
+            json_files = []
+            for root, _, files in os.walk(Path.cwd() / "Problem Pools"/ "testMIPLIB2"):
+                for file in files:
+                    if file.endswith('.json'):
+                        json_files.append(os.path.join(root, file))
+            print(json_files)
 
             # json_files = ["E:\Files\gitspace\\bbb-github\SPOT\\Origin\\42.json"]
             # for file in reversed(json_files):
             #     print(file)
-            run()    
+            for file in json_files:
+                run(Path(file))    
                       
     else:
         """多进程仿真"""
@@ -437,3 +437,4 @@ if __name__ == '__main__':
         worker_pool.close()
         worker_pool.join()
         print('All subprocesses done.')
+# tsp m1  80778 98387

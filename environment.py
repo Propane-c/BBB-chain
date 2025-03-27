@@ -336,7 +336,6 @@ class Environment(object):
             self.evaluation.save_results_to_json(pool_path)
             # self.global_chain.printchain2txt()
             # self.view_miner.local_chain.printchain2txt()
-            # self.global_chain.ShowStructureWithGraphviz()
             # self.view_miner.local_chain.show_chain_by_graphviz()
             # self.attack.save_draw_final_success_rates()
         return evaluation_result

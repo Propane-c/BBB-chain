@@ -126,7 +126,7 @@ class BranchBound(object):
         # searching strategies
         self.opblk_st = self.background.get_openblock_strategy()
         self.opprblm_st = self.background.get_openprblm_strategy()
-        self.var_st = VAR_RAND
+        self.var_st = VAR_SPEC
         # do pow when generating a keyblock
         self.key_pow_target = '000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
         self.key_pow_nonce = 0

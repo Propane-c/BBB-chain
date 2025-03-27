@@ -116,7 +116,7 @@ def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ins:str, ax_main:p
                 zorder=style['zorder'])
 
     # 主图设置
-    ax_main.axhline(y=solution_pulp, color='#D62728', linestyle='-.', #4b5563
+    ax_main.axhline(y=solution_pulp, color='#414451', linestyle='-.', #D62728
                     linewidth=2, zorder=6)
     if ins == "burma14":
         ax_main.set_xlim([0, 50000])

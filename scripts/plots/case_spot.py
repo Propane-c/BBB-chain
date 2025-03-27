@@ -26,6 +26,7 @@ from matplotlib.path import Path
 from matplotlib.ticker import PercentFormatter
 from scipy.signal import find_peaks, peak_prominences
 from scipy.stats import gaussian_kde
+import matplotlib.patches as patches
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -550,7 +551,7 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
                 zorder=style['zorder'])
 
     # 主图设置
-    ax_main.axhline(y=solution_pulp, color='#D62728', linestyle='--', #4b5563
+    ax_main.axhline(y=solution_pulp, color='#414451', linestyle='--', #4b5563
                     linewidth=1.5, zorder=1)
     ax_main.set_xlim([0, 100000])
     ax_main.set_xlabel('Round')
@@ -566,13 +567,13 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
     # # 移除y轴上的Optimal标签，改为普通数值
     # ylabels = [f'{y:.1f}' for y in yticks]
     # ax_main.set_yticklabels(ylabels)
-    if instance_id == 42:
-        ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True, 
+    # if instance_id == 42:
+    ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True, 
                        loc='upper center', bbox_to_anchor=(0.5, 1.035), ncol=3, fontsize=10)
     if instance_id == 29:
         ax_main.set_ylim(12025, 12033)
     elif instance_id == 28:
-        ax_main.set_ylim(0, 65000)
+        ax_main.set_ylim(0, 67000)
     elif instance_id == 42:
         ax_main.set_ylim(0, 128000)
     
@@ -893,6 +894,26 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
                 markevery=0.05,
                 alpha=1,
                 zorder=2)
+    
+    colors = ['#3b82f6', '#f59e0b', '#ef4444']
+    miners = [1, 3, 10]
+    # 创建色块标注并设置图例
+    legend_patches = []
+    for i, m in enumerate(miners):
+        if ins == "42" and m in [1, 3, 10]:
+            # 创建小一点的色块
+            patch = patches.Patch(color=colors[i % len(colors)], label=f'{m} solvers', alpha=0.8)
+            legend_patches.append(patch)
+        
+        # 设置图例，使用handleheight和handlelength参数来控制色块大小
+        ax_gas.legend(handles=legend_patches, 
+                     loc='upper center', 
+                     bbox_to_anchor=(0.5, 1.1), 
+                     ncol=5, 
+                     frameon=False,
+                     fontsize=10,
+                     handlelength=1.0,  # 减小色块宽度
+                     handleheight=0.5)  # 减小色块高度
     
     # 设置左轴
     # ax_gas.set_xlabel('Round')
