@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import data.lpprblm as lp
 import tsplib95
 
-def load_exist_tsp(load_file_path=None):
-    G, pos, n, distance_matrix = read_tsp_from_xml(load_file_path)
-    draw_tsp_graph(G, pos, os.path.dirname(load_file_path))
-    orig_prblm = get_tsp_lpprblm(n, distance_matrix)
+def load_exist_tsp(load_file_path=None, n =  None):
+    G, pos, n, distance_matrix = read_tsp_from_xml(load_file_path, n)
+    # draw_tsp_graph(G, pos, os.path.dirname(load_file_path))
+    orig_prblm = gen_tsp_lpprblm(n, distance_matrix)
     lp.solve_lp(orig_prblm)
     orig_prblm.fathomed = False
     orig_prblm.fthmd_state = False 
@@ -22,14 +22,14 @@ def gen_random_tsp(node_num, save_dir=None):
         save_dir.mkdir(parents=True, exist_ok=True)
     G, pos,_,distance_matrix = random_tsp_save_xml(node_num, save_dir)
     draw_tsp_graph(G, pos, save_dir)
-    orig_prblm = get_tsp_lpprblm(node_num, distance_matrix)
+    orig_prblm = gen_tsp_lpprblm(node_num, distance_matrix)
     lp.solve_lp(orig_prblm)
     orig_prblm.fathomed = False
     orig_prblm.fthmd_state = False 
     # solve_ilp_by_pulp(orig_prblm)
     return orig_prblm
 
-def get_tsp_lpprblm(n, distance_matrix):
+def gen_tsp_lpprblm(n, distance_matrix):
     c = np.array(distance_matrix).flatten()
     A_eq = np.zeros((2 * n, n ** 2))
     for i in range(n):
@@ -73,28 +73,41 @@ def get_tsp_lpprblm(n, distance_matrix):
     init_iz = np.dot(c, init_ix)
     orig_prblm.init_ix = init_ix
     orig_prblm.init_iz = init_iz
-    # lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'bayg29.json')
+    lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'berlin52_10.json')
     return orig_prblm
 
-def read_tsp_from_xml(file_path):
+def read_tsp_from_xml(file_path, n=None):
     tree = ET.parse(file_path)
     root = tree.getroot()
     graph_section = root.find('graph')
 
     G = nx.Graph()
     pos = {}
-    n = len(graph_section)
+    total_nodes = len(graph_section)
+    if n is None:
+        n = total_nodes
+    else:
+        n = min(n, total_nodes)  # 确保 n 不超过实际节点数
+        
     distance_matrix = [[0 for _ in range(n)] for _ in range(n)]
+    # 只读取前 n 个节点的信息
     for i, vertex in enumerate(graph_section):
+        if i >= n:  # 超过 n 个节点就停止
+            break
+            
         x_tag = vertex.find('x')
         y_tag = vertex.find('y')
         if x_tag is not None and y_tag is not None:
             pos[i] = (float(x_tag.text), float(y_tag.text))
+            
+        # 只读取到第 n 个节点的边
         for edge in vertex.findall('edge'):
             id = int(edge.text)
-            cost = float(edge.attrib["cost"])
+            if id >= n:  # 跳过连接到第 n 个节点之后的边
+                continue
+            cost = round(float(edge.attrib["cost"]))  # 取整
             distance_matrix[i][id] = cost
-            G.add_edge(i, id, weight = cost)
+            G.add_edge(i, id, weight=cost)
             
     if len(pos) == 0:
         # 尝试从tsplib读取坐标
@@ -112,7 +125,7 @@ def read_tsp_from_xml(file_path):
                     x_elem.text = str(pos_x)
                     y_elem = ET.SubElement(vertex, 'y')
                     y_elem.text = str(pos_y)
-                tree.write(file_path)
+                # tree.write(file_path)
         
         # 如果仍然没有坐标，使用spring_layout
         if len(pos) == 0:
@@ -125,7 +138,7 @@ def read_tsp_from_xml(file_path):
                 x_elem.text = str(pos_x_rounded)
                 y_elem = ET.SubElement(vertex, 'y')
                 y_elem.text = str(pos_y_rounded)
-            tree.write(file_path)
+            # tree.write(file_path)
             
     global _pos
     _pos = pos

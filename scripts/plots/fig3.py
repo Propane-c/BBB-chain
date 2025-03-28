@@ -234,11 +234,11 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         "#00B0F0", 
         "#00FA9A", 
         "#FFF700", 
-        "#0096FF", 
-        "#3CB371", 
-        "#FFD700", 
-        "#1E90FF", 
+        "#00CED1", 
         "#32CD32", 
+        "#FFD700", 
+        "#0096FF", 
+        "#0D898A", 
         "#FFBF00", 
         "#4169E1", 
     ]
@@ -626,18 +626,18 @@ def create_legend(type=None):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 12
-    fig, ax = plt.subplots(figsize=(10, 1))
+    fig, ax = plt.subplots(figsize=(8, 1))
     ax.set_axis_off()
     miner_colors = [
         "#00B0F0", 
         "#00FA9A", 
         "#FFF700", 
-        "#0096FF", 
-        "#3CB371", 
-        "#FFD700", 
-        "#1E90FF", 
+        "#00CED1", 
         "#32CD32", 
-        "#FFBF00", 
+        "#FFD700", 
+        "#0096FF", 
+        "#0D8A32FF", 
+        "#FDBE01FF", 
         "#4169E1", 
     ]
     
@@ -653,13 +653,13 @@ def create_legend(type=None):
             plt.scatter([], [], c='#CFCFCF', s=15, label='Fathomed', alpha=0.5),
             plt.scatter([], [], c='#FF69B4', s=40, label='Fork', alpha=1.0),
             plt.scatter([], [], c='#D62728', s=40, label='Integer', alpha=1.0),
-            plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
+            # plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
             plt.Line2D([], [], color='#333333', linewidth=2, label='Bounds'),
-            plt.Rectangle((0,0), 1, 1, facecolor=miner_colors[0], edgecolor='#5494CE', alpha=0.2, linewidth=1, label='Block')
+            # plt.Rectangle((0,0), 1, 1, facecolor=miner_colors[0], edgecolor='#5494CE', alpha=0.2, linewidth=1, label='Block')
         ])
         
         # 重新排列元素顺序
-        ncols = 7
+        ncols = 5
         nrows = (len(legend_elements) + ncols - 1) // ncols
         new_elements = []
         for col in range(ncols):
@@ -680,12 +680,12 @@ def create_legend(type=None):
             plt.scatter([], [], c='#CFCFCF', s=15, label='Fathomed', alpha=0.5),
             plt.scatter([], [], c='#FF69B4', s=40, label='Fork', alpha=1.0),
             plt.scatter([], [], c='#D62728', s=40, label='Integer', alpha=1.0),
-            plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
+            # plt.Line2D([], [], color='#D62728', linestyle='--', linewidth=2, label='Integer path'),
             plt.Line2D([], [], color='#333333', linewidth=2, label='Bounds')
         ])
         
         # 重新排列元素顺序
-        ncols = 7
+        ncols = 5
         nrows = (len(legend_elements) + ncols - 1) // ncols
         new_elements = []
         for col in range(ncols):

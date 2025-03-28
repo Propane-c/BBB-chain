@@ -92,7 +92,10 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    background.set_var_num(f"{pool_path.stem}")
+    if pool_path is not None:
+        background.set_var_num(f"{pool_path.stem}")
+    else:
+        background.set_var_num("ulysses16")
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
     miner_num = miner_num if miner_num is not None else 1
@@ -114,9 +117,9 @@ def run(pool_path=None, miner_num =None):
         pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
         pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int200_conti54_ub820_eq45_graphdraw-domain.json"
 
-    prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
-    lp = prblm_pool[0]
-    # lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"bayg29.xml")
+    # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
+    # lp = prblm_pool[0]
+    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"ulysses16.xml")
     # lp = lpprblm.load_prblm_pool_from_json(
         # ".\Problem Pools\\problem pool1007_1837.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -215,19 +218,19 @@ def single_process_longchain(
 
 if __name__ == '__main__':
     """参数设置"""
-    # pool = lpprblm.prblm_pool_generator(2500, 50, ZERO_ONE)
-    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
-    # pool = lpprblm.prblm_pool_generator(2500, 120, ZERO_ONE)
-    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_2", ZERO_ONE, False)
+    # pool = lpprblm.prblm_pool_generator(1000, 150, ZERO_ONE, 15)
+    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_3", ZERO_ONE, False)
+    # pool = lpprblm.prblm_pool_generator(2500, 200, ZERO_ONE, 20)
+    # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_3", ZERO_ONE, False)
 
     simu_type = "single_run"
     # simu_type = "long"
     # simu_type = "short"
     # multiProcessOn = True
     multiProcessOn = False
-    threadNum = 1
+    threadNum = 5
     # enGas = 2
-    enGas = 1
+    enGas = 0
     # enGas = 0 # 0不启用gas，1 总gas，2 gas/miner
     """
     short参数说明:
@@ -236,7 +239,7 @@ if __name__ == '__main__':
     
     """
     rpt_num1 = 1
-    rpt_num = 1
+    rpt_num = 10
     args_list = [
         # [500,   rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
         # [500,   rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
@@ -259,22 +262,27 @@ if __name__ == '__main__':
         # [2500,  rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
         # [2500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
         # [2500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
+        [enGas, 1,  rpt_num, 1, 50, [5],  [1], 0, 'load', 0.001],
+        [enGas, 1,  rpt_num, 1, 50, [5],  [3], 0, 'load', 0.001],
+        [enGas, 1,  rpt_num, 1, 50, [5],  [5], 0, 'load', 0.001],
+        [enGas, 1,  rpt_num, 1, 50, [5],  [10], 0, 'load', 0.001],
+        [enGas, 1,  rpt_num, 1, 50, [5],  [15], 0, 'load', 0.001],
 
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
-        [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
 
         # [enGas, 2500,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
@@ -380,18 +388,19 @@ if __name__ == '__main__':
         if simu_type == "single_run":
             """单次运行测试"""
         
-            json_files = []
-            for root, _, files in os.walk(Path.cwd() / "Problem Pools"/ "testMIPLIB2"):
-                for file in files:
-                    if file.endswith('.json'):
-                        json_files.append(os.path.join(root, file))
-            print(json_files)
+            # json_files = []
+            # for root, _, files in os.walk(Path.cwd() / "Problem Pools"/ "testMIPLIB2"):
+            #     for file in files:
+            #         if file.endswith('.json'):
+            #             json_files.append(os.path.join(root, file))
+            # print(json_files)
 
             # json_files = ["E:\Files\gitspace\\bbb-github\SPOT\\Origin\\42.json"]
             # for file in reversed(json_files):
             #     print(file)
-            for file in json_files:
-                run(Path(file))    
+            # for file in json_files:
+                # run(Path(file))  
+            run()  
                       
     else:
         """多进程仿真"""
@@ -438,3 +447,7 @@ if __name__ == '__main__':
         worker_pool.join()
         print('All subprocesses done.')
 # tsp m1  80778 98387
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int297_conti0_ub9727_eq0_iis-hc-cov.json 250000
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int264_conti89_ub185_eq89_blend2.json 220000
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int32_conti0_ub0_eq16_enlight4.json 1000
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int400_conti0_ub40_eq0_f2gap40400.json 2500

@@ -253,9 +253,9 @@ def rand_01(var_num, conNum:int = 5):
     """
     随机生成指定变量数量的`0-1`整数规划问题
     """
-    c = np.array(np.random.choice(np.arange(-50,150),var_num,True))
-    G_ub = np.array([np.random.choice(np.arange(-50,150),var_num,True) for _ in range(conNum)])
-    h_ub = np.array(random.sample(range(-50,150),len(G_ub)))
+    c = np.array(np.random.choice(np.arange(-100,100),var_num,True))
+    G_ub = np.array([np.random.choice(np.arange(-100,100),var_num,True) for _ in range(conNum)])
+    h_ub = np.array(random.sample(range(-100,100),len(G_ub)))
     A_eq = None
     b_eq = None
     bounds = []
@@ -285,7 +285,7 @@ def prblm_generator(var_num, type:str = NORMAL , conNum:int = 5):
         if p.z_lp == 0:
             continue
         solve_ilp_by_pulp(p)
-        if p.iz_pulp == 0:
+        if p.iz_pulp == 0 or p.iz_pulp is None:
             continue
         return p
 
@@ -394,7 +394,7 @@ def test5():
     p.fthmd_state = False
     return p
 
-def prblm_pool_generator(total_num:int, var_num:int, prblm_type:str = NORMAL):
+def prblm_pool_generator(total_num:int, var_num:int, prblm_type:str = NORMAL, con_num:int = 5):
     """
     产生问题数固定的问题池
     """
@@ -403,7 +403,7 @@ def prblm_pool_generator(total_num:int, var_num:int, prblm_type:str = NORMAL):
     for i in range(total_num):
         if i % 10 == 0:
             print(f"Generate Progress: {i}")
-        p = prblm_generator(var_num, prblm_type)
+        p = prblm_generator(var_num, prblm_type, con_num)
         prblm_pool.append(p)
     print("")
     for i in range(len(prblm_pool)):
@@ -560,9 +560,10 @@ def solve_ilp_by_pulp(prblm:LpPrblm):
     if A_eq is not None:
         for i in range(len(A_eq)):
             ilp += (pulp.lpDot(A_eq[i], vars) == b_eq[i])
-    print(ilp)
+    # print(ilp)
     ilp.solve(pulp.PULP_CBC_CMD(msg=False))
     if ilp.status != pulp.LpStatusOptimal:
+        print("Infeasible")
         return None
     # for i, v in enumerate(ilp.variables()):
     #     print(v.name, "=", v.varValue)
