@@ -44,8 +44,8 @@ def set_background(environ_settings):
     background.set_ave_q(int(environ_settings['q_ave']))
     background.set_blocksize(int(environ_settings['blocksize']))
     background.set_show_fig(False)
-    # background.set_total_round(int(environ_settings['total_round']))
-    background.set_total_round(150000)
+    background.set_total_round(int(environ_settings['total_round']))
+    # background.set_total_round(150000)
     
     return background
 
@@ -83,7 +83,7 @@ def run(pool_path=None, miner_num =None):
     background = set_background(environ_settings)
     network_param = set_network_param(config, environ_settings)
     # t = int(environ_settings['t'])
-
+    problem_name = None
     q_ave = int(environ_settings['q_ave'])
     q_distr = environ_settings['q_distr']
     target = environ_settings['target']
@@ -92,10 +92,7 @@ def run(pool_path=None, miner_num =None):
     t = len(adversary_ids)
     total_round = int(environ_settings['total_round'])
     background.set_keyblock_strategy('pow')
-    if pool_path is not None:
-        background.set_var_num(f"{pool_path.stem}")
-    else:
-        background.set_var_num("ulysses16")
+    
     background.set_solve_prob(0.5)
     background.set_safe_thre(1)
     miner_num = miner_num if miner_num is not None else 1
@@ -111,15 +108,21 @@ def run(pool_path=None, miner_num =None):
     #     pool_path = Path.cwd()/"Problem Pools"/"20250103"/f"100vars.json"
         pool_path = Path.cwd()/"Problem Pools\\fig1_03262.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
-        # pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        # pool_path = Path.cwd()/"Problem Pools\\testTSP\\burma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
-        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
-        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int200_conti54_ub820_eq45_graphdraw-domain.json"
-
-    # prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
-    # lp = prblm_pool[0]
-    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"ulysses16.xml")
+        # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
+        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json"
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json 3000
+    # problem_name = "ulysses16"
+    if problem_name is None and pool_path is not None:
+        background.set_var_num(f"{pool_path.stem}")
+    else:
+        background.set_var_num(problem_name)
+    prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path)
+    lp = prblm_pool[0]
+    # lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"ulysses16.xml")
     # lp = lpprblm.load_prblm_pool_from_json(
         # ".\Problem Pools\\problem pool1007_1837.json")[0]
     # lp = lpprblm.load_prblm_pool_from_json(
@@ -142,7 +145,7 @@ def run(pool_path=None, miner_num =None):
     # lp = lpprblm.test5()
     background.set_genesis_prblm(lp)
     background.set_enable_gas(False)
-    background.set_total_gas(50000)
+    background.set_total_gas(10000000)
     background.init_gases([lp])   
     set_logger(background, logging.ERROR)
     quiet=False
@@ -153,7 +156,7 @@ def run(pool_path=None, miner_num =None):
     total_round = Z.exec(quiet=quiet)
     
     print(total_round)
-    Z.view(quiet=quiet, pool_path=pool_path)
+    Z.view(quiet=quiet, problem_name = problem_name, pool_path=pool_path)
     # if len(Z.evaluation.mb_nums.keys()) == 0:
     #     return False
     # if Z.evaluation.mb_nums['B0'] >= 5:
@@ -223,11 +226,11 @@ if __name__ == '__main__':
     # pool = lpprblm.prblm_pool_generator(2500, 200, ZERO_ONE, 20)
     # lpprblm.save_prblm_pool(pool, Path.cwd() / "Problem Pools" / "01_3", ZERO_ONE, False)
 
-    simu_type = "single_run"
+    # simu_type = "single_run"
     # simu_type = "long"
-    # simu_type = "short"
-    # multiProcessOn = True
-    multiProcessOn = False
+    simu_type = "short"
+    multiProcessOn = True
+    # multiProcessOn = False
     threadNum = 5
     # enGas = 2
     enGas = 0
@@ -447,7 +450,9 @@ if __name__ == '__main__':
         worker_pool.join()
         print('All subprocesses done.')
 # tsp m1  80778 98387
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int214_conti0_ub6119_eq0_glass-sc.json 450000
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int297_conti0_ub9727_eq0_iis-hc-cov.json 250000
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int264_conti89_ub185_eq89_blend2.json 220000
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int32_conti0_ub0_eq16_enlight4.json 1000
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int400_conti0_ub40_eq0_f2gap40400.json 2500
+# D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json 3000

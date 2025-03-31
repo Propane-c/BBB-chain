@@ -101,7 +101,7 @@ class Evaluation(object):
         self.feasi_kbs = []
         # fig 1 solving process
         self.cur_rlxsol = 0 
-        self.cur_ub = sys.maxsize # 全局的最大下界
+        self.cur_ub = sys.maxsize # 全局的最大上界
         self.relax_sols = defaultdict(list) # {round:[rlx_sols for cur round]}
         self.upperbounds = defaultdict(int) # {round:lb}
         self.ubdata:list[tuple] = []
@@ -163,7 +163,8 @@ class Evaluation(object):
     def get_feasi_kbs(self, chain:Chain):
         if len(self.feasi_kbs) > 0:
             return self.feasi_kbs
-        self.feasi_kbs = chain.get_feasible_keyblocks()
+        # self.feasi_kbs = chain.get_feasible_keyblocks()
+        self.feasi_kbs = chain.get_keyblocks()[:-1]
         return self.feasi_kbs
 
     def get_opt_solutions(self, chain:Chain):
@@ -283,9 +284,10 @@ class Evaluation(object):
         """
         记录全局的最小上界
         """
-        conss_lb = miner.consensus.upper_bound
-        self.cur_ub = conss_lb if conss_lb < self.cur_ub else self.cur_ub 
-        self.upperbounds[round] = self.cur_ub
+        conss_ub = miner.consensus.upper_bound
+        if conss_ub < self.cur_ub:
+            self.cur_ub = conss_ub
+            self.upperbounds[round] = self.cur_ub
         # self.lb_perminer[miner.Miner_ID]
 
     def get_solving_rounds_kbtimes_mbgrowth(self, chain:Chain):
@@ -408,7 +410,7 @@ class Evaluation(object):
         并计算分叉率: 
         kb_fork_num / total_kb_num
         """
-        kbs = chain.get_keyblocks_pref()
+        kbs = chain.get_keyblocks()
         self.kb_num = len(kbs)
         self.kb_forknum = 0
         for kb in kbs:
@@ -561,13 +563,15 @@ class Evaluation(object):
     def get_result_dict(self):
         return asdict(self.result)
 
-    def save_results_to_json(self, pool_path):
+    def save_results_to_json(self, problem_name = None, pool_path = None):
         result_path = self.background.get_result_path()
         miner_num = self.background.get_miner_num()
         diffculty = self.background.get_bb_difficulty()
         var_num = self.background.get_var_num()
         json_name = f'm{miner_num}d{diffculty}v{var_num}evaluation results.json'
-        if pool_path is not None:
+        if problem_name is not None:
+            json_name = f'{problem_name}m{miner_num}d{diffculty}v{var_num}evaluation results.json'
+        elif pool_path is not None:
             json_name = f'p{pool_path.stem}m{miner_num}d{diffculty}evaluation results.json'
         with open(result_path / json_name, 'w+') as f:
                 result_dict = self.get_result_dict()

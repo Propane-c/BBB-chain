@@ -375,7 +375,7 @@ def plot_bounds_fig1(file_path):
             color = '#00B0F0'
             s = (children_counts[pname]**1.5)*100+1
         if ub_data[i].get("fathomed", False) and not is_integer:
-            color = 'orange' 
+            color = 'grey' 
             s = 150
         round = brounds[i]
             # alpha = 0.5
@@ -439,7 +439,7 @@ def plot_bounds_fig1(file_path):
     plts = [plt.Line2D([], [], color='black', linewidth=2, label='lowerbound'),
             plt.Line2D([],[],color="red", linestyle='None',marker = 'o', label="integer"),
         plt.Line2D([],[],color="#00B0F0", linestyle='None',marker = 'o',  label="relaxed LP sol"),
-        plt.Line2D([],[],color="orange", linestyle='None',marker = 'o',  label="fathomed"),]
+        plt.Line2D([],[],color="grey", linestyle='None',marker = 'o',  label="fathomed"),]
         # plt.Line2D([100],[100],color="black", linestyle='None',marker = 'o', label="fork"),
         # plt.Line2D([100],[100],color="#9acd32", linestyle='None',marker = 'o', label="unpublished")]
     

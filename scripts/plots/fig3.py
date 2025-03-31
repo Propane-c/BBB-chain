@@ -464,7 +464,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     # my_oranges = mcolors.LinearSegmentedColormap.from_list("my_oranges", ["white", "#ee9b00"])
     
     def draw_point(point,pre_point):
-        alpha=0.4
+        alpha=0.2 if m == 1 else 0.4
         color = '#0072BD'  # 默认颜色
         if math.log(point['children_count']) > 10:
             zorder = 1
@@ -476,7 +476,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             zorder = 2
         elif math.ceil(math.log(point['children_count'])) >= 0:
             zorder = 2  
-            alpha = 0.6
+            alpha = 0.4 if m == 1 else 0.6
         if type == TSP:
             s = ((point['children_count'])**0.5)*10+5
         elif type == FANGDA:
@@ -537,7 +537,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     elif type == MIPLTP:
         fig.subplots_adjust(left=0.112, bottom=0.102, right=0.975, top=0.974)
     elif type == MAXSAT:
-        fig.subplots_adjust(left=0.09, bottom=0.102, right=0.975, top=0.974)
+        fig.subplots_adjust(left=0.09, bottom=0.102, right=0.96, top=0.974)
     if type == TSP:
         # ax.set_xlim(96, 110000)
         ax.set_xlim(96, max_round+1000//m)
@@ -716,10 +716,6 @@ if __name__ == "__main__":
     f4 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm1d1evaluation results.json"
     f5 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm3d1evaluation results.json"
     f6 = Path.cwd()/"Results/20250316/pvar162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msatm10d1evaluation results.json"   
-    f7 = Path.cwd()/"Result_Data/tspfig3/m1d5vtspevaluation results.json"
-    f8 = Path.cwd()/"Result_Data/tspfig3/m3d5vtspevaluation results.json"
-    f9 = Path.cwd()/"Result_Data/tspfig3/m5d5vtspevaluation results.json"
-    f10 = Path.cwd()/"Results/20250317/201726/pvar54_soft27_con54_pseudoBoolean-normalized-g9x3.opb.msatm1d1evaluation results.json"
 
     f11 = Path.cwd()/ "Results\\20250319\\175110\\burma14m1d10evaluation results.json"
     f12 = Path.cwd()/ "Results\\20250319\\175110\\burma14m3d10evaluation results.json"
@@ -735,12 +731,11 @@ if __name__ == "__main__":
     # plot_bounds_fig3(f1, MIPLTP, m=1)
     # plot_bounds_fig3(f2, MIPLTP, m=3)
     # plot_bounds_fig3(f3, MIPLTP, m=10)
-    # plot_bounds_fig3(f4, MAXSAT,m=1)
-    # plot_bounds_fig3(f5, MAXSAT,m=3)
-    # plot_bounds_fig3(f6, MAXSAT,m=10)
+    plot_bounds_fig3(f4, MAXSAT,m=1)
+    plot_bounds_fig3(f5, MAXSAT,m=3)
+    plot_bounds_fig3(f6, MAXSAT,m=10)
     # plot_bounds_fig3(f7, TSP,m=1)
     # plot_bounds_fig3(f8, TSP,m=3)
-    # plot_bounds_fig3(f9, TSP,m=5)
     # plot_bounds_fig3(f10, TSP,m=10)
     # plot_bounds_fig3(f11, TSP,m=1)
     # plot_bounds_fig3(f12, TSP,m=3)
@@ -748,7 +743,6 @@ if __name__ == "__main__":
     # plot_bounds_fig3(f14, TSP,m=10)
     # plot_bounds_fig3(f7, FANGDA,m=1)
     # plot_bounds_fig3(f8, FANGDA,m=3)
-    # plot_bounds_fig3(f9, FANGDA,m=5)
     # plot_bounds_fig3(f10, FANGDA,m=10)
-    create_legend("MIPLIB")  # 创建MIPLIB的图例
-    create_legend("TSP")     # 创建TSP的图例
+    # create_legend("MIPLIB")  # 创建MIPLIB的图例
+    # create_legend("TSP")     # 创建TSP的图例

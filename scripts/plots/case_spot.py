@@ -312,7 +312,7 @@ def plot_ave_solution_error_spot(json_file_path, ax:plt.Axes, ax_inset:plt.Axes)
 
     # 主图设置
     ax.set_xlabel("Number of tasks")
-    ax.set_ylabel("Optimality gap")
+    ax.set_ylabel("Relative gap")
     ax.grid(True, linestyle="--", alpha=0.3)
     # ax.legend(framealpha=0.9, edgecolor='none', fancybox=True, loc='upper left')
     ax.legend(framealpha=0.0, edgecolor='none', fancybox=True,
@@ -423,7 +423,7 @@ def plot_solve_err_vs_gas_spot(json_file_path, groups):
             color=colors[i], marker='o', linestyle='-', label=f"Gas={gas}"
         )
     plt.xlabel("Number of Tasks", fontsize=14)
-    plt.ylabel("Optimality gap", fontsize=14)
+    plt.ylabel("Relative gap", fontsize=14)
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.ylim([0, 0.1])
@@ -583,7 +583,7 @@ def plot_solution_progress_spot(json_dir:str, instance_id:int, miner_nums:list, 
                 verticalalignment='center')
     
     # 子图设置
-    ax_error.set_ylabel("Optimality\n gap")
+    ax_error.set_ylabel("Relative\n gap")
     ax_error.set_xlim([0, 100000])
     ax_error.set_ylim(0.7e-1,1)
     ax_error.grid(True, linestyle='--', alpha=0.3)
@@ -691,7 +691,7 @@ def plot_ave_solution_error_vs_gas(json_file_path, ax:plt.Axes):
 
     # 设置图表属性
     ax.set_xlabel('Gas/miner')
-    ax.set_ylabel("Optimality gap")
+    ax.set_ylabel("Relative gap")
     ax.set_yscale('log')
 
     ax.grid(True, linestyle='--', alpha=0.3)
@@ -716,95 +716,6 @@ def plot_ave_solution_error_vs_gas(json_file_path, ax:plt.Axes):
         ax.text(target_gas - 300, y_max * 1.8, f"Gas/miner={target_gas}", 
                color='gray', fontsize=12, ha='left', va='center')
         
-def plot_gas_vs_round1(json_dir1, json_dir2, miner_nums:list, miner_nums2:list, ax_gas:plt.Axes):
-    """绘制gas随round的变化"""
-    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
-    markers = ['o', 's', '^', 'D', 'P']
-    styles = {
-        1: {
-            'color': '#3b82f6',  # 亮蓝色
-            'marker': 'o',
-            'linestyle': '-',
-            'alpha': 0.9,
-            'zorder': 1
-        },
-        3: {
-            'color': '#f59e0b',  # 亮红色
-            'marker': 'x',
-            'linestyle': '-',
-            'alpha': 0.9,
-            'zorder': 2
-        },
-        10: {
-            'color': '#ef4444',  # 亮绿色
-            'marker': '^',
-            'linestyle': '-',
-            'alpha': 0.9,
-            'zorder': 3
-        }
-    }
-    
-    
-    for m in miner_nums2:
-        json_path = f"{json_dir2}/p28m{m}d5evaluation results.json"
-        with open(json_path, 'r') as f: 
-            data = json.load(f)
-        
-        gas_consumes = data['gas_consumes']
-        rounds = [item[0] for item in gas_consumes]
-        
-        # 计算gas值和差值
-        gas_values = [item[1] for item in gas_consumes]
-        
-        style2 = styles[m]
-        # 左轴画gas消耗差
-        # # 右轴画gas剩余值
-        ax_gas.plot(rounds, gas_values,
-                color=style2['color'],
-                linewidth=1,
-                linestyle='--',
-                marker=style2['marker'],
-                markersize=4,
-                markevery=0.05,
-                alpha=1,
-                label=f'{m} miners (rest)',
-                zorder=5)
-    
-    for m in miner_nums:
-        json_path = f"{json_dir1}/p42m{m}d5evaluation results.json"
-        with open(json_path, 'r') as f: 
-            data = json.load(f)
-        
-        gas_consumes = data['gas_consumes']
-        rounds = [item[0] for item in gas_consumes]
-        
-        # 计算gas值和差值
-        gas_values = [item[1] for item in gas_consumes]
-        
-        style = styles[m]
-        # 左轴画gas消耗差
-        # # 右轴画gas剩余值
-        ax_gas.plot(rounds, gas_values,
-                color=style['color'],
-                linewidth=1,
-                linestyle='-',
-                marker=style['marker'],
-                markersize=4,
-                markevery=0.1,
-                alpha=1,
-                label=f'{m} miners (rest)',
-                zorder=5)
-        
-    # 设置左轴
-    ax_gas.set_xlabel('Round')
-    # ax_gas.set_ylabel('Total gas \nconsumption')
-    ax_gas.set_ylim(0, 60000)
-    ax_gas.set_xlim([0, 100000])
-    ax_gas.grid(True, linestyle='--', alpha=0.2)
-    
-
-    for spine in ax_gas.spines.values():
-        spine.set_edgecolor('#dddddd')
 
 def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
     """绘制gas随round的变化"""
@@ -816,7 +727,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
             'marker': 'o',
             'linestyle': '-',
             'alpha': 0.9,
-            'zorder': 1
+            'zorder': 3
         },
         3: {
             'color': '#f59e0b',  # 亮红色
@@ -830,7 +741,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
             'marker': '^',
             'linestyle': '-',
             'alpha': 0.9,
-            'zorder': 3
+            'zorder': 1
         }
     }
     ax_gas2 = ax_gas.twinx()
@@ -863,7 +774,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
         ax_gas.fill_between([0, max_round], [8, 8], 0,
                           color=style['color'], alpha=0.05, zorder=1)
         ax_gas.fill_between(rounds_diff, gas_diffs_smooth, 0,
-                         color=style['color'], alpha=0.5, rasterized=True, zorder=3)
+                         color=style['color'], alpha=0.6, rasterized=True, zorder=style['zorder'])
         ax_gas.axvline(x=max_round, color='#4b5563', linestyle='--', linewidth=0.5, alpha=0.8, zorder=2)
         
         # 绘制曲线

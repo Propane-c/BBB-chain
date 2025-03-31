@@ -104,23 +104,12 @@ class Chain(object):
     
     def get_keyblocks(self):
         '''获取链中所有的keyblock'''
-        keyblocks:list[Block] = []
-        q = [self.head]
-        while q:
-            block = q.pop(0)
-            if block.iskeyblock:
-                keyblocks.append(block)
-            q.extend(block.next)
-        return keyblocks
-    
-    def get_keyblocks_pref(self):
-        '''获取链中所有的keyblock'''
         return self.keyblocks
     
     
     def get_feasible_keyblocks(self):
         """获取链中所有feasible的keyblock"""
-        kbs = self.get_keyblocks_pref()
+        kbs = self.get_keyblocks()
         if len(kbs) == 0:
             return []
         infeasi_kbs = []

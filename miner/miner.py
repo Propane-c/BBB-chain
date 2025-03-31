@@ -119,7 +119,7 @@ class Miner(object):
                 return True
             return False
         # if keyprblm_id != self.consensus.KEY_PRBLM_ID
-        local_kbs = self.local_chain.get_keyblocks_pref()
+        local_kbs = self.local_chain.get_keyblocks()
         for kb in local_kbs:
             if kb.keyfield.key_tx is None:
                 continue
@@ -144,7 +144,7 @@ class Miner(object):
             存在连接到相同keyblock的keyblock, 且接收到的块未包含新问题
         """
         rcv_kb = rcvblocks.keyblock
-        local_kbs = self.local_chain.get_keyblocks_pref()
+        local_kbs = self.local_chain.get_keyblocks()
         for kb in local_kbs:
             # 如果上一个keyblock相同，但是接收到的区块没有包含下一个问题，就不接收
             if (kb.keyfield.pre_kb is not None and rcv_kb.keyfield.key_tx is None
@@ -473,7 +473,7 @@ class Miner(object):
         # 建立keyblock间的连接
         pre_kb = rcvkb.keyfield.pre_kb
         if pre_kb is not None:
-            local_kbs = self.local_chain.get_keyblocks_pref()
+            local_kbs = self.local_chain.get_keyblocks()
             for kb in local_kbs:
                 if pre_kb.get_hash() != kb.get_hash():
                     continue

@@ -202,7 +202,7 @@ class Environment(object):
         if pre_kb is None:
             return
         # 建立keyblock间的连接
-        global_kbs = self.global_chain.get_keyblocks_pref()
+        global_kbs = self.global_chain.get_keyblocks()
         for kb in global_kbs:
             if pre_kb.blockhead.blockhash != kb.blockhead.blockhash:
                 continue
@@ -241,6 +241,7 @@ class Environment(object):
         t_0 = time.time()
         t_gc = t_0
         last_gas = -1
+        last_ub = -1
         for round in range(1, max_rounds+1): 
             for miner in self.miners:
                 if terminate_event and terminate_event.is_set():
@@ -316,7 +317,7 @@ class Environment(object):
 
 
 
-    def view(self, quiet = True, pool_path=None, ERROR_PATH=None):
+    def view(self, quiet = True, problem_name=None, pool_path=None, ERROR_PATH=None):
         # 展示一些仿真结果
         # print('\n')
         # # for miner_i in range(self.miner_num):
@@ -333,7 +334,7 @@ class Environment(object):
         #     self.save_err_prblm(ERROR_PATH, "a_bad_prblms.json")
         if not quiet:
             print(f"view miner: {self.view_miner.miner_id} {evaluation_result.solutions_by_bbb}")
-            self.evaluation.save_results_to_json(pool_path)
+            self.evaluation.save_results_to_json(problem_name, pool_path)
             # self.global_chain.printchain2txt()
             # self.view_miner.local_chain.printchain2txt()
             # self.view_miner.local_chain.show_chain_by_graphviz()

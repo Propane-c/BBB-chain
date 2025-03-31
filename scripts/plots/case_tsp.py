@@ -125,13 +125,38 @@ def plot_solution_progress_tsp(json_dir:str, miner_nums:list, ins:str, ax_main:p
     ax_main.set_xlabel(' ')
     ax_main.set_ylabel(f'Solutions of {ins}',labelpad=20)
     ax_main.grid(True, linestyle='--', alpha=0.3)
-    ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True,
-             loc='upper center', bbox_to_anchor=(0.5, 1.01), ncol=4)
+    # ax_main.legend(framealpha=0.0, edgecolor='none', fancybox=True,
+    #          loc='upper center', bbox_to_anchor=(0.5, 1.01), ncol=4)
     if ins == "burma14":
         ax_main.set_ylim(3300, 3850)
     elif ins == "bayg29":
         ax_main.set_ylim(1600, 2000)
     
+
+    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
+    miners = [1, 3, 5, 10, 20]
+    # 创建色块标注并设置图例
+    legend_patches = []
+    for i, m in enumerate(miners):
+        if ins == "burma14" and m in [1, 3, 5, 10]:
+            # 创建小一点的色块
+            patch = patches.Patch(color=colors[i % len(colors)], label=f'{m} solvers', alpha=0.8)
+            legend_patches.append(patch)
+        elif ins == "bayg29" and m in [1, 5, 10, 20]:
+            patch = patches.Patch(color=colors[i % len(colors)], label=f'{m} solvers', alpha=0.8)
+            legend_patches.append(patch)
+        
+    # 设置图例，使用handleheight和handlelength参数来控制色块大小
+    ax_main.legend(handles=legend_patches, 
+                framealpha=0.0, 
+                edgecolor='none', 
+                fancybox=True,
+                loc='upper center', 
+                bbox_to_anchor=(0.5, 1.01), 
+                ncol=5, 
+                frameon=False,
+                handlelength=1.0,  # 减小色块宽度
+                handleheight=0.5)  # 减小色块高度
     # 在左上角子图中绘制gas和error
     # plot_gas_vs_round(json_dir, miner_nums, ax_inset)
     # plot_ave_solution_error_vs_round(json_dir, miner_nums, ax_inset2)
@@ -262,172 +287,7 @@ def visualize_tsp_with_tsplib(round_num, json_path, miner_num=None, ins:str="bur
     # plt.show()
     return G, pos
 
-def plot_gas_vs_round(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
-    """绘制gas随round的变化"""
-    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
-    markers = ['o', 's', '^', 'D', 'P']
-    styles = {}
     
-    for idx, m in enumerate(miner_nums):
-        styles[m] = {
-            'color': colors[idx % len(colors)],
-            'marker': markers[idx % len(markers)],
-            'linestyle': '-',
-            'alpha': 0.5,
-            'zorder': idx + 1
-        }
-    
-    # 创建右侧y轴
-    ax_gas_right = ax_gas.twinx()
-    
-    for m in miner_nums:
-        json_path = f"{json_dir}/m{m}d5v{ins}evaluation results.json"
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-        
-        gas_consumes = data['gas_consumes']
-        rounds = [item[0] for item in gas_consumes]
-        
-        # 计算gas值和差值
-        gas_values = [20000-item[1] for item in gas_consumes]
-        gas_diffs = [i-j for i, j in zip(gas_values[:-1], gas_values[1:])]
-        rounds_diff = rounds[1:]  # 差值序列比原序列少一个点
-        
-        style = styles[m]
-        # 左轴画gas消耗差
-        # # 右轴画gas剩余值
-        ax_gas.plot(rounds, gas_values,
-                color=style['color'],
-                linewidth=1,
-                linestyle='-',
-                marker=style['marker'],
-                markersize=2,
-                markevery=0.05,
-                alpha=1,
-                label=f'{m} miners (rest)',
-                zorder=5)
-        
-        ax_gas_right.plot(rounds_diff, gas_diffs, 
-                color=style['color'],
-                linewidth=0.5,
-                linestyle=style['linestyle'],
-                alpha=style['alpha'],
-                label=f'{m} miners (diff)',
-                zorder=style['zorder'])
-        
-        
-    
-    # 设置左轴
-    ax_gas.set_xlabel(' ')
-    ax_gas_right.set_ylabel('Gas \nconsumption')
-    ax_gas_right.set_ylim(0, 50)
-    ax_gas_right.set_xlim([0, 50000])
-    ax_gas.grid(True, linestyle='--', alpha=0.2)
-    
-    # 设置右轴
-    ax_gas.set_ylabel('Rest gas')
-    for spine in ax_gas.spines.values():
-        spine.set_edgecolor('#dddddd')
-    for spine in ax_gas_right.spines.values():
-        spine.set_edgecolor('#dddddd')
-    
-def plot_gas_vs_round1(json_dir1, json_dir2, miner_nums:list, miner_nums2:list, ax_gas:plt.Axes):
-    """绘制gas随round的变化"""
-    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
-    markers = ['o', 's', '^', 'D', 'P']
-    styles = {}
-    styles2 = {}
-    for idx, m in enumerate(miner_nums):
-        styles[m] = {
-            'color': colors[idx % len(colors)],
-            'marker': markers[idx % len(markers)],
-            'linestyle': '-',
-            'alpha': 0.5,
-            'zorder': idx + 1
-        }
-    
-    for idx, m in enumerate(miner_nums2):
-        styles2[m] = {
-            'color': colors[idx % len(colors)] if m<=3 else colors[idx % len(colors) + 1],
-            'marker': markers[idx % len(markers)] if m<=3 else markers[idx % len(markers) + 1],
-            'linestyle': '-',
-            'alpha': 0.5,
-            'zorder': idx + 1
-        }
-    
-    for m in miner_nums:
-        json_path = f"{json_dir1}/m{m}d5vburma14evaluation results.json"
-        with open(json_path, 'r') as f: 
-            data = json.load(f)
-        
-        gas_consumes = data['gas_consumes']
-        rounds = [item[0] for item in gas_consumes]
-        
-        # 计算gas值和差值
-        gas_values = [item[1] for item in gas_consumes]
-        
-        style = styles[m]
-        # 左轴画gas消耗差
-        # # 右轴画gas剩余值
-        ax_gas.plot(rounds, gas_values,
-                color=style['color'],
-                linewidth=1,
-                linestyle='-',
-                marker=style['marker'],
-                markersize=4,
-                markevery=0.05,
-                alpha=1,
-                label=f'{m} miners (rest)',
-                zorder=5)
-    
-    for m in miner_nums2:
-        json_path = f"{json_dir2}/m{m}d5vbayg29evaluation results.json"
-        with open(json_path, 'r') as f: 
-            data = json.load(f)
-        
-        gas_consumes = data['gas_consumes']
-        rounds = [item[0] for item in gas_consumes]
-        
-        # 计算gas值和差值
-        gas_values = [item[1] for item in gas_consumes]
-        
-        style2 = styles2[m]
-        # 左轴画gas消耗差
-        # # 右轴画gas剩余值
-        ax_gas.plot(rounds, gas_values,
-                color=style2['color'],
-                linewidth=1,
-                linestyle='--',
-                marker=style2['marker'],
-                markersize=4,
-                markevery=0.05,
-                alpha=1,
-                label=f'{m} miners (rest)',
-                zorder=5)
-        
-    # 设置左轴
-    ax_gas.set_xlabel('Round')
-    ax_gas.set_ylabel('Total gas \nconsumption')
-    ax_gas.set_ylim(0, 50000)
-    ax_gas.set_xlim([0, 50000])
-    ax_gas.grid(True, linestyle='--', alpha=0.2)
-    
-    # 在函数末尾，spine设置之前添加图例
-    # 创建两个图例元素：灰色实线和虚线
-    burma_line = mlines.Line2D([], [], color='gray', linestyle='-', 
-                              linewidth=1.5, label='burma14')
-    bayg_line = mlines.Line2D([], [], color='gray', linestyle='--', 
-                             linewidth=1.5, label='bayg29')
-    
-    # 添加图例到右上角
-    ax_gas.legend(handles=[burma_line, bayg_line], 
-                 loc='upper right',
-                 frameon=False,
-                 handlelength=1.5)
-    
-    # 原有的spine设置
-    for spine in ax_gas.spines.values():
-        spine.set_edgecolor('#dddddd')
 
 def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
     """绘制gas随round的变化"""
@@ -441,7 +301,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
             'marker': markers[idx % len(markers)] if ins == "burma14" or (ins == "bayg29" and m <= 3) else markers[idx % len(markers) + 1],
             'linestyle': '-',
             'alpha': 0.5,
-            'zorder': idx + 1
+            'zorder': len(miner_nums) - idx
         }
     ax_gas2 = ax_gas.twinx()
     for m in miner_nums:
@@ -464,7 +324,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
                 gas_diff = curr_gas - prev_gas
                 gas_diffs[round_num] = gas_diff
             prev_gas = curr_gas
-        window = 50
+        window = 50 if ins == "burma14" else 100
         gas_diffs_smooth = pd.Series(gas_diffs).rolling(window=window, center=True).mean()
         gas_diffs_smooth = gas_diffs_smooth.fillna(method='bfill').fillna(method='ffill')
         rounds_diff = list(range(len(gas_diffs_smooth)))
@@ -473,7 +333,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
         ax_gas.fill_between([0, max_round], [8, 8], 0,
                           color=style['color'], alpha=0.05, zorder=1)
         ax_gas.fill_between(rounds_diff, gas_diffs_smooth, 0,
-                         color=style['color'], alpha=0.5, rasterized=True, zorder=3)
+                         color=style['color'], alpha=0.6, rasterized=True, zorder=style['zorder'])
         ax_gas.axvline(x=max_round, color='#4b5563', linestyle='--', linewidth=0.5, alpha=0.8, zorder=2)
         # # 绘制曲线
         # ax_gas.plot(rounds_diff, gas_diffs_smooth, 
@@ -508,33 +368,14 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
         ax_gas.set_xlim([0, 50000])
         ax_gas2.set_ylim(0, 60000)
         ax_gas2.set_yticks([0, 60000])
+    for spine in ax_gas2.spines.values():
+        spine.set_edgecolor('grey')
+    # ax_gas2.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5, zorder=0)
     ax_gas2.tick_params(axis='y', rotation=90)
     
     ax_gas2.set_ylabel("Total gas consumption")
     ax_gas.grid(True, linestyle='--', alpha=0.2)
     
-    
-    colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#6366f1']
-    miners = [1, 3, 5, 10, 20]
-    # 创建色块标注并设置图例
-    legend_patches = []
-    for i, m in enumerate(miners):
-        if ins == "burma14" and m in [1, 3, 5, 10]:
-            # 创建小一点的色块
-            patch = patches.Patch(color=colors[i % len(colors)], label=f'{m} solvers', alpha=0.8)
-            legend_patches.append(patch)
-        elif ins == "bayg29" and m in [1, 5, 10, 20]:
-            patch = patches.Patch(color=colors[i % len(colors)], label=f'{m} solvers', alpha=0.8)
-            legend_patches.append(patch)
-        
-        # 设置图例，使用handleheight和handlelength参数来控制色块大小
-        ax_gas.legend(handles=legend_patches, 
-                     loc='upper center', 
-                     bbox_to_anchor=(0.5, 1.1), 
-                     ncol=5, 
-                     frameon=False,
-                     handlelength=1.0,  # 减小色块宽度
-                     handleheight=0.5)  # 减小色块高度
     
     return ax_gas
 
@@ -578,8 +419,8 @@ def plot_case_tsp():
     
     fig.subplots_adjust(left=0.13, bottom=0.05, right=0.93, top=0.979, hspace=0.22)
     # plt.tight_layout()
-    # plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\tsp{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
-    plt.show()
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\tsp{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
+    # plt.show()
 
 if __name__ == "__main__":
     # 使用原有的XML方法

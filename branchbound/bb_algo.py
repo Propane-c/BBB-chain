@@ -14,6 +14,7 @@ import numpy as np
 import pulp
 from scipy.optimize import linprog
 
+from data import tsp
 from data.lpprblm import ZERO_ONE, LpPrblm
 
 RES_PATH = Path.cwd() / "RES_ALGO" / time.strftime("%Y%m%d") / time.strftime('%H%M%S')
@@ -458,6 +459,9 @@ def test(prblm_path):
         # traceback.print_exc()
         print("Fatal Error! Terminate!")
 
+def test_tsp():
+    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"ulysses16.xml")
+    solver = BranchandBound(c, A, b, Aeq, beq, bounds,prblm_path=prblm_path)
 
 if __name__ == '__main__':
     threadNum = 1
@@ -469,6 +473,7 @@ if __name__ == '__main__':
     for file_path in folder.glob('*'):
         pool_paths.append(file_path)
     print(pool_paths)
+
     for pool_path in pool_paths:
         res.append(worker_pool.apply_async(test, [pool_path]))
     while worker_pool._cache:

@@ -126,7 +126,7 @@ class BranchBound(object):
         # searching strategies
         self.opblk_st = self.background.get_openblock_strategy()
         self.opprblm_st = self.background.get_openprblm_strategy()
-        self.var_st = VAR_SPEC
+        self.var_st = VAR_RAND
         # do pow when generating a keyblock
         self.key_pow_target = '000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
         self.key_pow_nonce = 0
@@ -818,7 +818,7 @@ class BranchBound(object):
         if self.cur_keyblock is not None and vali_keyid == self.cur_keyid:
             vali_keyhead = self.cur_keyblock
         else:
-            local_kbs = block_chain.get_keyblocks_pref()
+            local_kbs = block_chain.get_keyblocks()
             for kb in local_kbs:
                 if kb.keyfield.key_tx is None:
                     continue

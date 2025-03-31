@@ -69,11 +69,12 @@ def gen_tsp_lpprblm(n, distance_matrix):
         init_ix[n**2 + i] = i
     print(111)
     lp.solve_ilp_by_pulp(orig_prblm)
+    # orig_prblm.iz_pulp = 3034.534259399
     print(111)
     init_iz = np.dot(c, init_ix)
     orig_prblm.init_ix = init_ix
     orig_prblm.init_iz = init_iz
-    lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'berlin52_10.json')
+    # lp.save_prblm_pool([orig_prblm], Path.cwd() / "Problem Pools" / "testTSP", lp.TSP, True, 'berlin52_10.json')
     return orig_prblm
 
 def read_tsp_from_xml(file_path, n=None):
@@ -105,7 +106,8 @@ def read_tsp_from_xml(file_path, n=None):
             id = int(edge.text)
             if id >= n:  # 跳过连接到第 n 个节点之后的边
                 continue
-            cost = round(float(edge.attrib["cost"]))  # 取整
+            # cost = round(float(edge.attrib["cost"]))  # 取整
+            cost = float(edge.attrib["cost"])
             distance_matrix[i][id] = cost
             G.add_edge(i, id, weight=cost)
             
