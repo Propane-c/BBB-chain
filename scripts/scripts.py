@@ -7,13 +7,9 @@ import time
 import traceback as tc
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import psutil
 import pulp
-from pysat.solvers import Solver
-from scipy.optimize import linprog
-
 
 def copy_files_from_txt(txt_file_path, source_folder, target_folder):
     """

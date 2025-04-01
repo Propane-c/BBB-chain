@@ -207,7 +207,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
         # 设置标签和图例
         ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Solving rounds')
-        ax.legend(loc="center left", bbox_to_anchor=(0.6, 0.5))
+        # ax.legend(loc="center left", bbox_to_anchor=(0.6, 0.5))
         
         # 设置x轴刻度
         ax.set_xticks(range(1, 16))
@@ -217,6 +217,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
 
     def plot_speedup(ax:plt.Axes, df_dict:dict[str, pd.DataFrame], m1_dict:dict[str, pd.DataFrame]):
         var_nums = ["berlin12","burma14", "berlin10", "mod008inf", "f2gap40400", 150, 100,"g9x9"]
+        label_list = ['Berlin12', 'Burma14', 'Berlin10','mod008inf', 'f2gap40400', '150 variables', '100 variables','g9x9']
         marker_list = ['x', 'o', 's', 'D', '+', 'P','^', 'v']
         color_list = colors
         df_list = [df_dict[var_num] for var_num in var_nums]
@@ -229,11 +230,12 @@ def plot_solveround_workload_fig4(file_path: str = None):
         # ax.plot(df_easy['miner_num'], speedup_50, marker='x',color =colors[2])
         # ax.plot(df_hard['miner_num'], speedup_120, marker='s',color =colors[3])
         # ax.plot(df_tsp['miner_num'], speedup_tsp, marker='D',color =colors[0])
-        for df, speedup, marker, base_color in zip(df_list, speedup_list, marker_list, color_list):
-            ax.plot(df['miner_num'], speedup, marker=marker, color=base_color)
+        for df, speedup, label, marker, base_color in zip(df_list, speedup_list, label_list, marker_list, color_list):
+            ax.plot(df['miner_num'], speedup, label = label, marker=marker, color=base_color)
         ax.set_xticks(range(1, 16))
         ax.set_xlabel('Number of solvers')
         ax.set_ylabel('Speed up',labelpad = 12)
+        ax.legend(loc="upper left")
         # ax.legend()
     
     def plot_efficiency(ax:plt.Axes, df_med:pd.DataFrame, df_easy:pd.DataFrame, df_hard:pd.DataFrame, 
@@ -564,7 +566,7 @@ def plot_solveround_workload_fig4(file_path: str = None):
                         fontsize=14, fontweight='bold')
     
     # 设置边框颜色等
-    ax_list = [ axSpeed1, axWorkPer, axWorkVarRatio]  # 更新列表
+    ax_list = [axSolveRounds, axSpeed1, axWorkPer, axWorkVarRatio]  # 更新列表
     for ax in ax_list:
         for spine in ax.spines.values():
             spine.set_edgecolor('grey')

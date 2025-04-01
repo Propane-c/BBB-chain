@@ -9,13 +9,14 @@ import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-
+sys.path.append("e:\\Files\\gitspace\\BBB-github")
 import numpy as np
 import pulp
 from scipy.optimize import linprog
 
 from data import tsp
 from data.lpprblm import ZERO_ONE, LpPrblm
+import data.lpprblm
 
 RES_PATH = Path.cwd() / "RES_ALGO" / time.strftime("%Y%m%d") / time.strftime('%H%M%S')
 if not os.path.exists(RES_PATH):
@@ -82,7 +83,7 @@ class BranchandBound():
         self.id_counter = 0
 
         # 这些参数在每轮计算中都不会改变
-        self.c = -c
+        self.c = c
         self.A_eq = A_eq
         self.b_eq = b_eq
         self.G_ub = G_ub
@@ -131,12 +132,12 @@ class BranchandBound():
         
         self.open_nodes.insert(0, self.head)
         
-        with open(self.save_path, 'w') as f:
-            d = {"problem":self.prblm_path.stem,
-                 "pulpRes":self.pulpRes,
-                 "z_lps": self.z_lps,
-                 "lower_bounds": self.lower_bounds}
-            json.dump(d, f)
+        # with open(self.save_path, 'w') as f:
+        #     d = {"problem":self.prblm_path.stem,
+        #          "pulpRes":self.pulpRes,
+        #          "z_lps": self.z_lps,
+        #          "lower_bounds": self.lower_bounds}
+        #     json.dump(d, f)
 
     def all_integer(self, node:BBNode):
         if node.x is None:
@@ -176,17 +177,19 @@ class BranchandBound():
         return self.id_counter
 
     def solve(self):
+        round = 0
         while len(self.open_nodes)>0:
-            
-            if len(self.z_lps) > 1000:
-                with open(self.save_path, 'r') as file:
-                    data = json.load(file)
-                    data['z_lps'].extend(self.z_lps)
-                    data['lower_bounds'].extend(self.lower_bounds)
-                    self.z_lps.clear()
-                    self.lower_bounds.clear()
-                with open(self.save_path, 'w') as file:
-                    json.dump(data, file)
+            round += 1
+            print(f"\rround {round}, open_nodes:{len(self.open_nodes)} ",end="", flush=True)
+            # if len(self.z_lps) > 1000:
+                # with open(self.save_path, 'r') as file:
+                #     data = json.load(file)
+                #     data['z_lps'].extend(self.z_lps)
+                #     data['lower_bounds'].extend(self.lower_bounds)
+                #     self.z_lps.clear()
+                #     self.lower_bounds.clear()
+                # with open(self.save_path, 'w') as file:
+                    # json.dump(data, file)
             # print('Queue: ',[f'node{bbnode.node_id}' for bbnode in self.Q.queue])
            
             # 取出当前问题
@@ -196,32 +199,32 @@ class BranchandBound():
             cur_node = random.choice(self.open_nodes)
             self.open_nodes.remove(cur_node)
             
-            # 当前最优值小于总下界，则排除此区域 （剪枝）
-            if -cur_node.z < self.LOWER_BOUND:
+            # 当前最优值大于上界，则排除此区域 （剪枝）
+            if cur_node.z > self.UPPER_BOUND:
                 continue
 
             # 若结果 x 中全为整数，则尝试更新全局下界、全局最优值和最优解（定界）
             
             # if all(list(map(lambda f: f.is_integer(), cur_node.x))):
             if self.all_integer(cur_node):
-                if self.LOWER_BOUND < -cur_node.z:
-                    self.LOWER_BOUND = -cur_node.z
-                    self.lower_bounds.append((cur_node.node_id, -cur_node.z))
+                print(f"all_integer {cur_node.z}")
+                if cur_node.z < self.UPPER_BOUND:
+                    self.UPPER_BOUND = cur_node.z
+                    self.lower_bounds.append((cur_node.node_id, cur_node.z))
+                    print(f"UPPER_BOUND {self.UPPER_BOUND}")
 
-                if self.opt_val is None or self.opt_val < -cur_node.z:
-                    self.opt_val = -cur_node.z
+                if self.opt_val is None or self.opt_val > cur_node.z:
+                    self.opt_val = cur_node.z
                     self.opt_x = cur_node.x
                     self.opt_node = cur_node
                     # print(self.LOWER_BOUND, self.opt_val, self.UPPER_BOUND)
                     print(f"prblm_path:{self.prblm_path}\n"
                           f'update lowerbound! lowerbound{self.LOWER_BOUND}, '
-                          f'opt_val: {self.opt_val}, opt_x: {self.opt_x}, '
-                          f'opt_node: {cur_node.node_id}')
+                          f'opt_val: {self.opt_val}, opt_node: {cur_node.node_id}')
                 continue
 
             # if cur_node.z.is_integer():
-            #     print(f"prblm_path:{self.prblm_path}\n"
-            #           f"z_lp is integer {cur_node.z} with x{cur_node.x}")
+            #     print(f"z_lp is integer {cur_node.z}")
 
             # 进行分枝
             else:
@@ -276,22 +279,22 @@ class BranchandBound():
                     # self.z_lps.append((node2.node_id, r2.fun))
                     self.z_lps.append(r2.fun)
                 # print(self.LOWER_BOUND, self.opt_val, self.UPPER_BOUND)
-        with open(self.save_path, 'r') as file:
-            data = json.load(file)
-            data['z_lps'].extend(self.z_lps)
-            data['lower_bounds'].extend(self.lower_bounds)
+        # with open(self.save_path, 'r') as file:
+        #     data = json.load(file)
+        #     data['z_lps'].extend(self.z_lps)
+        #     data['lower_bounds'].extend(self.lower_bounds)
             
-            if self.opt_val is not None:
-                data.update({'opt_val': self.opt_val,
-                            'opt_x': self.opt_x.tolist(),
-                            'opt_node': cur_node.node_id})
-            else:
-                data['opt_val']="Not Found"
+        #     if self.opt_val is not None:
+        #         data.update({'opt_val': self.opt_val,
+        #                     'opt_x': self.opt_x.tolist(),
+        #                     'opt_node': cur_node.node_id})
+        #     else:
+        #         data['opt_val']="Not Found"
 
-            data["node_num"] = self.get_node_id()
+        #     data["node_num"] = self.get_node_id()
         
-        with open(self.save_path, 'w') as file:
-            json.dump(data, file)
+        # with open(self.save_path, 'w') as file:
+        #     json.dump(data, file)
 
     def show_solvetree(self):  # 按从上到下从左到右展示block,打印块名
         print('\n>>>>>>>>>>>> show solve tree >>>>>>>>>>>> ')
@@ -459,30 +462,44 @@ def test(prblm_path):
         # traceback.print_exc()
         print("Fatal Error! Terminate!")
 
-def test_tsp():
-    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"ulysses16.xml")
-    solver = BranchandBound(c, A, b, Aeq, beq, bounds,prblm_path=prblm_path)
+def test_tsp1():
+    lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"burma14.xml")
+    solver = BranchandBound(lp.c, lp.G_ub, lp.h_ub, lp.A_eq, lp.b_eq, lp.bounds)
+    solve_ilp_by_pulp(lp.c, lp.G_ub, lp.h_ub, lp.A_eq, lp.b_eq, lp.bounds, lp.conti_vars)
+    solver.solve()
+    print("Test 2's result:", solver.LOWER_BOUND, solver.opt_val, solver.opt_x)
+
+def test_prblm():
+    pool_path = Path.cwd()/"Problem Pools"/"testMIPLIB2"/"int264_conti89_ub185_eq89_blend2.json"
+    prblm_pool = data.lpprblm.load_prblm_pool_from_json(pool_path)
+    lp = prblm_pool[0]
+    solver = BranchandBound(-lp.c, lp.G_ub, lp.h_ub, lp.A_eq, lp.b_eq, lp.bounds)
+    solve_ilp_by_pulp(-lp.c, lp.G_ub, lp.h_ub, lp.A_eq, lp.b_eq, lp.bounds, lp.conti_vars)
+    solver.solve()
+    print("Test 2's result:", solver.LOWER_BOUND, solver.opt_val, solver.opt_x)  
 
 if __name__ == '__main__':
-    threadNum = 1
-    worker_pool = mp.Pool(threadNum)
-    print(threadNum)
-    res = []
-    pool_paths = []
-    folder = Path("testMIPLIB2")
-    for file_path in folder.glob('*'):
-        pool_paths.append(file_path)
-    print(pool_paths)
+    # threadNum = 1
+    # worker_pool = mp.Pool(threadNum)
+    # print(threadNum)
+    # res = []
+    # pool_paths = []
+    # folder = Path("testMIPLIB2")
+    # for file_path in folder.glob('*'):
+    #     pool_paths.append(file_path)
+    # print(pool_paths)
 
-    for pool_path in pool_paths:
-        res.append(worker_pool.apply_async(test, [pool_path]))
-    while worker_pool._cache:
-        print("number of jobs pending: ", len(worker_pool._cache))
-        time.sleep(1)
-    for r in res:
-        r.wait()
-    print('Waiting for all subprocesses done...')
-    worker_pool.close()
-    worker_pool.join()
-    print('All subprocesses done.')
-    # test("testMIPLIB2\int3_conti0_ub0_eq1_ej.json")
+    # for pool_path in pool_paths:
+    #     res.append(worker_pool.apply_async(test, [pool_path]))
+    # while worker_pool._cache:
+    #     print("number of jobs pending: ", len(worker_pool._cache))
+    #     time.sleep(1)
+    # for r in res:
+    #     r.wait()
+    # print('Waiting for all subprocesses done...')
+    # worker_pool.close()
+    # worker_pool.join()
+    # print('All subprocesses done.')
+    # # test("testMIPLIB2\int3_conti0_ub0_eq1_ej.json")
+    # test_tsp1()
+    test_prblm()

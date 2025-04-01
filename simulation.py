@@ -14,7 +14,7 @@ import psutil
 from pympler import asizeof
 
 from branchbound import bb_consensus as bb
-from data import lpprblm
+from data import lpprblm, tsp
 from background import Background
 from environment import Environment
 from evaluation import EvaResult
@@ -45,13 +45,15 @@ def get_prblm_pool(pool_size, var_num, method = None, pool_save_path = None):
         # 读取问题池
         print(f"Loading problem pool--{mp.current_process().name}")
         # pool_path = (Path.cwd()/"Problem Pools"/"01"/f"{var_num}vars.json")
-        pool_path = Path.cwd() / "Problem Pools\\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json"
-        # pool_path =  Path.cwd() / "Problem Pools\\testTSP\problem poolburma14.json"
-        # pool_path = Path.cwd() / "Problem Pools" / f"20250103\\{var_num}vars.json"
-        # pool_path = Path.cwd()/ "Problem Pools" / "1109\problem pool1109_1511.json"
-        # pool_path = Path.cwd()/ "Problem Pools" / "1116\problem pool1116_105207.json"
-        # pool_path = Path.cwd() / "Problem Pools" / "SPOT" / f"Generated2\\{var_num}_1.json"
+        pool_path = Path.cwd() / "Problem Pools" / "testMIPLIB2" / "int319_conti0_ub7_eq0_mod008inf.json"
+        # pool_path =  Path.cwd() / "Problem Pools" / "testTSP" / "problem poolburma14.json"
+        # pool_path = Path.cwd() / "Problem Pools" / "20250103" / f"{var_num}vars.json"
+        # pool_path = Path.cwd()/ "Problem Pools" / "1109" / "problem pool1109_1511.json"
+        # pool_path = Path.cwd()/ "Problem Pools" / "1116" / "problem pool1116_105207.json"
+        # pool_path = Path.cwd() / "Problem Pools" / "SPOT" / "Generated2" / f"{var_num}_1.json"
         prblm_pool = lpprblm.load_prblm_pool_from_json(pool_path, pool_save_path)
+        lp  = tsp.load_exist_tsp(Path.cwd()/"tsp_origin"/"xml"/"berlin52.xml", 12)
+        prblm_pool = [lp]
     elif m == 'rand':
         prblm_pool = lpprblm.prblm_pool_generator(pool_size, var_num, lpprblm.ZERO_ONE)
         lpprblm.save_prblm_pool(prblm_pool, pool_save_path, lpprblm.ZERO_ONE)

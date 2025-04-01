@@ -106,14 +106,14 @@ def run(pool_path=None, miner_num =None):
     else:
     #     # pool_path = Path.cwd()/"Problem Pools"/"01"/f"problem pool{background.get_var_num()}.json"
     #     pool_path = Path.cwd()/"Problem Pools"/"20250103"/f"100vars.json"
-        pool_path = Path.cwd()/"Problem Pools\\fig1_03262.json"
+        pool_path = Path.cwd()/"Problem Pools"/"fig1_03262.json"
         # pool_path = Path.cwd()/"testMAXSAT\problem poolkbtree-kbtree9_7_3_5_80_1_1225.json"
-        pool_path = Path.cwd()/"Problem Pools\\testTSP\problem poolburma14.json"
+        pool_path = Path.cwd()/"Problem Pools"/"testTSP"/"problem poolburma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testTSP\\burma14.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
-        pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json"
+        pool_path = Path.cwd()/"Problem Pools"/"testMIPLIB2"/"int319_conti0_ub7_eq0_mod008inf.json"
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json 3000
     # problem_name = "ulysses16"
     if problem_name is None and pool_path is not None:
