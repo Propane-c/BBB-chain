@@ -255,7 +255,7 @@ class Environment(object):
                         self.evaluation.get_gas_consume(round, cur_gas)
                         last_gas = cur_gas
                 if miner.isAdversary:
-                    self.attack_execute()
+                    self.attack_execute(miner, round)
                     continue
                 # 执行挖矿程序
                 newblock = miner.backbone_protocol(round)

@@ -202,25 +202,6 @@ class Evaluation(object):
 
     def get_mb_block_times(self, chain:Chain):
         """
-        获取miniblock times: 和连接的上一个mini-block的时间差
-        """
-        feasi_kbs = self.get_feasi_kbs(chain)
-        if len(feasi_kbs) == 0:
-            return []
-        for kb in feasi_kbs:
-            if kb.keyfield.key_tx is None:
-                continue
-            mbs = chain.get_acpmbs_after_kb_and_label_forks(kb)
-            for mb in mbs:
-                if ((not mb.pre.iskeyblock) and 
-                    mb.pre.get_keyid() != mb.get_keyid()):
-                    continue
-                mb_time = mb.get_block_time_with_pre()
-                self.mb_times.append(mb_time)
-        return self.mb_times
-
-    def get_mb_block_times2(self, chain:Chain):
-        """
         获取miniblock times: 和上一个发布出来的mini-block的时间差
         """
         feasi_kbs = self.get_feasi_kbs(chain)
@@ -494,7 +475,7 @@ class Evaluation(object):
         self.get_subpair_nums(chain)
         self.cal_keyblock_fork_rate(chain)
         self.cal_miniblock_fork_rate(chain)
-        self.get_mb_block_times2(chain)
+        self.get_mb_block_times(chain)
         self.cal_steal_success_rate()
         self.cal_adversary_block_rate(chain)
         self.get_opt_solutions(chain)

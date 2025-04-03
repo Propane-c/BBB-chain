@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 from scipy.signal import find_peaks, peak_prominences
 
-def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
+def plot_mbtime_grow_fig5():
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 14
@@ -14,7 +14,7 @@ def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
     grid = fig.add_gridspec(3, 4, height_ratios=[1.5, 1.5, 2],width_ratios=[1.5, 1, 1.5,1]) # 3 rows, 2 columns
     # sns.set(style="whitegrid")
     # colors = ["#B96666","#78BCFF","#66A266","#F2A663","#BEA9E9"]
-    colors = ["#FF8283", "#0D898A","#f9cc52","#5494CE", ]
+    colors = ["#FF8283", "#0D898A","#f9cc52","#5494CE", "#9467bd"]
 
     def plot_means(ax:plt.Axes, data_df):
         # Unique miners for different lines
@@ -61,42 +61,27 @@ def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
         # sns.boxplot(x='difficulty', y='grow_proc', data=data_df, ax=ax)
     
     def plot_grow_proc(ax:plt.Axes, data_df:pd.DataFrame):
-        path = pathlib.Path(".\Results\\2024\\20240206\\224045\m5d5vmaxsatevaluation results.json")
-        with open(path,'r') as file:
-            new_data = json.load(file)
-            # print(dd)
-            # new_data = pd.DataFrame([dd])
-            # print(new_data)
-            ax.plot(range(len(list(new_data['mb_times']))), list([d for d in new_data['mb_times']]), 
-                    label = "block times",alpha=0.8,color="#f9cc52")
-            ax.hlines(np.sum(new_data['mb_times'])/len(list(new_data['mb_times'])), 
-                      0, len(list(new_data['mb_times'])),linestyles='--',linewidth = 2, color="orange",label = "mean")
-        # sns.lineplot()
-        # c = plt.cm.Greens
-        # # point_norm = mcolors.Normalize(vmin=0, vmax=len(data_df['miner_num'].unique()))
-        # i=1
-        # data_df.copy().reset_index()
-        # c = ["#95d5b2", "#74c69d", "#52b788","#40916c"]
-        # for i,data in data_df.iterrows():
-        #     print(data_df)
-        #     # ax.hlines(1/data['ave_mb_growth'], 0, 5000,color=c[i-4],linestyles='--',linewidth = 1)
-        #     # data = data_df[data_df['difficulty'] == d]
-        #     # ax.plot(range(len(list(data['grow_proc']))), list([1/d for d in data['grow_proc']]), 
-        #     #         label = data['difficulty'],c=c[i-4])
-        #     # sns.scatterplot(data=data,y='mb_times',s=1,alpha=0.1,rasterized=True)
-        #     ax.scatter(range(len(list(data['mb_times']))), list([d for d in data['mb_times']]), 
-        #             label = data['difficulty'],s=2,alpha=0.5,rasterized=True)
-        #     ax.hlines(np.sum(data['mb_times'])/len(list(data['mb_times'])), 
-        #               0, 5000,linestyles='--',linewidth = 1, color="orange")
-            # i+=1
-        # ax.set_ylim([0,50])
-        # ax.set_xlim([-30,3000])
-        ax.legend(fontsize = 12)
+        # 确保 mb_times 是列表而不是字符串
+        new_data = data_df.copy()
+        
+        times = new_data['mb_times'].iloc[0]  # 获取第一行的数据
+        mean_time = np.mean(times)
+        
+        # 绘制区块时间序列
+        ax.plot(range(len(times)), times, 
+                label="block times", alpha=0.8, color="#f9cc52")
+        
+        # 绘制平均值线
+        ax.hlines(mean_time, 0, len(times),
+                  linestyles='--', linewidth=2, 
+                  color="orange", label="mean")
+        
+        ax.legend(fontsize=12)
         ax.set_xlabel('Blocks')
         ax.set_ylabel('Block time')
-        # ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5)
     data_list = []
-    with open(pathlib.Path("Result_Data\\0207tspm125mbtimes.json"), 'r') as f:
+    # with open(pathlib.Path("Result_Data\\0207tspm125mbtimes.json"), 'r') as f:
+    with open(pathlib.Path("Results\\20250403\\154426\med_res.json"), 'r') as f:    
         jsondata_list = f.read().split('\n')[:-1]
         for jsondata in jsondata_list:
             data_list.append(json.loads(jsondata))
@@ -150,8 +135,8 @@ def plot_mbtime_grow_fig5(data_df:pd.DataFrame=None):
                 transform=fig.transFigure, ha='center', va='center')
     plt.tight_layout()
 
-    if SAVE:
-        plt.savefig(SAVE_PREFIX + "\\mbtimes.svg", dpi=220)
+    # if SAVE:
+    #     plt.savefig(SAVE_PREFIX + "\\mbtimes.svg", dpi=220)
     plt.show()
 
 def plot_block_time_fig5(ax:plt.Axes, data_df:pd.DataFrame):
@@ -228,3 +213,6 @@ def plot_block_time_fig5(ax:plt.Axes, data_df:pd.DataFrame):
     ax.set_xlim(min(mb_times), 50+1)
     ax.set_ylim(0,0.15)
     ax.legend(loc='best', title = "difficulty",fontsize = 12)
+
+if __name__ == "__main__":
+    plot_mbtime_grow_fig5()

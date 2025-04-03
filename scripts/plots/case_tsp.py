@@ -456,3 +456,82 @@ if __name__ == "__main__":
     # json_path = "E:\Files\gitspace\\bbb-github\Results\\20250320\m5d5vbayg29evaluation results.json"
     # visualize_tsp_with_tsplib(round_num=16546, json_path=json_path, ins = "bayg29", miner_num=5)
     
+
+# 111
+# Optimal value Integer: 6859.0
+# 111
+# Solving by pulp...
+# PULP Optimal value: 16434.0
+# round 683, open_nodes:627 all_integer 8693.0
+# UPPER_BOUND 8693.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 8693.0, opt_node: 1320
+# round 849, open_nodes:771 all_integer 7245.0
+# UPPER_BOUND 7245.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7245.0, opt_node: 991
+# round 10626, open_nodes:7365 all_integer 7221.0
+# UPPER_BOUND 7221.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7221.0, opt_node: 12345
+# round 13455, open_nodes:9100 all_integer 7198.0
+# UPPER_BOUND 7198.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7198.0, opt_node: 9178
+# round 14554, open_nodes:9733 all_integer 7168.0
+# UPPER_BOUND 7168.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7168.0, opt_node: 25352
+# round 18750, open_nodes:11884 all_integer 7025.0
+# UPPER_BOUND 7025.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7025.0, opt_node: 32202
+# round 40267, open_nodes:19550 all_integer 7008.0
+# UPPER_BOUND 7008.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7008.0, opt_node: 48351
+# round 49339, open_nodes:22937 all_integer 7002.0
+# UPPER_BOUND 7002.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 7002.0, opt_node: 51720
+# round 55791, open_nodes:25155 all_integer 6970.0
+# UPPER_BOUND 6970.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6970.0, opt_node: 61792
+# round 87432, open_nodes:34672 all_integer 6949.0
+# UPPER_BOUND 6949.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6949.0, opt_node: 129993
+# round 176934, open_nodes:58934 all_integer 6943.0
+# UPPER_BOUND 6943.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6943.0, opt_node: 248178
+# round 196803, open_nodes:63852 all_integer 6878.0
+# UPPER_BOUND 6878.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6878.0, opt_node: 259336
+# round 309991, open_nodes:74163 all_integer 6870.0
+# UPPER_BOUND 6870.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6870.0, opt_node: 372750
+# round 412274, open_nodes:88187 all_integer 6859.0
+# UPPER_BOUND 6859.0
+# prblm_path:None
+# update lowerbound! lowerbound-9223372036854775807, opt_val: 6859.0, opt_node: 437477
+# round 2313553, open_nodes:135355 all_integer 6859.0
+# round 3466374, open_nodes:1 Test 2's result: -9223372036854775807 6859.0 [ 0.  0.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0. -0.
+#   1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+#   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  0.  1.  0. -0.  0.  0.
+#   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. -0.  0.  0.  0.
+#   0.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.  1.  0.  0. -0.
+#   0.  0.  0.  0.  0.  0.  0.  0.  0.  0. -0. -0. -0.  0.  0. -0.  0.  1.
+#   0.  0.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+#   0.  0.  0.  0.  0.  0. -0.  0.  0.  0.  0. -0.  1.  0.  0.  0.  0.  0.
+#   0.  0.  0.  0.  0.  0.  0.  0.  1.  0.  0. -0.  0.  0.  0.  0.  0.  0.
+#   0.  0.  1.  0.  0.  0.  0. -0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+#   0.  0.  0.  0.  0. -0.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.  0.  0.
+#   0.  0.  0. -0.  0.  0.  0.  1.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.
+#   0. -0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0. -0.  1.  0.  0.  0.  0.
+#   0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  1.  0.  0.
+#   0.  0.  0.  0.  1.  3.  4.  2.  9. 11. 12.  1.  7.  6.  8. 13. 14. 15.
+#  10.  5.]

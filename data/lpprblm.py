@@ -485,12 +485,12 @@ def load_prblm_pool_from_json(file_path:str, save_path:str = None):
             p.init_ix = init_ix
             p.init_iz = init_iz
             
-            if 'ix_pulp' in p_data.keys() :
-                p.ix_pulp = p_data['ix_pulp']
-            if 'iz_pulp' in p_data.keys() :
-                p.iz_pulp = p_data['iz_pulp']
-            else:
-                solve_ilp_by_pulp(p)
+            # if 'ix_pulp' in p_data.keys() :
+            #     p.ix_pulp = p_data['ix_pulp']
+            # if 'iz_pulp' in p_data.keys() :
+            #     p.iz_pulp = p_data['iz_pulp']
+            # else:
+            #     solve_ilp_by_pulp(p)
             
             solve_lp(p)
             p.fathomed = False

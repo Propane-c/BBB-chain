@@ -113,7 +113,7 @@ def run(pool_path=None, miner_num =None):
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\\int24_conti24_ub24_eq10_gr4x6.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMAXSAT\\var162_soft81_con162_pseudoBoolean-normalized-g9x9.opb.msat.json"
         # pool_path = Path.cwd()/"Problem Pools\\testMIPLIB2\int250_conti20_ub195_eq0_mik-250-20-75-4.json"
-        pool_path = Path.cwd()/"Problem Pools"/"testMIPLIB2"/"int319_conti0_ub7_eq0_mod008inf.json"
+        pool_path = Path.cwd()/"Problem Pools"/"testMIPLIB2"/"int297_conti0_ub9727_eq0_iis-hc-cov.json"
 # D:\gitspace\BBB-chain\Problem Pools\testMIPLIB2\int319_conti0_ub7_eq0_mod008inf.json 3000
     # problem_name = "ulysses16"
     if problem_name is None and pool_path is not None:
@@ -241,62 +241,33 @@ if __name__ == '__main__':
     record_block_times | opblk_st | opprblm_st | solve_prob
     
     """
+    var_num = "berlin10"
     rpt_num1 = 1
-    rpt_num = 10
+    rpt_num = 5
     args_list = [
-        # [500,   rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
-        # [500,   rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
-        # [1500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 30, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 40, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 50, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 60, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 70, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 80, [5],  [5], 0, 'load', 0.001],
-        # [2500,  rpt_num, 100, 100, [5],  [5], 0, 'load', 0.001],
-        [enGas, 1,  rpt_num, 1, 50, [5],  [1], 0, 'load', 0.001],
-        [enGas, 1,  rpt_num, 1, 50, [5],  [3], 0, 'load', 0.001],
-        [enGas, 1,  rpt_num, 1, 50, [5],  [5], 0, 'load', 0.001],
-        [enGas, 1,  rpt_num, 1, 50, [5],  [10], 0, 'load', 0.001],
-        [enGas, 1,  rpt_num, 1, 50, [5],  [15], 0, 'load', 0.001],
+        # fig4
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [1], 0, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [3], 0, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [15], 0, 'load', 0.001],
 
         # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [1], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [3], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 1000, 50, [5],  [15], 0, 'load', 0.001],
-
+        
+        ## SPOT
         # [enGas, 2500,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 60, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 30, 70, [5],  [5], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 30, 70, [5],  [10], 0, 'load', 0.001],
-        # [enGas, 2500,  rpt_num, 30, 70, [5],  [15], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 70, [5],  [5], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 70, [5],  [10], 0, 'load', 0.001],
+        # [enGas, 2500,  rpt_num, 600, 70, [5],  [15], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
         # [enGas, 2500,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
-        
         # [enGas, 5000,  rpt_num, 600, 30, [5],  [5], 0, 'load', 0.001],
         # [enGas, 5000,  rpt_num, 600, 40, [5],  [5], 0, 'load', 0.001],
         # [enGas, 5000,  rpt_num, 600, 50, [5],  [5], 0, 'load', 0.001],
@@ -305,6 +276,57 @@ if __name__ == '__main__':
         # [enGas, 5000,  rpt_num, 600, 80, [5],  [5], 0, 'load', 0.001],
         # [enGas, 5000,  rpt_num, 600, 100, [5],  [5], 0, 'load', 0.001],
 
+        # 出块时长
+        [enGas, 2500,  rpt_num, 1, var_num, [3],  [1], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [3],  [2], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [3],  [5], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [5],  [1], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [5],  [2], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [5],  [5], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [8],  [1], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [8],  [2], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [8],  [5], 0, 'load', 0.001 , True],
+        [enGas, 2500,  rpt_num, 1, var_num, [10],  [1], 0, 'load', 0.001, True],
+        [enGas, 2500,  rpt_num, 1, var_num, [10],  [2], 0, 'load', 0.001, True],
+        [enGas, 2500,  rpt_num, 1, var_num, [10],  [5], 0, 'load', 0.001, True],
+
+
+        ## 安全
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.005],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.003],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.0008],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.0005],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.0003],
+        # [enGas, 1,  rpt_num, 1, var_num, [3],  [20], 1, 'load', 0.0001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.005],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.003],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.0008],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.0005],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.0003],
+        # [enGas, 1,  rpt_num, 1, var_num, [5],  [20], 1, 'load', 0.0001],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.005],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.003],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.0008],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.0005],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.0003],
+        # [enGas, 1,  rpt_num, 1, var_num, [8],  [20], 1, 'load', 0.0001],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.005],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.003],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.0008],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.0005],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.0003],
+        # [enGas, 1,  rpt_num, 1, var_num, [10],  [20], 1, 'load', 0.0001],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.005],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.003],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.001],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0008],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0005],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0003],
+        # [enGas, 1,  rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0001],
 
         # [rpt_num, 50, 50, [5], [5],   0, 'load', bb.OB_RAND, bb.OP_BEST],
         # [rpt_num, 10, 50, [5], [10],  0, 'load', bb.OB_RAND, bb.OP_BEST],
@@ -330,33 +352,6 @@ if __name__ == '__main__':
         # [rpt_num, 10, 50, [5], [20],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [30],  0, 'load', bb.OB_BREATH, bb.OP_RAND],
         # [rpt_num, 10, 50, [5], [1,3], 0, 'load', bb.OB_BREATH, bb.OP_RAND],
-        # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.005 ],
-        # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.001],
-        # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.0005],
-        # [rpt_num, 1500, 50, [3,4],   [20], 1, 'load', 0.0001],
-        # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.005 ],
-        # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.001],
-        # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.0005],
-        # [rpt_num, 1500, 50, [5,6],   [20], 1, 'load', 0.0001],
-        # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.005],
-        # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.001],
-        # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.0005],
-        # [rpt_num, 1500, 50, [7,8],   [20], 1, 'load', 0.0001],
-        # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.005],
-        # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.001],
-        # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.0005],
-        # [rpt_num, 1500, 50, [9,10], [20], 1, 'load', 0.0001],
-        # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.005],
-        # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.001],
-        # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.0005],
-        # [rpt_num, 1500, 50, [11], [20], 1, 'load', 0.0001],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.005],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.003],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.001],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0008],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0005],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0003],
-        # [rpt_num, 1, 50, [5],   [20], 1, 'load', 0.0001],
     ]
     """
     long参数说明：
@@ -398,11 +393,8 @@ if __name__ == '__main__':
             #             json_files.append(os.path.join(root, file))
             # print(json_files)
 
-            # json_files = ["E:\Files\gitspace\\bbb-github\SPOT\\Origin\\42.json"]
-            # for file in reversed(json_files):
-            #     print(file)
             # for file in json_files:
-                # run(Path(file))  
+            #     run(Path(file))  
             run()  
                       
     else:

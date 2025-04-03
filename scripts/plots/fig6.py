@@ -68,9 +68,9 @@ def plot_security_fig6():
     # 添加子图标签
     ax1.text(-0.1, 1.02, 'a', transform=ax1.transAxes, fontsize=12, fontweight='bold')
     ax3.text(-0.1, 1.02, 'b', transform=ax3.transAxes, fontsize=12, fontweight='bold')
-    ax2.text(-0.1, 1.02, 'c', transform=ax2.transAxes, fontsize=12, fontweight='bold')
-    axins1.text(-0.226, 1.02, 'd', transform=axins1.transAxes, fontsize=12, fontweight='bold')
-    axins2.text(-0.17, 1.02, 'e', transform=axins2.transAxes, fontsize=12, fontweight='bold')
+    ax2.text(-0.1, 1.02, 'e', transform=ax2.transAxes, fontsize=12, fontweight='bold')
+    axins1.text(-0.226, 1.02, 'c', transform=axins1.transAxes, fontsize=12, fontweight='bold')
+    axins2.text(-0.17, 1.02, 'd', transform=axins2.transAxes, fontsize=12, fontweight='bold')
 
     ax1: plt.Axes
     ax41: plt.Axes
@@ -252,7 +252,7 @@ def plot_security_fig6():
     axins2.legend()
     fig.subplots_adjust(left=0.13, bottom=0.08, right=0.98, top=0.98,hspace=0.05)
     import time
-    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\secure{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\secure{time.strftime('%Y%m%d%H%M%S')}.eps", dpi=300)
     # plt.show()
     
     # 在创建完所有子图后调整位置
