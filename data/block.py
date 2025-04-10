@@ -37,6 +37,7 @@ class KeyField(object):
             pre_fthmd_prblms:list[LpPrblm] = None,
             key_tx:Transaction = None,
             pre_accept_mbs:list[str] = None,
+            pre_deepest_prblm:LpPrblm = None,
             pre_iz_pulp = None
         ):
         # Key PoW
@@ -55,6 +56,7 @@ class KeyField(object):
         self.pre_accept_mbs = pre_accept_mbs
         # New key problem
         self.key_tx = key_tx
+        self.pre_deepest_prblm = pre_deepest_prblm
 
         # thres
         self.thres = None
@@ -330,6 +332,7 @@ class Block(object):
             pre_fthmd_prblms:list[LpPrblm] = None, 
             keyprblm_tx:Transaction = None,
             pre_accept_mbs:list[str] = None,
+            pre_deepest_prblm:LpPrblm=None,
             pre_iz_pulp = None
         ):
         '''set the keyfield, the last_keyblock is a Block type'''
@@ -341,8 +344,8 @@ class Block(object):
             pre_fthmd_prblms = []
         self.keyfield =  KeyField(key_hash, pow_nonce, key_height, 
                 pre_keyblock, pre_pname, pre_key_feasible, 
-                pre_opt_prblms, pre_fthmd_prblms, keyprblm_tx, pre_accept_mbs,
-                pre_iz_pulp)
+                pre_opt_prblms, pre_fthmd_prblms, keyprblm_tx, 
+                pre_accept_mbs,pre_deepest_prblm, pre_iz_pulp)
                         
     def set_minifield(self, pre_prblm:LpPrblm, 
                     subprblm_pairs:list[tuple[LpPrblm,LpPrblm]]):

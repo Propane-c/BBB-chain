@@ -168,8 +168,7 @@ class Miner(object):
             mine_success(bool): 挖矿成功标识
         """
         newblocks, mineSuccess = self.consensus.mining_consensus(
-            self.local_chain, self.miner_id, self.isAdversary,
-            self.input, self.q, round, self.txpool)
+            self.local_chain, self.miner_id, self.q, round,  self.txpool)
         if mineSuccess is False:
             return newblocks, mineSuccess
         # 成功挖出区块
@@ -186,7 +185,7 @@ class Miner(object):
                         new_kb.keyfield.pre_kb.name, new_kb.keyfield.pre_kb.name,
                         [b.name for b in pre_kb.keyfield.next_kbs])
             # 添加随keyblock一起挖出的miniblock
-            if self.consensus.kb_strategy != 'pow':
+            if self.consensus.kb_strategy != 'pow' and new_kb.keyfield.key_tx is not None:
                 new_mb_with_kb = newblocks.mb_with_kb
                 self.local_chain.add_block_direct(new_mb_with_kb, new_kb)
             return newblocks, mineSuccess
@@ -485,7 +484,7 @@ class Miner(object):
         self.local_chain.add_block_direct(copykb, b2link)
         new_update = True
         # 如果策略为'pow'
-        if self.consensus.kb_strategy == 'pow':
+        if self.consensus.kb_strategy == 'pow' or copykb.keyfield.key_tx is None:
             # 如果该keyblock的高度高于正在求解的keyblock，则切换到该问题
             if copykb.get_keyheight_key() > self.consensus.cur_keyblock.get_keyheight_key():
                 unpub_num, unpubs = self.consensus.get_unpub_num(True, self.evaluation.recordSols)

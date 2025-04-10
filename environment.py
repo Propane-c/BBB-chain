@@ -146,8 +146,9 @@ class Environment(object):
         return q_dist
     
     def env_load_prblm_pool(self, prblm_pool:list):
+        pool = [copy.deepcopy(p) for p in prblm_pool]
         for miner in self.miners:
-            miner.txpool.load_prblm_pool(prblm_pool)
+            miner.txpool.load_prblm_pool(pool)
 
     def env_create_genesis_block(self):
         '''create genesis block for all the miners in the system.'''
@@ -330,14 +331,14 @@ class Environment(object):
         if self.view_miner is None:
             self.view_miner = self.miners[0]
         evaluation_result = self.evaluation.collect_evaluation_results(self.view_miner.local_chain)
+        print(f"view miner: {self.view_miner.miner_id} {evaluation_result.solutions_by_bbb}")
         # if self.background.get_enable_gas() and evaluation_result.solution_errors[0] > 0.5 and ERROR_PATH is not None:
         #     self.save_err_prblm(ERROR_PATH, "a_bad_prblms.json")
         if not quiet:
-            print(f"view miner: {self.view_miner.miner_id} {evaluation_result.solutions_by_bbb}")
             self.evaluation.save_results_to_json(problem_name, pool_path)
             # self.global_chain.printchain2txt()
             # self.view_miner.local_chain.printchain2txt()
-            # self.view_miner.local_chain.show_chain_by_graphviz()
+            self.view_miner.local_chain.show_chain_by_graphviz()
             # self.attack.save_draw_final_success_rates()
         return evaluation_result
 

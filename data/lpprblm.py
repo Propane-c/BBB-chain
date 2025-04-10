@@ -28,7 +28,7 @@ class LpPrblm(object):
     def __init__(self, pname = None, pre_pname = None, pheight = None, 
                  c = None, G_ub = None, h_ub = None, A_eq = None,  b_eq = None, 
                  bounds = None, x_nk = None, pre_rest_x = None, 
-                 key_pname=None, inc_constrs= None, timestamp = None, fix_pid = None):
+                 key_pname=None, inc_constrs= None, timestamp = None, fix_pid = None, block_name = None):
         '''
         Param
         -----
@@ -61,6 +61,7 @@ class LpPrblm(object):
             lb <= x <= ub
         '''
         self.pname = pname 
+        self.block_name = block_name
         self.pre_pname = pre_pname
         self.pheight = pheight
         self.timestamp = timestamp
@@ -139,7 +140,9 @@ class LpPrblm(object):
         return result
     
     def __eq__(self, other: 'LpPrblm'):
-        return self.pname == other.pname
+        if (self.pname == other.pname):
+            return True
+        return False
 
         
     def __repr__(self) -> str:

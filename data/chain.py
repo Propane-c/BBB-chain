@@ -28,6 +28,8 @@ class Chain(object):
         self.lastkeyblock = self.head
         self.keyblocks:list[Block] = []
         self.main_chain = defaultdict(self.default_list)
+        self.max_height = 0
+        self.deepest_block:Block = None
         
 
     @ staticmethod
@@ -101,6 +103,7 @@ class Chain(object):
             keyprblm_tx = genesis_prblm_tx)
         self.keyblocks.append(self.head)
         self.lastblock = self.head
+        self.max_height = 0
     
     def get_keyblocks(self):
         '''获取链中所有的keyblock'''
@@ -384,6 +387,9 @@ class Chain(object):
                         f"cur keyblocks:{[b.name for b in self.keyblocks]}")
         self.inc_heavy_before(block)
         self.lastblock = block
+        if block.get_height() >= self.max_height:
+            self.max_height = block.get_height()
+            self.deepest_block = block
         return addSuccess
 
     def add_block_copy(self, newblock: Block):
@@ -456,14 +462,13 @@ class Chain(object):
                             if attack_record and block.name in attack_record else 0)
                 theory_rate = block.minifield.atk_rate
                 x_nk = block.minifield.subprblm_pairs[0][0].x_nk
-                # 设置label
+                # 设置label , x_nk{x_nk}
+                fthmd_state = "Fathomed" if block.get_fthmstat() else "Not Fathomed"
                 label = ((f'''<
                     <TABLE border="0" cellborder="1" cellspacing="0">        
-                        <TR><TD>{block.name} M{block.blockhead.miner_id}</TD></TR>
-                        <TR><TD>r{block.blockhead.timestamp}, x_nk{x_nk}</TD></TR>
-                        <TR><TD>fthmd_state {block.get_fthmstat()}</TD></TR>        
-                        <TR><TD>rest_gas {block.rest_gas}</TD></TR>
-                        <TR><TD>cur_opt {block.cur_opt }</TD></TR>
+                        <TR><TD>{block.name}</TD></TR>
+                        <TR><TD>Miner {block.blockhead.miner_id}, Round {block.blockhead.timestamp}</TD></TR>
+                        <TR><TD>{fthmd_state}</TD></TR>
                     </TABLE>>''')
                     # <TR><TD>heavy {block.get_heavy()}</TD></TR>
                     # <TR><TD><font color="red">theory_rate {theory_rate}</font></TD></TR>
@@ -489,6 +494,14 @@ class Chain(object):
                 #     </TABLE>>'''))
                 # 建立问题对节点
                 set_subpair_nodes(mb_cluster, block)
+
+                virtual_node_name = f"vcluster{block.name}"
+                mb_cluster.node(virtual_node_name, style="invis", width="0.01", height="0.01", fixedsize="true") 
+                deepest_subprblms = block.get_deepest_subprblms()
+                if deepest_subprblms:  # 确保列表不为空
+                    random_deepest_p = random.choice(deepest_subprblms)  # 随机选择一个
+                    l = get_subprblm_label(random_deepest_p.pname)
+                    mb_cluster.edge(l, virtual_node_name, style="invis",minlen="0.01",constraint="true")  # 强制边的长度受约束)  # 连线
         
         def set_subpair_nodes(mb_cluster, block:Block):
             """建立问题对节点"""
@@ -509,17 +522,11 @@ class Chain(object):
                 zlp2 = round(p2.z_lp,2) if p2.z_lp else None
                 mb_cluster.node(
                     pair_str,
-                    
                     f'''<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
                     <TR><TD PORT="f1"><font color="{color1}">{pname1}</font></TD>
                     <TD PORT="f2"><font color="{color2}">{pname2}</font></TD>
                     </TR></TABLE>>'''
                     )
-                # f'''<
-                    # <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
-                    #     <TR><TD PORT="f1"><font color="{color1}">{pname1}</font></TD></TR>
-                    #     <TR><TD PORT="f2"><font color="{color2}">{pname2}</font></TD></TR>
-                    # </TABLE>>'''
                     
 
         def set_keyblock_cluster(b:Block):
@@ -534,13 +541,16 @@ class Chain(object):
                         <TR><TD>{b.name} M{b.get_miner_id()} </TD></TR>
                         <TR><TD>r{b.blockhead.timestamp}, heavy {b.get_heavy()}</TD></TR>
                         <TR><TD>fthmd_state {b.get_fthmstat()}</TD></TR>
-                        <TR><TD>cur_opt {block.cur_opt }</TD></TR>
                     </TABLE>>''')
+                fthmd_state = "Fathomed" if block.get_fthmstat() else "Not Fathomed"
                 label = (f'''<
                     <TABLE border="0" cellborder="0" cellspacing="0">        
-                        <TR><TD>{b.name} M{b.get_miner_id()} R{b.blockhead.timestamp}</TD></TR>
+                        <TR><TD>{b.name}</TD></TR>
+                        <TR><TD>Miner{b.get_miner_id()}, Round{b.blockhead.timestamp}</TD></TR>
+                        <TR><TD>{fthmd_state}</TD></TR>
                     </TABLE>>''')
-                c.attr(label = label)
+                c.attr(style ='filled', label = label, color = '#fa8072')
+                # node_name = key_pname if key_pname != 'None' else b.name
                 node_name = key_pname if key_pname != 'None' else b.name
                 color = 'red' if b.get_keyprblm_key() is not None and b.get_keyprblm_key().all_integer() else 'black'
                 c.node(node_name, f'''<
@@ -558,42 +568,52 @@ class Chain(object):
                     preprblm_label = get_subprblm_label(p1.pre_pname)
                     bc_graph.edge(
                         preprblm_label, 
-                        subnode_label, 
-                        f"x_nk {p1.x_nk}\nrest_x {p1.pre_rest_x}", 
-                        fontcolor = "blue")
+                        subnode_label, )
+                        # f"x_nk {p1.x_nk}\nrest_x {p1.pre_rest_x}", 
+                        # fontcolor = "blue")
                 else:
                     subnode_label = f'P{p1.pname[0]}'
-                    # preprblm_label = f'{block.pre.name}:f0'
                     preprblm_label = get_subprblm_label(p1.pre_pname)
                     bc_graph.edge(
                         preprblm_label, 
                         subnode_label, )
                         # f"x_nk {p1.x_nk}",
                         # fontcolor = "blue" )
-                # if p1.lb_prblm is not None:
-                #     # print(get_subprblm_label(p1.pname), get_subprblm_label(p1.lb_prblm.pname))
-                #     bc_graph.edge(get_subprblm_label(p1.pname), 
-                #                   get_subprblm_label(p1.lb_prblm.pname),
-                #                   arrowsize='0.5', color='blue',constraint='false')
-                # if p2.lb_prblm is not None:
-                #     # print(get_subprblm_label(p2.pname), get_subprblm_label(p2.lb_prblm.pname))
-                #     bc_graph.edge(get_subprblm_label(p2.pname), 
-                #                   get_subprblm_label(p2.lb_prblm.pname) , 
-                #                   arrowsize='0.5', color='blue',constraint='false')
+                if p1.lb_prblm is not None:
+                    bc_graph.edge(get_subprblm_label(p1.pname), 
+                                  get_subprblm_label(p1.lb_prblm.pname), style='dashed',
+                                  arrowsize='0.5', color='blue',constraint='false')
+                if p2.lb_prblm is not None:
+                    bc_graph.edge(get_subprblm_label(p2.pname), 
+                                  get_subprblm_label(p2.lb_prblm.pname) , style='dashed',
+                                  arrowsize='0.5', color='blue',constraint='false')
             
         def set_keyprblm_edges(block:Block):
             """建立keyprblm和前一子问题的连接"""
             key_edge_color = 'red' if len(block.keyfield.pre_opt_prblms)>0 else 'black'
+            key_pname = f'P{block.get_keyid()}' if block.get_keyid() is not None else 'None'
+            node_name = key_pname if key_pname != 'None' else block.name
             presub_label = None
+            
+            linked_fthmd_clusters = []
+
+            for p in block.keyfield.pre_fthmd_prblms:
+                if get_subprblm_label(p.pname) == presub_label:
+                    continue
+                if p.block_name in linked_fthmd_clusters:
+                    continue
+                linked_fthmd_clusters.append(p.block_name)
+                # bc_graph.edge(get_subprblm_label(p.pname), f"{node_name}:f0",  
+                #                 arrowsize='0.5', style='dashed', color='grey',constraint='false')
+                bc_graph.edge(f"vcluster{p.block_name}", f"{node_name}:f0",  
+                                arrowsize='0.5', style='dashed', color='grey',constraint='false')
+                
             if block.keyfield.pre_pname is not None:
                 presub_label = get_subprblm_label(block.keyfield.pre_pname)
-                bc_graph.edge(presub_label, f"{block.name}:f0", color=key_edge_color)
-            # for p in block.keyfield.fthmd_prblms:
-            #     #     # print(get_prblm_label(p.pname)
-            #     if get_subprblm_label(p.pname) == presub_label:
-            #         continue
-                # bc_graph.edge(get_subprblm_label(p.pname), f"{block.name}:f0",  
-                #                 arrowsize='0.5', style='dashed', color='grey',constraint='false')
+                bc_graph.edge(presub_label, f"{node_name}:f0", color=key_edge_color)
+            if block.keyfield.pre_deepest_prblm is not None:
+                bc_graph.edge(f'P{block.keyfield.pre_deepest_prblm.pname[0]}', 
+                              f"{node_name}:f0", style="invis")
 
         
         bc_graph = graphviz.Digraph('Blockchain Structure', engine='dot', 

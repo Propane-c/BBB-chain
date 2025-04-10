@@ -163,8 +163,10 @@ class Evaluation(object):
     def get_feasi_kbs(self, chain:Chain):
         if len(self.feasi_kbs) > 0:
             return self.feasi_kbs
-        # self.feasi_kbs = chain.get_feasible_keyblocks()
-        self.feasi_kbs = chain.get_keyblocks()[:-1]
+        if not self.background.get_enable_gas():
+            self.feasi_kbs = chain.get_feasible_keyblocks()
+        else:
+            self.feasi_kbs = chain.get_keyblocks()[:-1]
         return self.feasi_kbs
 
     def get_opt_solutions(self, chain:Chain):
@@ -478,7 +480,8 @@ class Evaluation(object):
         self.get_mb_block_times(chain)
         self.cal_steal_success_rate()
         self.cal_adversary_block_rate(chain)
-        self.get_opt_solutions(chain)
+        if self.background.get_enable_gas():
+            self.get_opt_solutions(chain)
 
 
     def collect_evaluation_results(self, chain):

@@ -163,8 +163,7 @@ class BranchBound(object):
                 unpubs.append(p)
         return unpub_num, unpubs
 
-    def mining_consensus(self, blockchain: Chain, miner_id, isAdversary=None, 
-                         input=None, q=None, round=None, prblm_pool=None):
+    def mining_consensus(self, blockchain: Chain, miner_id, q, round=None, prblm_pool=None):
         # TODO: 在回合开始时更新open blocks的状态，而不是取问题时更新
         mineSuccess = False
         if len(self.open_blocks):
@@ -178,7 +177,7 @@ class BranchBound(object):
 
         # 尝试产生key-block
         if self.cur_keyblock.get_fthmstat() or self.background.is_gas_used_up(self.cur_keyblock.get_keyprblm_key().fix_pid):
-            newblocks, mineSuccess = self.mining_keyblock(blockchain, miner_id, input, round, q, prblm_pool)
+            newblocks, mineSuccess = self.mining_keyblock(blockchain, miner_id, q, round, prblm_pool)
             return newblocks, mineSuccess
 
         # 若没有正在求解的问题对，尝试获取新问题来branch
@@ -303,14 +302,13 @@ class BranchBound(object):
         self.solved_pairs.append((p1, p2))
 
 
-    def mining_keyblock(self, blockchain, miner_id, input, round, q, prblm_pool):
+    def mining_keyblock(self, blockchain, miner_id, q, round,  prblm_pool):
         """
         尝试产生keyblock, 
         如果现在求解的keyblock的fathomed_state为True, 做PoW, 以产生keyblock
         """
         logger.info(f"{self.LOG_PREFIX}: trying to mine a keyblock")
-        mined_kb, mining_success = self.keyblock_assemble(
-            blockchain, miner_id, input, round, q, prblm_pool)
+        mined_kb, mining_success = self.keyblock_assemble(blockchain, miner_id, round, q, prblm_pool)
         if mining_success:
             key_pname = (mined_kb.keyfield.key_tx.data.pname
                          if mined_kb.keyfield.key_tx is not None else None)
@@ -319,8 +317,10 @@ class BranchBound(object):
             logger.info(f"{self.LOG_PREFIX}:"
                         f" mined a keyblock{mined_kb.name}"
                         f" containing {key_pname} with tx {tx_nonce}")
+            if mined_kb.get_keyprblm_key():
+                mined_kb.get_keyprblm_key().block_name = mined_kb.name
             # 如果采用pow产生keyblock，直接发布
-            if self.kb_strategy == 'pow':
+            if self.kb_strategy == 'pow' or mined_kb.keyfield.key_tx is None:
                 newblock = self.set_publish_kb(mined_kb)
                 self.switch_key(mined_kb, "inner")
                 return newblock, mining_success
@@ -362,9 +362,9 @@ class BranchBound(object):
         return newblock
 
 
-    def cal_attack_rate_pref(self, block: Block):
+    def cal_attack_rate(self, block: Block):
         """
-        计算攻击成功理论值，简化版
+        计算攻击成功理论值
         """
         attack_rate = 1
         for (p1, _) in block.minifield:
@@ -379,7 +379,7 @@ class BranchBound(object):
         """
         if block.minifield.atk_rate == 0:
             # 如果未计算过，计算理论的被攻击概率
-            attack_rate = self.cal_attack_rate_pref(block)
+            attack_rate = self.cal_attack_rate(block)
             block.minifield.atk_rate = attack_rate
             logger.info(f"{self.LOG_PREFIX}: check again block "
                         f"{block.name} atk_theory: {attack_rate}")
@@ -396,13 +396,7 @@ class BranchBound(object):
 
     def check_subtree_depth(self, block: Block):
         """
-        检查miniblock sub-tree深度是否满足diffculty/dmin要求
-        """
-        """
-        `warning`:弃用dmin
-        if prblm_layer_num < self.dmin:
-            # 小于dmin，保存至miniblocks_unsafe
-            self.miniblocks_unsafe.append(block)
+        检查miniblock sub-tree深度是否满足diffculty要求
         """
         prblm_layer_num = block.get_solve_tree_depth()
         if prblm_layer_num >= self.diffculty:
@@ -868,6 +862,9 @@ class BranchBound(object):
                        blockhead=mb_head,
                        content=input,
                        blocksize_MB=self.background.get_blocksize())
+        for p1, p2 in self.solved_pairs:
+            p1.block_name = block_name
+            p2.block_name = block_name
         new_mb.set_minifield(self.pre_prblm, self.solved_pairs)
         self.check_again_mb_fthmd_state(new_mb)
         logger.info("%s: %s fathomed state %s", self.LOG_PREFIX, 
@@ -875,8 +872,7 @@ class BranchBound(object):
         return new_mb
 
 
-    def keyblock_assemble(self, chain: Chain, miner_id, input,
-                          round, key_pow_q, prblm_pool):
+    def keyblock_assemble(self, chain: Chain, miner_id, round, key_pow_q, prblm_pool):
         '''Try to generate a keyblock, do key PoW
         and add a new problem from the prblm_pool'''
         genKeyblockSuccess = False
@@ -901,12 +897,12 @@ class BranchBound(object):
             blockhash = block_name
             height = chain.lastblock.blockhead.height + 1  
             blockhead = BlockHead(prehash, blockhash, height, miner_id, round)
-            keyblock = Block(block_name, True, blockhead, content=input, 
+            keyblock = Block(block_name, True, blockhead, content=None, 
                              blocksize_MB=self.background.get_blocksize())
             # get a prblm from the prblm pool, and assemble a keyblock
             if len(self.opt_prblms) == 0:
                 preKeyFeasible = False
-            key_tx, solveSuccess = self.get_and_slove_next_keytx(prblm_pool, pre_pname)
+            key_tx, solveSuccess = self.get_and_solve_next_keytx(prblm_pool, pre_pname)
             if not solveSuccess:
                 return None, genKeyblockSuccess
             accect_mbs = self.get_fathomed_prblms_by_chain()
@@ -915,8 +911,11 @@ class BranchBound(object):
             key_height = self.cur_keyblock.keyfield.key_height + 1
             keyblock.set_keyfield(
                 self.key_pow_hash, self.key_pow_nonce, key_height,
-                self.cur_keyblock, pre_pname, preKeyFeasible, self.opt_prblms,
-                self.fathomed_prblms, key_tx, accect_mbs, self.cur_keyblock.get_keyprblm_key().iz_pulp)
+                self.cur_keyblock, pre_pname, 
+                preKeyFeasible, self.opt_prblms,
+                self.fathomed_prblms, key_tx, accect_mbs, 
+                pre_deepest_prblm = chain.deepest_block.get_deepest_subprblms()[-1],
+                pre_iz_pulp = self.cur_keyblock.get_keyprblm_key().iz_pulp)
             self.key_pow_nonce = 0
             self.key_pow_hash = None
             self.key_assemble_pre_pname = None
@@ -1005,7 +1004,7 @@ class BranchBound(object):
         self.key_assemble_pre_pname = pre_pname
         return pre_pname
 
-    def get_and_slove_next_keytx(self, prblm_pool: TxPool, pre_pname:tuple):
+    def get_and_solve_next_keytx(self, prblm_pool: TxPool, pre_pname:tuple):
         """
         从prblm_pool中取一个原始问题tx, 以加入keyfield
         """
@@ -1017,7 +1016,7 @@ class BranchBound(object):
         key_tx = prblm_pool.pending[0]
         keyprblm = key_tx.data
         
-        solveSuccess = lpprblm.solve_lp(keyprblm, self.solve_prob_init)
+        solveSuccess = lpprblm.solve_lp(keyprblm, solve_prob=self.solve_prob_init)
         if not solveSuccess:
             logger.info(f"{self.LOG_PREFIX}: solving next key-problem failed")
             return None, solveSuccess
@@ -1148,10 +1147,8 @@ class BranchBound(object):
         return: (infeas_fthmd, wrs_fthmd, int_soln_fthmd, prblm_fthmd)
         :prblm_fthmd = infeas_fthmd or wrs_fthmd or int_soln_fthmd
         '''
-        if (lp_prblm.x_lp is None and lp_prblm.z_lp is None
-                and lp_prblm.feasible is None):
-            raise ValueError(f"{self.LOG_PREFIX}: The problem{lp_prblm.pname} to"
-                             "check fathomed is not solved yet")
+        if (lp_prblm.x_lp is None and lp_prblm.z_lp is None and lp_prblm.feasible is None):
+            raise ValueError(f"{self.LOG_PREFIX}: P{lp_prblm.pname} to check fathomed is not solved yet")
         # 获取全局上界
         ub = upperbound if upperbound is not None else self.upper_bound
         if self.optprblm_cache is not None:
