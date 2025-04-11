@@ -176,7 +176,9 @@ class BranchBound(object):
             return None, mineSuccess
 
         # 尝试产生key-block
-        if self.cur_keyblock.get_fthmstat() or self.background.is_gas_used_up(self.cur_keyblock.get_keyprblm_key().fix_pid):
+        if (self.cur_keyblock.get_fthmstat() or 
+            (self.background.get_enable_gas() and 
+             self.background.is_gas_used_up(self.cur_keyblock.get_keyprblm_key().fix_pid))):
             newblocks, mineSuccess = self.mining_keyblock(blockchain, miner_id, q, round, prblm_pool)
             return newblocks, mineSuccess
 

@@ -35,6 +35,7 @@ OP_BEST = "op_bestbound" # 全局最小的解的问题
 
 def plot_security_fig6():
     data_path = pathlib.Path(".\Result_Data\\1029attack_data2lite.json")
+    data_path = pathlib.Path(".\Results\\20250403\\160726\med_res.json")
     data_list = []
     with open(data_path, 'r') as f:
         json_list = f.read().split('\n')[:-1]
@@ -252,8 +253,8 @@ def plot_security_fig6():
     axins2.legend()
     fig.subplots_adjust(left=0.13, bottom=0.08, right=0.98, top=0.98,hspace=0.05)
     import time
-    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\secure{time.strftime('%Y%m%d%H%M%S')}.eps", dpi=300)
-    # plt.show()
+    # plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\secure{time.strftime('%Y%m%d%H%M%S')}.eps", dpi=300)
+    plt.show()
     
     # 在创建完所有子图后调整位置
     # pos_ax2 = ax2.get_position()

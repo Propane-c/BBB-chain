@@ -9,7 +9,7 @@ from scipy.signal import find_peaks, peak_prominences
 def plot_mbtime_grow_fig5():
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
-    plt.rcParams['font.size'] = 14
+    plt.rcParams['font.size'] = 12
     fig = plt.figure(figsize=(10, 8))
     grid = fig.add_gridspec(3, 4, height_ratios=[1.5, 1.5, 2],width_ratios=[1.5, 1, 1.5,1]) # 3 rows, 2 columns
     # sns.set(style="whitegrid")
@@ -29,7 +29,7 @@ def plot_mbtime_grow_fig5():
         # ax.set_title(title)
         ax.set_xlabel('Difficulty')
         ax.set_ylabel('Means of block times')
-        ax.legend(title="miner num",fontsize = 12)
+        ax.legend(title="Solver num")
         ax.set_xticks([3,5,7,9])
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5)
     
@@ -41,8 +41,7 @@ def plot_mbtime_grow_fig5():
             #   orient='h', join=False, markers='D', palette='dark', ci=None, estimator='mean')
         ax.set_xlim([0,150])
         # ax.set_ylabel('Difficulty', labelpad = -10, loc='top')
-        leg = ax.legend(title="difficulty",fontsize = 12,loc = "lower right", bbox_to_anchor=(1, 0.05))
-        leg.get_title().set_fontsize('12')
+        leg = ax.legend(title="Difficulty", loc = "lower right", bbox_to_anchor=(1, 0.05))
         ax.set_ylabel('Number of solvers')
         ax.set_xlabel('Block times')
 
@@ -56,7 +55,7 @@ def plot_mbtime_grow_fig5():
         # ax.set_title(title)
         ax.set_xlabel('Difficulty')
         ax.set_ylabel('Growth rate')
-        ax.legend(title="miner num",fontsize = 12)
+        ax.legend(title="Solver num")
         ax.grid(which='both', color='#dddddd', linestyle='-', linewidth=0.5)
         # sns.boxplot(x='difficulty', y='grow_proc', data=data_df, ax=ax)
     
@@ -68,20 +67,21 @@ def plot_mbtime_grow_fig5():
         mean_time = np.mean(times)
         
         # 绘制区块时间序列
-        ax.plot(range(len(times)), times, 
-                label="block times", alpha=0.8, color="#f9cc52")
+        ax.plot(range(len(times)), times, alpha=0.8, color="#f9cc52")
+        ax.fill_between(range(len(times)), times, 
+                label="Block time", alpha=0.8, color="#f9cc52")
         
         # 绘制平均值线
         ax.hlines(mean_time, 0, len(times),
                   linestyles='--', linewidth=2, 
-                  color="orange", label="mean")
+                  color="orange", label="Mean")
         
-        ax.legend(fontsize=12)
+        ax.legend()
         ax.set_xlabel('Blocks')
         ax.set_ylabel('Block time')
     data_list = []
     # with open(pathlib.Path("Result_Data\\0207tspm125mbtimes.json"), 'r') as f:
-    with open(pathlib.Path("Results\\20250403\\154426\med_res.json"), 'r') as f:    
+    with open(pathlib.Path("Result_Data\mbtimes\\0407tspm125mbtimes.json"), 'r') as f:    
         jsondata_list = f.read().split('\n')[:-1]
         for jsondata in jsondata_list:
             data_list.append(json.loads(jsondata))
@@ -112,7 +112,14 @@ def plot_mbtime_grow_fig5():
     plot_growthrate(axGrowth, data_df)
     plot_block_time_fig5(axTimesM1, data_df[data_df['miner_num'] == 1])
     plot_block_time_fig5(axTimesM3, data_df[data_df['miner_num'] == 2])
-    plot_grow_proc(axGrowProc, data_df[(data_df['miner_num'] == 5) & (data_df['difficulty'].isin([5]))].copy())
+    data_list = []
+    with open(pathlib.Path("Result_Data\\mbtimes\\m5d5vburma14.json"), 'r') as f:
+        jsondata_list = f.read().split('\n')
+        for jsondata in jsondata_list:
+            data_list.append(json.loads(jsondata))
+        proc_df = pd.DataFrame(data_list)
+        proc_df = proc_df.sort_values(by=["miner_num","difficulty" ])
+    plot_grow_proc(axGrowProc, proc_df[(proc_df['miner_num'] == 5) & (proc_df['difficulty'].isin([5]))].copy())
     
     ax_list = [axMeans, axTimesM1, axTimesM3, axViolin,axGrowth, axGrowProc]
    
@@ -212,7 +219,7 @@ def plot_block_time_fig5(ax:plt.Axes, data_df:pd.DataFrame):
     # ax.set_xlim(min(data), max(data)+1)
     ax.set_xlim(min(mb_times), 50+1)
     ax.set_ylim(0,0.15)
-    ax.legend(loc='best', title = "difficulty",fontsize = 12)
+    ax.legend(loc='upper right', title = "Difficulty")
 
 if __name__ == "__main__":
     plot_mbtime_grow_fig5()

@@ -104,6 +104,7 @@ class Chain(object):
         self.keyblocks.append(self.head)
         self.lastblock = self.head
         self.max_height = 0
+        self.deepest_block = self.head
     
     def get_keyblocks(self):
         '''获取链中所有的keyblock'''

@@ -225,6 +225,7 @@ class MiniField(object):
 
 
 class Block(object):
+    """key后缀的方法为key-block使用的, mini后缀的为mini-block使用的"""
     def __init__(self, name:str = None, iskeyblock:bool = None, 
                 blockhead: BlockHead = None, content=None, 
                 isadversary=False, isgenesis=False, blocksize_MB=2,

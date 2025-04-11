@@ -9,6 +9,7 @@ sys.path.append("E:\Files\gitspace\\bbb-github")
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -27,6 +28,9 @@ from matplotlib.ticker import PercentFormatter
 from scipy.signal import find_peaks, peak_prominences
 from scipy.stats import gaussian_kde
 import matplotlib.patches as patches
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPM
+import io
 
 SAVE_PREFIX = "E:\Files\A-blockchain\\branchbound\\branchbound仿真\\0129"
 pathlib.Path.mkdir(pathlib.Path(SAVE_PREFIX), exist_ok=True)
@@ -765,7 +769,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
                 gas_diff = curr_gas - prev_gas
                 gas_diffs[round_num] = gas_diff
             prev_gas = curr_gas
-        window = 50
+        window = 100
         gas_diffs_smooth = pd.Series(gas_diffs).rolling(window=window, center=True).mean()
         gas_diffs_smooth = gas_diffs_smooth.fillna(method='bfill').fillna(method='ffill')
         rounds_diff = list(range(len(gas_diffs_smooth)))
@@ -774,7 +778,7 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
         ax_gas.fill_between([0, max_round], [8, 8], 0,
                           color=style['color'], alpha=0.05, zorder=1)
         ax_gas.fill_between(rounds_diff, gas_diffs_smooth, 0,
-                         color=style['color'], alpha=0.6, rasterized=True, zorder=style['zorder'])
+                         color=style['color'], alpha=0.6, zorder=style['zorder'])
         ax_gas.axvline(x=max_round, color='#4b5563', linestyle='--', linewidth=0.5, alpha=0.8, zorder=2)
         
         # 绘制曲线
@@ -835,12 +839,20 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
                    transform=ax_gas.transAxes,
                    verticalalignment='bottom',
                    horizontalalignment='center')
+        ax_gas2.text(1., 0.1,"Total gas consumption",
+                           rotation=90,
+                   transform=ax_gas.transAxes,
+                   verticalalignment='bottom',
+                   horizontalalignment='center')
+
     else:
         ax_gas.set_ylabel(" ")
-    ax_gas.set_ylim(0, 8)
+    ax_gas.set_ylim(0, 6)
     ax_gas2.set_ylim(0, 60000)
     
     ax_gas2.tick_params(axis='y', rotation=90)
+    
+    
     
     if ins == "28":
         ax_gas.set_xlim([0, 100000])
@@ -860,11 +872,6 @@ def plot_gas_vs_round2(json_dir, miner_nums:list, ins:str, ax_gas:plt.Axes):
         spine.set_edgecolor('#dddddd')
 
 def plot_case_spot():
-    """绘制案例研究的组合图
-    Args:
-        json_dir: 包含solution progress数据的目录
-        med_results_path: 包含solution error数据的json文件路径
-    """
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 12
@@ -873,9 +880,10 @@ def plot_case_spot():
     fig = plt.figure(figsize=(10, 10))  # 调整整体图大小
     gs = fig.add_gridspec(6, 2, height_ratios=[1.1, 0.18, 1.1, 0.18, 0.4, 0.4])  # 添加间距控制
     
-    # 子图a - 留空（系统架构图）
+    # 子图a - 插入SVG图片
     ax_a = fig.add_subplot(gs[0, 0])
     ax_a.axis('off')
+
     
     # 子图b - Key-block time vs Number of tasks
     ax_b = fig.add_subplot(gs[2, 0])
@@ -923,7 +931,7 @@ def plot_case_spot():
     
     fig.subplots_adjust(left=0.095, bottom=0.074, right=0.93, top=0.96, hspace=0.16, wspace=0.336)
     import time
-    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\spot{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=300)
+    plt.savefig(f"E:\Files\A-blockchain\\branchbound\\figs\\spot{time.strftime('%Y%m%d%H%M%S')}.svg", dpi=1200)
     plt.show()
     
     

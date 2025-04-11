@@ -142,16 +142,16 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
 
     # sns.set(style="white")
     pink_to_red_colors = [
-        # "#FFC0CB",  # 淡粉色
-        # "#FFB6C1",  # 浅粉色
-        # "#FF9999",  # 粉红色
-        "#FF7F7F",  # 浅红色
-        "#FF6666",  # 粉红红色
-        "#FF4D4D",  # 橙红色
-        "#FF3333",  # 亮红色
-        # "#FF1A1A",  # 鲜红色
+        # "#FFC0CB",  
+        # "#FFB6C1",  
+        # "#FF9999",  
+        "#FF7F7F",  
+        "#FF6666",  
+        "#FF4D4D",  
+        "#FF3333",  
+        # "#FF1A1A",  
         "#FF0000",
-        "#D62728"   # 纯红色
+        "#D62728" 
     ]
     print("drawing integer path")
     # 对于相同的整数解，只保留最早出现的点
@@ -193,22 +193,18 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
             int_paths.append(path)
     for path in int_paths:
         if max_bround_point in path:
-            # 找到路径起点(最大bround的点)的bround值
             start_point = path[0]  # path[0]是最新的点(bround最大)
             bround = start_point['bround']
             
-            # 使用与散点图相同的颜色映射逻辑
             color_index = bround_to_color_index[bround]
             color_index = min(color_index, len(pink_to_red_colors) - 1)
             path_color = pink_to_red_colors[color_index]
             
-            # 用对应颜色标记这条路径
             if type == FANGDA:
                 draw_int_path(path, path_color, 10, '--')
             else:
                 draw_int_path(path, path_color, 4, '--')
         else:
-            # 其他路径也使用对应颜色
             start_point = path[0]
             bround = start_point['bround']
             color_index = bround_to_color_index[bround]
@@ -265,10 +261,9 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
         sfork = 200
         sorange = 15
         sopt = 400
-    rasterized=False if type == MIPLTP else True
+    rasterized=False if type == MIPLTP else False 
 
     if type != TSP and type != FANGDA:
-        # 原代码注释保留
         # sns.scatterplot(x="bround",y ="ub",
         #                 data = ub_df[(ub_df["fathomed"] == False) & (ub_df["block"]!= "None")] ,
         #                 s = smain, color = '#00B0F0', rasterized=rasterized ,edgecolor="none",
@@ -293,7 +288,6 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
                     alpha=0.7
                 )
 
-    # 保持其他数据的绘制不变
     sns.scatterplot(x="bround",y ="ub",
                     data = ub_df[(ub_df["fathomed"]== True) & 
                                 (ub_df["allInteger"]==False) & (ub_df["block"]!= "None")] , 
@@ -307,18 +301,17 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
     #                 color = "#39FF14", s= s,rasterized=rasterized,edgecolor="none",zorder = unpub_zorder, alpha = 1)
     sns.scatterplot(x="bround",y ="ub",data = ub_df[(ub_df["isFork"]== True) & (ub_df["block"]!= "None")] , 
                     color = "#FF69B4", s= sfork,rasterized=rasterized,edgecolor="none",zorder = 4, alpha = 1)#FF9E4A
-    # 以下是一些更亮、更显眼的颜色选择
     bright_colors = {
-        "青色": "#00FFFF",       # 明亮的青色/水绿色
-        "霓虹绿": "#39FF14",     # 非常明亮的绿色
-        "亮粉色": "#FF69B4",     # 热粉色
-        "柠檬黄": "#FFF700",     # 明亮的柠檬色
-        "青柠色": "#BFFF00",     # 鲜艳的黄绿色
-        "珊瑚红": "#FF7F50",     # 明亮的珊瑚色
-        "霓虹蓝": "#1E90FF",     # 亮蓝色
-        "亮绿松": "#00FA9A",     # 亮绿松色
-        "霓虹紫": "#9D00FF",     # 鲜艳的紫色
-        "青绿色": "#00CED1"      # 亮青绿色
+        "青色": "#00FFFF",      
+        "霓虹绿": "#39FF14",    
+        "亮粉色": "#FF69B4",     
+        "柠檬黄": "#FFF700",     
+        "青柠色": "#BFFF00",     
+        "珊瑚红": "#FF7F50",     
+        "霓虹蓝": "#1E90FF",     
+        "亮绿松": "#00FA9A",     
+        "霓虹紫": "#9D00FF",     
+        "青绿色": "#00CED1"      
     }
 
     for _, point in int_df.iterrows():
@@ -340,28 +333,27 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
 
 
     print("drawing main chain")
-    # 添加蓝绿黄颜色映射
     base_colors = {
         'blue': [
-            "#00B0F0",  # 主蓝色
-            "#0096FF",  # 天蓝色
-            "#1E90FF",  # 道奇蓝
-            "#4169E1",  # 皇家蓝
-            "#0047AB"   # 钴蓝色
+            "#00B0F0",
+            "#0096FF",
+            "#1E90FF",
+            "#4169E1",
+            "#0047AB" 
         ],
         'green': [
-            "#00FA9A",  # 主绿色
-            "#3CB371",  # 中海绿色
-            "#32CD32",  # 酸橙绿
-            "#228B22",  # 森林绿
-            "#008B45"   # 春绿色
+            "#00FA9A",  
+            "#3CB371",  
+            "#32CD32",  
+            "#228B22",  
+            "#008B45"   
         ],
         'yellow': [
-            "#FFF700",  # 主黄色
-            "#FFD700",  # 金色
-            "#FFBF00",  # 琥珀色
-            "#FFA500",  # 橙色
-            "#FF8C00"   # 深橙色
+            "#FFF700", 
+            "#FFD700", 
+            "#FFBF00", 
+            "#FFA500", 
+            "#FF8C00"  
         ]
     }
 
@@ -428,7 +420,7 @@ def plot_bounds_fig3(file_path, type, m=None, ax:plt.Axes = None):
                     width = 0.015
             # children_count = children_counts[row['pre_pname']]
             color = miner_colors[row['miner']]
-            # color = my_blues(0 + 0.5*(1-point_norm(children_count)))  # 将颜色范围限制在0.3-0.7之间，使颜色更浅
+            # color = my_blues(0 + 0.5*(1-point_norm(children_count)))
             left, width = adjust_width_for_log_scale(row['bround'], width)
             # left = row['bround']-width/2
             # 计算对数尺度下的矩形边界
