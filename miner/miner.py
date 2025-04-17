@@ -188,6 +188,13 @@ class Miner(object):
             if self.consensus.kb_strategy != 'pow' and new_kb.keyfield.key_tx is not None:
                 new_mb_with_kb = newblocks.mb_with_kb
                 self.local_chain.add_block_direct(new_mb_with_kb, new_kb)
+                # 如果该区块fathomed，更新问题树状态
+                if new_mb_with_kb.minifield.bfthmd_state:
+                    if new_mb_with_kb.update_solve_tree_fthmd_state_mini():
+                        k_fstat = self.consensus.cur_keyblock.get_fthmstat()
+                        logger.info("%s: updated solve tree with %s , key fathomd state %s", 
+                                    self.LOG_PREFIX, new_mb_with_kb.name, k_fstat)
+                self.consensus.reorg_open_blocks()
             return newblocks, mineSuccess
         # miniblock
         new_mb = newblocks.miniblock

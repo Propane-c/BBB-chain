@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # 产生keyblock的方式
 POW = "pow"
 W_MINI = "withmini"
+POW_W_MINI = "pow+withmini"
 
 # openblock选择策略, 如open prblm不是BEST策略就先选block再选prblm
 OB_SPEC = "ob_specific" # 默认选择第一个
@@ -440,8 +441,7 @@ class BranchBound(object):
             # self.open_blocks.append(self.pre_block)
             self.open_blocks.insert(0, self.pre_block)
         if not getSuccess:
-            logger.warning(f"{self.LOG_PREFIX}: failed to branch "
-                           f"a problem from open block {open_block.name}")
+            logger.warning(f"{self.LOG_PREFIX}: failed to branch a problem from open block {open_block.name}")
         return getSuccess
 
 
@@ -1023,9 +1023,11 @@ class BranchBound(object):
             logger.info(f"{self.LOG_PREFIX}: solving next key-problem failed")
             return None, solveSuccess
         
-        logger.info(f"{self.LOG_PREFIX}: solving next key-problem success")
+        logger.info(f"{self.LOG_PREFIX}: solving next key-problem success, feasible{keyprblm.feasible}")
+        
         prblm_pool.pending.pop(0)
         prblm_pool.reorg()
+        logger.info(f"{self.LOG_PREFIX}: prblm_pool pending {len(prblm_pool.pending)}, queued {len(prblm_pool.queued)}")
         keyprblm.pname = ((self.background.key_id_generator(), 0), 0)
         keyprblm.pre_pname = pre_pname
         # lpprblm.solve_ilp_by_pulp(keyprblm)
