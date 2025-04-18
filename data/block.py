@@ -65,14 +65,10 @@ class KeyField(object):
         self.thres = thres
 
     def __repr__(self) -> str:
-        pre_kb_name = self.pre_kb.name \
-                    if self.pre_kb is not None else None
-        fthmd_prblms = [p.pname for p in self.pre_fthmd_prblms] \
-                    if len(self.pre_fthmd_prblms)!=0 else []
-        opt_prblm_names = [p.pname for p in self.pre_opt_prblms] \
-                    if len(self.pre_opt_prblms) > 0 else []
-        next_keyblocks = [b.name for b in self.next_kbs] \
-                    if len(self.next_kbs) > 0 else []        
+        pre_kb_name = self.pre_kb.name if self.pre_kb is not None else None
+        fthmd_prblms = [p.pname for p in self.pre_fthmd_prblms] if len(self.pre_fthmd_prblms)!=0 else []
+        opt_prblm_names = [p.pname for p in self.pre_opt_prblms] if len(self.pre_opt_prblms) > 0 else []
+        next_keyblocks = [b.name for b in self.next_kbs] if len(self.next_kbs) > 0 else []        
         key_str = (f"key_hash: {self.key_hash}\n"+
                    f"key_height:{self.key_height}\n"+
                    f"pow_nonce: {self.pow_nonce}\n"+
@@ -89,11 +85,11 @@ class KeyField(object):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if (cls.__name__ == 'KeyField' and k != 'pre_keyblock' and k != 'next_keyblocks'):
+            if (cls.__name__ == 'KeyField' and k != 'pre_kb' and k != 'next_kbs'):
                 setattr(result, k, copy.deepcopy(v, memo))
-            if cls.__name__ == 'KeyField' and k == 'pre_keyblock':
+            if cls.__name__ == 'KeyField' and k == 'pre_kb':
                 setattr(result, k, None)
-            if cls.__name__ == 'KeyField' and k == 'next_keyblocks':
+            if cls.__name__ == 'KeyField' and k == 'next_kbs':
                 setattr(result, k, [])
             if cls.__name__ != 'KeyField':
                 setattr(result, k, copy.deepcopy(v, memo))
